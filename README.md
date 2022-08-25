@@ -84,3 +84,12 @@ To build the OPC UA S2OPC South plugin run the commands:
 cd ${DEV_ROOT}/fledge-north-s2opcua
 make
 ```
+
+### Test plugin
+
+Plugin can be tested locally using the command line:
+
+``` sh
+curl -sX POST http://localhost:8081/fledge/scheduled/task -d '{"name": "s2opcua","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 30,"schedule_enabled": true}' ; echo
+```
+

@@ -1,11 +1,11 @@
 /*
- * Fledge south service plugin
+ * Fledge north service plugin
  *
  * Copyright (c) 2021 Dianomic Systems
  *
  * Released under the Apache 2.0 Licence
  *
- * Author: Amandeep Singh Arora
+ * Author: Amandeep Singh Arora / Jeremie Chabod
  */
 
 #define USE_TLS 0 // TODO!
@@ -28,6 +28,9 @@ extern "C" {
 #include "threading_alt.h"
 #endif
 }
+
+// Include generated JSON file
+#include "default_config.inc"
 
 namespace fledge_power_s2opc_north
 {

@@ -1,0 +1,36 @@
+{
+    "plugin" : {
+        "description" : "Simple OPC UA data server plugin",
+        "type" : "string",
+        "default" : "s2opcua",
+        "readonly" : "true"
+    },
+    "asset" : {
+        "description" : "Asset name",
+        "type" : "string",
+        "default" : "s2opcua",
+        "displayName" : "Asset Name",
+        "order" : "1",
+        "mandatory": "true"
+    },
+    "url" : {
+        "description" : "URL of the OPC UA Server",
+        "type" : "string",
+        "default" : "opc.tcp://localhost:4841/OPCUA/s2opc",
+        "displayName" : "OPCUA Server URL",
+        "order" : "2"
+    },
+    "subscription" : {
+        "description" : "Variables to serve",
+        "type" : "JSON",
+        "default" : "{ \"subscriptions\" : [  \"ns=3;i=1001\", \"ns=3;i=1002\" ] }",
+        "displayName" : "OPCUA Objects",
+        "order" : "3"
+        },
+    "todo" : {
+        "description" : "TODO",
+        "type" : "string",
+        "default" : "TODO",
+        "displayName" : "TODO",
+        "order" : "99"}
+}

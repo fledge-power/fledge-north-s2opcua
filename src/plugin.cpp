@@ -8,7 +8,6 @@
  * Author: Jeremie Chabod / Mark Riddoch
  */
 
-#include <plugin_api.h>
 //#include <stdio.h>
 //#include <stdlib.h>
 //#include <strings.h>
@@ -23,7 +22,9 @@
 #include <rapidjson/document.h>
 #include <version.h>
 
-#include "include/opcua_server.h"
+#include "opcua_server.h"
+
+#include <plugin_api.h>
 
 /* This file implements a north OPCUA bridge for Fledge.
  * The interface is specified in:
@@ -42,20 +43,7 @@ namespace
 #define INTERFACE_VERSION  "1.0.0"
 #define PLUGIN_FLAGS 0  // Supported NORTH flags are: SP_PERSIST_DATA, SP_BUILTIN
 
-/**
- * Default configuration
- */
-static const char *default_config =
-        QUOTE({
-    "plugin" : {
-        "description" : "Simple OPC UA data change plugin",
-        "type" : "string",
-        "default" : PLUGIN_NAME,
-        "readonly" : "true"
-    },
-    "todo" : {} // TODO
-});
-
+/**************************************************************************/
 static fledge_power_s2opc_north::OPCUA_Server* handleToPlugin(void* handle)
 {
     if (handle == NULL)
@@ -73,9 +61,9 @@ static PLUGIN_INFORMATION g_plugin_info = {
     PLUGIN_NAME,              // Name
     FLEDGE_NORTH_S2OPC_VERSION,                  // Version
     PLUGIN_FLAGS,             // Flags
-    PLUGIN_TYPE_SOUTH,        // Type
+    PLUGIN_TYPE_NORTH,        // Type
     INTERFACE_VERSION,        // Interface version
-    default_config            // Default configuration
+    fledge_power_s2opc_north::plugin_default_config  // Default configuration
 };
 
 } // namespace
@@ -99,6 +87,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
     using namespace fledge_power_s2opc_north;
     try
     {
+        Logger::getLogger()->warn("OPC UA Server plugin_init()");
         return (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
     }
     catch (const Exception& e)

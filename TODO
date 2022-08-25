@@ -1,25 +1,25 @@
 This list is based on content of equivalent SOUTH plugin (fledge-south-s2opcua)
 
 == TODO
-- check-0.15.2_CMakeLists.txt.patch
-- CMakeLists.txt
-- FindFledge.cmake
 - include
 - Package
-- README.rst
 - S2OPC.patch
 - cleanup               
 - CONTRIBUTING.md
 - docs
 - opcua.cpp
 - plugin.cpp
-- requirements.sh  
 - tests
 
 == WIP
 - VERSION
+- README.rst
 
 == DONE
+- patches
+- FindFledge.cmake
+- requirements.sh  
+- CMakeLists.txt
 - fledge.version
 - Description
 - mkversion

@@ -1,13 +1,13 @@
-#ifndef _OPCUA_H
-#define _OPCUA_H
+#ifndef _OPCUA_SERVER_H
+#define _OPCUA_SERVER_H
 /*
- * Fledge south service plugin
+ * Fledge north service plugin
  *
  * Copyright (c) 2021 Dianomic Systems
  *
  * Released under the Apache 2.0 Licence
  *
- * Author: Amandeep Singh Arora, Mark Riddoch
+ * Author: Amandeep Singh Arora / Jeremie Chabod
  */
 #include <config_category.h>
 #include <string>
@@ -32,6 +32,11 @@ namespace fledge_power_s2opc_north
 {
 
 /*****************************************************
+ *  CONFIGURATION
+ *****************************************************/
+extern const char* plugin_default_config;
+
+/*****************************************************
  *  TYPES DEFINITIONS
  *****************************************************/
 // Redefinition of plugin callbacks types to ease readability
@@ -39,7 +44,7 @@ typedef bool (*north_write_event_t)(char *name, char *value, ControlDestination 
 typedef int (*north_operation_event_t)(char *operation, int paramCount, char *parameters[], ControlDestination destination, ...);
 typedef std::vector<Reading*> Readings;
 
-class Exception:public exception
+class Exception:public std::exception
 {
 public:
     Exception(const std::string& msg);
@@ -80,4 +85,4 @@ private:
 
 }
 
-#endif
+#endif // _OPCUA_SERVER_H

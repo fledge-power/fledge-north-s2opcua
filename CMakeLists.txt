@@ -14,6 +14,16 @@ project(s2opcua)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 -O3")
 
+# Generation of JSON default file
+set_source_files_properties(default_config.inc PROPERTIES GENERATED TRUE)
+add_custom_command(
+  OUTPUT default_config.inc
+  DEPENDS ${CMAKE_SOURCE_DIR}/include/default_config.json ${CMAKE_SOURCE_DIR}/mkjson
+  COMMAND ${CMAKE_SOURCE_DIR}/mkjson plugin_default_config ${CMAKE_SOURCE_DIR}/include/default_config.json default_config.inc 
+  COMMENT "Generating JSON default configuration file"
+  VERBATIM
+)
+
 # Generation version header file
 set_source_files_properties(version.h PROPERTIES GENERATED TRUE)
 add_custom_command(
@@ -32,7 +42,7 @@ set(PLUGIN_TYPE "north")
 set(NEEDED_FLEDGE_LIBS common-lib)
 
 # Find source files
-file(GLOB SOURCES *.cpp)
+file(GLOB SOURCES src/*.cpp )
 
 # Find Fledge includes and libs, by including FindFledge.cmake file
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
@@ -79,7 +89,7 @@ link_directories(/usr/local/lib)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -Wl,--no-as-needed")
 
 # Create shared library
-add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h)
+add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h default_config.inc)
 
 # Add Fledge library names
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
