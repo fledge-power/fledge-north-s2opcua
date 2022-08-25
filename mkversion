@@ -8,4 +8,6 @@ cat > version.h << END_WARNING
  */
 
 END_WARNING
-/bin/echo '#define VERSION	"'`cat $1/VERSION`'"' >> version.h
+/bin/echo '#ifndef FLEDGE_NORTH_S2OPC_VERSION' >> version.h
+/bin/echo '#define FLEDGE_NORTH_S2OPC_VERSION	"'`cat $1/VERSION`'"' >> version.h
+/bin/echo '#endif' >> version.h
