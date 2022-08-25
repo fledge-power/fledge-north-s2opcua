@@ -11,6 +11,7 @@
 #define USE_TLS 0 // TODO!
 
 #include <opcua_server.h>
+#include <opcua_server_config.h>
 
 #include <exception>
 
@@ -20,6 +21,7 @@ extern "C" {
 #include "s2opc/common/sopc_common.h"
 #include "s2opc/common/sopc_encodeabletype.h"
 #include "s2opc/common/sopc_log_manager.h"
+#include "s2opc/common/sopc_logger.h"
 #include "s2opc/common/sopc_types.h"
 #include "s2opc/clientserver/frontend/libs2opc_common_config.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config.h"
@@ -32,6 +34,10 @@ extern "C" {
 // Include generated JSON file
 #include "default_config.inc"
 
+namespace
+{
+}
+
 namespace fledge_power_s2opc_north
 {
 
@@ -42,31 +48,7 @@ Exception(const std::string& msg):
 {}
 
 /**************************************************************************/
-OpcUa_Server_Config::
-OpcUa_Server_Config(const ConfigCategory& configData):
-        mUrl(extractString(configData, "url"))
-{
-}
-
 /**************************************************************************/
-std::string
-OpcUa_Server_Config::
-extractString(const ConfigCategory& config, const std::string& name)
-{
-    if (config.itemExists(name))
-    {
-        return config.getValue(name);
-    }
-    throw Exception(std::string ("Missing config parameter:<") + name + ">");
-}
-
-/**************************************************************************/
-OpcUa_Server_Config::
-~OpcUa_Server_Config(void)
-{
-
-}
-
 OPCUA_Server* OPCUA_Server::mInstance = NULL;
 /**************************************************************************/
 OPCUA_Server::
@@ -83,29 +65,48 @@ OPCUA_Server(const ConfigCategory& configData):
     /* Configure the server logger: */
     // TODO: configure logger (see south plugin)
     SOPC_Log_Configuration logConfig;
-    logConfig.logLevel = SOPC_LOG_LEVEL_INFO;
-    logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
+    if (mConfig.withLogs)
+    {
+        logConfig.logLevel = mConfig.logLevel;
+        logConfig.logSystem = SOPC_LOG_SYSTEM_FILE;
+    }
+    else
+    {
+        logConfig.logLevel = SOPC_LOG_LEVEL_INFO;
+        logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
+    }
     SOPC_ReturnStatus status = SOPC_Common_Initialize(logConfig);
+
     if (SOPC_STATUS_OK != status)
     {
         throw Exception("SOPC_Common_Initialize failed");
     }
+    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Common_Initialize() OK");
 
-    status = SOPC_Toolkit_Initialize(&Server_Event_Toolkit);
+    status = SOPC_Toolkit_Initialize(&Server_Event);
     if (SOPC_STATUS_OK != status)
     {
         throw Exception("SOPC_Toolkit_Initialize failed");
     }
-    // TODO WIP
+    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Toolkit_Initialize() OK");
+
+
+    // TODO Server_LoadAddressSpace
+    // TODO Server_ConfigureStartServer
+
     mInstance = this;
-    SOPC_S2OPC_Config config;
-    SOPC_S2OPC_Config_Initialize(&config);
+    SOPC_S2OPC_Config_Initialize(&mConfig);
 }
 
 /**************************************************************************/
 OPCUA_Server::
 ~OPCUA_Server()
 {
+    /** TODO
+     * From ZEPHYR SAMPLE:
+     * Server_StopAndClear(&s2opcConfig);
+     */
+
     mInstance = NULL;
     SOPC_Toolkit_Clear();
     SOPC_Common_Clear();
@@ -114,7 +115,7 @@ OPCUA_Server::
 /**************************************************************************/
 void
 OPCUA_Server::
-Server_Event_Toolkit(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr_t appContext)
+Server_Event(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr_t appContext)
 {
     (void) idOrStatus;
     if (NULL == mInstance)
@@ -170,6 +171,10 @@ uint32_t
 OPCUA_Server::
 send(const Readings& readings)
 {
+    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER,
+            "OPCUA_Server::send(%ld elements)",
+            readings.size());
+
     return 0; // TODO
 }
 
@@ -178,6 +183,8 @@ void
 OPCUA_Server::
 setpointCallbacks(north_write_event_t write, north_operation_event_t operation)
 {
+    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER,
+            "OPCUA_Server::setpointCallbacks(.., ..)");
     return; // TODO
 }
 

@@ -20,12 +20,62 @@
         "displayName" : "OPCUA Server URL",
         "order" : "2"
     },
-    "subscription" : {
+    "appUri" : {
+        "description" : "Applicative URI",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "Applicative URI",
+        "order" : "3"
+    },
+    "productUri" : {
+        "description" : "Product URI",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "Product URI",
+        "order" : "4"
+    },
+	"subscription" : {
         "description" : "Variables to serve",
         "type" : "JSON",
         "default" : "{ \"subscriptions\" : [  \"ns=3;i=1001\", \"ns=3;i=1002\" ] }",
         "displayName" : "OPCUA Objects",
-        "order" : "3"
+        "order" : "5"
+        },
+    "serverCertPath" : {
+        "description" : "Path to the server certificate (DER format)",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "Server certificate",
+        "order" : "6"
+    },
+    "serverKeyPath" : {
+        "description" : "Path to the server Key",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "Server key",
+        "order" : "7"
+    },
+    "caCertPath" : {
+        "description" : "Path to the C.A. certificate (DER format)",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "C.A. certificate",
+        "order" : "8"
+    },
+    "caCrlPath" : {
+        "description" : "Path to the C.A. Revocation list (DER format)",
+        "type" : "string",
+        "default" : "",
+        "displayName" : "C.A. CRL",
+        "order" : "9"
+    },
+    "logging" : {
+        "description" : "Configure S2OPC logging level" ,
+        "type" : "enumeration",
+        "options":["None", "Error", "Warning", "Info", "Debug"],
+        "default" : "Info",
+        "displayName" : "Logging level",
+        "order" : "6"
         },
     "todo" : {
         "description" : "TODO",

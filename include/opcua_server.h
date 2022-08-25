@@ -28,6 +28,8 @@ extern "C" {
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 };
 
+#include "opcua_server_config.h"
+
 namespace fledge_power_s2opc_north
 {
 
@@ -44,37 +46,39 @@ typedef bool (*north_write_event_t)(char *name, char *value, ControlDestination 
 typedef int (*north_operation_event_t)(char *operation, int paramCount, char *parameters[], ControlDestination destination, ...);
 typedef std::vector<Reading*> Readings;
 
-class Exception:public std::exception
-{
-public:
-    Exception(const std::string& msg);
-    const std::string mMsg;
-};
-
-/**
- * Configuration holder for a S2OPC server
- */
-class OpcUa_Server_Config
-{
-public:
-    OpcUa_Server_Config(const ConfigCategory& configData);
-    virtual ~OpcUa_Server_Config(void);private:
-    std::string extractString(const ConfigCategory& config, const std::string& name);
-    std::string mUrl;
-};
-
 /**
  * Interface to the S2 OPCUA library for a S2OPC server
  */
 class OPCUA_Server
 {
 public:
+
+    /** Create a new OPC server with the given configuration
+     * @param configData The configuration of the plugin
+     */
     OPCUA_Server(const ConfigCategory& configData);
+
+    /**
+     * Destructor
+     */
     virtual ~OPCUA_Server(void);
+
+    /**
+     * Sends the readings on the OPC server
+     * @param readings The objects to update
+     * @return The number of element written
+     */
     uint32_t send(const Readings& readings);
+
+    /**
+     * TODO
+     */
     void setpointCallbacks(north_write_event_t write, north_operation_event_t operation);
 private:
-    static void Server_Event_Toolkit(SOPC_App_Com_Event event,
+    /**
+     * This function is called when an event is received on the server
+     */
+    static void Server_Event(SOPC_App_Com_Event event,
             uint32_t idOrStatus, void* param, uintptr_t appContext);
     // It is mandatory that mEnvironment is the first member
     const OpcUa_Server_Config mConfig;
