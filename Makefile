@@ -1,6 +1,6 @@
 # Note: type 'make Q=' to get make commands debug 
 Q=@
-PLUGIN_CONF='{"name": "s2opcua","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 30,"schedule_enabled": true}'
+PLUGIN_CONF='{"name": "s2opcua_ss","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 30,"schedule_enabled": true}'
 
 all: build install_plugin insert_plugin
 build:
@@ -19,9 +19,15 @@ install_plugin: check
 	@echo "Install plugin..."
 	$(Q)make -C build install
 	
-insert_plugin:
+insert_plugin: del_plugin
 	# Insert plugin service in Fledge
-	$(Q)curl -sX POST http://localhost:8081/fledge/scheduled/task -d $(PLUGIN_CONF)
-	@echo
+	$(Q)! curl -sX POST http://localhost:8081/fledge/scheduled/task -d $(PLUGIN_CONF) \
+	|  sed 's/^\(4.*\)/INSTALLATION FAILED : \1/; t; q 128 '
 	
-.PHONY: all clean build check install_plugin insert_plugin
+	@echo
+del_plugin:
+	@# Delete plugin but remove error message in case the plugin is not already installed
+	$(Q)(curl -sX DELETE http://localhost:8081/fledge/scheduled/task/s2opcua_ss | grep -o '"[ A-Za-z0-9_-]*deleted successfully."') || true
+	
+		
+.PHONY: all clean build check del_plugin install_plugin insert_plugin
