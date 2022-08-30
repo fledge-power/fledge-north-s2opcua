@@ -14,6 +14,8 @@
 #include <opcua_server_config.h>
 
 #include <exception>
+#include <unistd.h>
+#include <sys/stat.h>
 
 extern "C" {
 // S2OPC Headers
@@ -82,14 +84,26 @@ OPCUA_Server(const ConfigCategory& configData):
 
     /* Configure the server logger: */
     SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
-    if (mConfig.withLogs && mConfig.logPath.length() > 0)
+    if (mConfig.withLogs)
     {
         const std::string traceFilePath = getDataDir() + string("/logs/");
         logConfig.logLevel = mConfig.logLevel;
         logConfig.logSystem = SOPC_LOG_SYSTEM_FILE;
 
         // Note : other fields of fileSystemLogConfig are initialized by SOPC_Common_GetDefaultLogConfiguration()
-        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = mConfig.logPath.c_str();
+        const char* logDirPath = mConfig.logPath.c_str();
+        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = logDirPath;
+
+        // Check if log folder exist and create it if needed
+        if (not access(logDirPath, W_OK | R_OK))
+        {
+            mkdir(logDirPath,0777);
+        }
+        if (not access(logDirPath, W_OK | R_OK))
+        {
+            Logger::getLogger()->fatal("Cannot create log folder %s", logDirPath);
+            throw runtime_error("Cannot create log folder.");
+        }
     }
     else
     {

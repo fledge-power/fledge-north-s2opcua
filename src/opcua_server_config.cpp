@@ -41,6 +41,13 @@ extern "C" {
 
 namespace
 {
+// Plugin data storage
+static const std::string dataDir (getDataDir());
+// logs folder
+static const std::string logDir (dataDir + "/logs/");
+// Certificate folder
+static const std::string certDir (dataDir + "/etc/cert/");
+
 // TODO : to replace by a real configuration of certificates management.
 static char* default_trusted_certs[] = {NULL, NULL};
 static char* default_revoked_certs[] = {NULL, NULL};
@@ -99,26 +106,76 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     appUri(extractString(configData, "appUri")),
     productUri(extractString(configData, "productUri")),
     serverDescription(extractString(configData, "productUri")),
-    serverCertPath(extractString(configData, "serverCertPath")),
-    serverKeyPath(extractString(configData, "serverKeyPath")),
-    caCertPath(extractString(configData, "caCertPath")),
-    caCrlPath(extractString(configData, "caCrlPath")),
+    serverCertPath(extractCertificate(configData, "serverCertPath", ".der")),
+    serverKeyPath(extractCertificate(configData, "serverKeyPath", ".pem")),
+    caCertPath(extractCertificate(configData, "caCertPath", ".der")),
+    caCrlPath(extractCertificate(configData, "caCrlPath", ".der")),
     withLogs(extractStringIs(configData, "logging", "none")),
     logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
-    logPath(getDataDir() + string("/logs/"))
+    logPath(::logDir)
 {
-    const string certstore = getDataDir() + string("/etc/certs/");
     Logger::getLogger()->info("OpcUa_Server_Config() OK.");
 #if DEBUG_ME
     Logger::getLogger()->debug("Conf : url = %s", url.c_str());
-    Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
-    Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
-    Logger::getLogger()->debug("Conf : caCertPath = %s", caCertPath.c_str());
-    Logger::getLogger()->debug("Conf : caCrlPath = %s", caCrlPath.c_str());
-    Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
-    Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
-    Logger::getLogger()->debug("Conf : logPath = %s", logPath.c_str());
+
+    // Note: it is possible to accept all certificate fields empty (DER + PEM) in case they are ALL empty
+    // Otherwies, all files must exist
+
+    if (serverCertPath.empty() and serverKeyPath.empty()
+            and caCertPath.empty() and caCrlPath.empty())
+    {
+        // No security enabled
+        Logger::getLogger()->warn("No certificate provided. Security disabled");
+
+#warning "TODO :  confirm if behavior is acceptable or not"
+    }
+    else
+    {
+        if (serverCertPath.empty())
+        {
+            Logger::getLogger()->warn("serverCertPath is missing");
+        }
+        if (serverKeyPath.empty())
+        {
+            Logger::getLogger()->warn("serverKeyPath is missing");
+        }
+        if (caCertPath.empty())
+        {
+            Logger::getLogger()->warn("caCertPath is missing");
+        }
+        if (caCrlPath.empty())
+        {
+            Logger::getLogger()->warn("caCrlPath is missing");
+        }
+        Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
+        Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
+        Logger::getLogger()->debug("Conf : caCertPath = %s", caCertPath.c_str());
+        Logger::getLogger()->debug("Conf : caCrlPath = %s", caCrlPath.c_str());
+        Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
+        Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
+
+    }
 #endif
+}
+
+/**************************************************************************/
+std::string
+OpcUa_Server_Config::
+extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion)
+{
+    std::string result;
+    const std::string value (config.getValue(name));
+    const char* p = value.c_str();
+    Logger::getLogger()->warn("DEBUG %s = '%s'" ,name.c_str(), p);
+    while (*p){
+        Logger::getLogger()->warn("TODO: char = 0x%02X" ,*p);
+        p++;
+    };
+    if (not value.empty())
+    {
+        result = ::certDir + extractString(config, "serverCertPath") + extenstion;
+    }
+    return result;
 }
 
 /**************************************************************************/
@@ -126,7 +183,6 @@ std::string
 OpcUa_Server_Config::
 extractString(const ConfigCategory& config, const std::string& name)
 {
-    Logger::getLogger()->warn("Read Conf '%s'" ,name.c_str()); // TODO remove
     if (config.itemExists(name))
     {
         return config.getValue(name);
@@ -134,7 +190,6 @@ extractString(const ConfigCategory& config, const std::string& name)
     Logger::getLogger()->fatal("Missing config parameter:'%s'" ,name.c_str());
     throw runtime_error("Missing config parameter");
 }
-
 
 /**************************************************************************/
 inline bool

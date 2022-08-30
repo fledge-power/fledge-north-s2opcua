@@ -43,6 +43,7 @@ public:
     virtual ~OpcUa_Server_Config(void);
 private:
     std::string extractString(const ConfigCategory& config, const std::string& name);
+    std::string extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion);
     bool extractStringIs(const ConfigCategory& config, const std::string& name, const std::string& compare);
 public:
     SOPC_S2OPC_Config* extractOpcConfig(const ConfigCategory& config)const;
