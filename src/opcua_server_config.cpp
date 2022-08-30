@@ -34,6 +34,11 @@ extern "C" {
 #include "s2opc/clientserver/sopc_user_manager.h"
 }
 
+#define DEBUG_ME 1
+#if DEBUG_ME
+#warning "DEBUG_ME flag activated"
+#endif
+
 namespace
 {
 // TODO : to replace by a real configuration of certificates management.
@@ -98,23 +103,36 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     serverKeyPath(extractString(configData, "serverKeyPath")),
     caCertPath(extractString(configData, "caCertPath")),
     caCrlPath(extractString(configData, "caCrlPath")),
-    withLogs(extractStringIs(configData, "logLevel", "none")),
-    logLevel(toSOPC_Log_Level(extractString(configData, "logLevel"))),
-    s2opc_config(extractOpcConfig(configData))
+    withLogs(extractStringIs(configData, "logging", "none")),
+    logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
+    logPath(getDataDir() + string("/logs/"))
 {
+    const string certstore = getDataDir() + string("/etc/certs/");
     Logger::getLogger()->info("OpcUa_Server_Config() OK.");
+#if DEBUG_ME
+    Logger::getLogger()->debug("Conf : url = %s", url.c_str());
+    Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
+    Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
+    Logger::getLogger()->debug("Conf : caCertPath = %s", caCertPath.c_str());
+    Logger::getLogger()->debug("Conf : caCrlPath = %s", caCrlPath.c_str());
+    Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
+    Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
+    Logger::getLogger()->debug("Conf : logPath = %s", logPath.c_str());
+#endif
 }
 
 /**************************************************************************/
-inline std::string
+std::string
 OpcUa_Server_Config::
 extractString(const ConfigCategory& config, const std::string& name)
 {
+    Logger::getLogger()->warn("Read Conf '%s'" ,name.c_str()); // TODO remove
     if (config.itemExists(name))
     {
         return config.getValue(name);
     }
-    throw Exception(std::string ("Missing config parameter:<") + name + ">");
+    Logger::getLogger()->fatal("Missing config parameter:'%s'" ,name.c_str());
+    throw runtime_error("Missing config parameter");
 }
 
 
@@ -127,11 +145,19 @@ extractStringIs(const ConfigCategory& config, const std::string& name, const std
 }
 
 /**************************************************************************/
-SOPC_S2OPC_Config
+SOPC_S2OPC_Config*
 OpcUa_Server_Config::
-extractOpcConfig(const ConfigCategory& config)
+extractOpcConfig(const ConfigCategory& config) const
 {
-    SOPC_S2OPC_Config opc_config;
+    SOPC_S2OPC_Config* pOpc_config = new SOPC_S2OPC_Config;
+    if (pOpc_config == NULL)
+    {
+        Logger::getLogger()->fatal("# Error: extractOpcConfig() failed to allocate a configuration");
+        throw runtime_error("# Error: extractOpcConfig() failed to allocate a configuration");
+    }
+    SOPC_S2OPC_Config_Initialize(pOpc_config);
+    SOPC_S2OPC_Config& opc_config = *pOpc_config;
+
     // Initialize content to empty configuration
     memset(reinterpret_cast<void*>(&opc_config), 0, sizeof(opc_config));
     OpcUa_ApplicationDescription_Initialize(&opc_config.serverConfig.serverDescription);
@@ -168,26 +194,35 @@ extractOpcConfig(const ConfigCategory& config)
 
     status = SOPC_KeyManager_SerializedCertificate_CreateFromFile(serverCertPath.c_str(),
                                                                  &opc_config.serverConfig.serverCertificate);
-
-    if (SOPC_STATUS_OK == status)
+    if (SOPC_STATUS_OK != status)
     {
-        status = SOPC_KeyManager_SerializedAsymmetricKey_CreateFromFile(serverKeyPath.c_str(),
-                                                                        &opc_config.serverConfig.serverKey);
-    }
-    if (SOPC_STATUS_OK == status)
-    {
-        status = SOPC_KeyManager_SerializedCertificate_CreateFromFile(caCertPath.c_str(), &static_cacert);
+        Logger::getLogger()->fatal("extractOpcConfig() failed to open server certificate:%s", serverCertPath.c_str());
+        throw runtime_error("extractOpcConfig() failed to open server certificate");
     }
 
-    if (SOPC_STATUS_OK == status)
+    status = SOPC_KeyManager_SerializedAsymmetricKey_CreateFromFile(serverKeyPath.c_str(),
+            &opc_config.serverConfig.serverKey);
+    if (SOPC_STATUS_OK != status)
     {
-        status = SOPC_KeyManager_CRL_CreateOrAddFromFile(caCrlPath.c_str(), &static_cacrl);
+        Logger::getLogger()->fatal("extractOpcConfig() failed to open server KEY:%s", serverKeyPath.c_str());
+        throw runtime_error("extractOpcConfig() failed to open server KEY");
     }
 
-    if (SOPC_STATUS_OK == status)
+    status = SOPC_KeyManager_SerializedCertificate_CreateFromFile(caCertPath.c_str(), &static_cacert);
+    if (SOPC_STATUS_OK != status)
     {
-        status = SOPC_PKIProviderStack_Create(static_cacert, static_cacrl, &opc_config.serverConfig.pki);
+        Logger::getLogger()->fatal("extractOpcConfig() failed to open CA certificate:%s", caCertPath.c_str());
+        throw runtime_error("extractOpcConfig() failed to open CA certificate");
     }
+
+    status = SOPC_KeyManager_CRL_CreateOrAddFromFile(caCrlPath.c_str(), &static_cacrl);
+    if (SOPC_STATUS_OK != status)
+    {
+        Logger::getLogger()->fatal("extractOpcConfig() failed to open CA revocation list:%s", caCrlPath.c_str());
+        throw runtime_error("extractOpcConfig() failed to open CA revocation list");
+    }
+
+    status = SOPC_PKIProviderStack_Create(static_cacert, static_cacrl, &opc_config.serverConfig.pki);
 
     /* Clean in all cases */
     SOPC_KeyManager_SerializedCertificate_Delete(static_cacert);
@@ -197,7 +232,6 @@ extractOpcConfig(const ConfigCategory& config)
         Logger::getLogger()->fatal("# Error: Failed loading certificates and key (check paths are valid).\n");
         throw exception();
     }
-
 
     Logger::getLogger()->fatal("# Error: WIP JCH. To be continued: Set up endpoint(s)\n");
     throw exception();
@@ -283,7 +317,7 @@ extractOpcConfig(const ConfigCategory& config)
 //        throw exception();
 //    }
 
-    return config;
+    return pOpc_config;
 }
 
 /**************************************************************************/

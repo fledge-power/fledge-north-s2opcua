@@ -8,7 +8,7 @@
  * Author: Amandeep Singh Arora / Jeremie Chabod
  */
 
-#define USE_TLS 0 // TODO!
+#define USE_MBEDTLS 0
 
 #include <opcua_server.h>
 #include <opcua_server_config.h>
@@ -26,16 +26,27 @@ extern "C" {
 #include "s2opc/clientserver/frontend/libs2opc_common_config.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
-#if USE_TLS
+#if USE_MBEDTLS
 #include "threading_alt.h"
+#else
+#warning "TODO : use MBEDTLS"
 #endif
 }
 
 // Include generated JSON file
+// See "mkjson" and "default_config.json"
 #include "default_config.inc"
 
 namespace
 {
+static void check_status(const SOPC_StatusCode status, const char* message)
+{
+    if (SOPC_STATUS_OK != status)
+    {
+        Logger::getLogger()->fatal("%s failed with code %d", message, static_cast<int>(status));
+        throw runtime_error("SOPC failed");
+    }
+}
 }
 
 namespace fledge_power_s2opc_north
@@ -55,20 +66,30 @@ OPCUA_Server::
 OPCUA_Server(const ConfigCategory& configData):
     mConfig(configData),
     mBuildInfo(SOPC_CommonHelper_GetBuildInfo()),
-    mServerOnline(false)
+    mServerOnline(false),
+    s2opc_config (mConfig.extractOpcConfig(configData))
 {
-#if USE_TLS
+#if USE_MBEDTLS
     /* Initialize MbedTLS */
     tls_threading_initialize();
 #endif
 
-    /* Configure the server logger: */
-    // TODO: configure logger (see south plugin)
-    SOPC_Log_Configuration logConfig;
-    if (mConfig.withLogs)
+    if (NULL != mInstance)
     {
+        Logger::getLogger()->fatal("OPCUA_Server may not be instanced twice within the same plugin");
+        throw runtime_error("OPCUA_Server may not be instanced twice within the same plugin");
+    }
+
+    /* Configure the server logger: */
+    SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
+    if (mConfig.withLogs && mConfig.logPath.length() > 0)
+    {
+        const std::string traceFilePath = getDataDir() + string("/logs/");
         logConfig.logLevel = mConfig.logLevel;
         logConfig.logSystem = SOPC_LOG_SYSTEM_FILE;
+
+        // Note : other fields of fileSystemLogConfig are initialized by SOPC_Common_GetDefaultLogConfiguration()
+        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = mConfig.logPath.c_str();
     }
     else
     {
@@ -76,38 +97,36 @@ OPCUA_Server(const ConfigCategory& configData):
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
     SOPC_ReturnStatus status = SOPC_Common_Initialize(logConfig);
+    check_status(status, "SOPC_Common_Initialize");
 
-    if (SOPC_STATUS_OK != status)
-    {
-        throw Exception("SOPC_Common_Initialize failed");
-    }
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Common_Initialize() OK");
 
     status = SOPC_Toolkit_Initialize(&Server_Event);
-    if (SOPC_STATUS_OK != status)
-    {
-        throw Exception("SOPC_Toolkit_Initialize failed");
-    }
+    check_status(status, "SOPC_Toolkit_Initialize");
+
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Toolkit_Initialize() OK");
 
-
-    // TODO Server_LoadAddressSpace
-    // TODO Server_ConfigureStartServer
+#warning "TODO : SOPC_Embedded_AddressSpace_Load"
+#warning "TODO : SOPC_ToolkitServer_SetAddressSpaceConfig"
+#warning "TODO : SOPC_ToolkitServer_SetAddressSpaceNotifCb"
+#warning "TODO : Server_ConfigureStartServer"
 
     mInstance = this;
-    SOPC_S2OPC_Config_Initialize(&mConfig);
+    SOPC_S2OPC_Config_Initialize(s2opc_config);
 }
 
 /**************************************************************************/
 OPCUA_Server::
 ~OPCUA_Server()
 {
-    /** TODO
-     * From ZEPHYR SAMPLE:
-     * Server_StopAndClear(&s2opcConfig);
-     */
+#warning "TODO : Server_StopAndClear"
 
     mInstance = NULL;
+    if (NULL != s2opc_config)
+    {
+        SOPC_S2OPC_Config_Clear(s2opc_config);
+        free (s2opc_config);
+    }
     SOPC_Toolkit_Clear();
     SOPC_Common_Clear();
 }
@@ -175,7 +194,8 @@ send(const Readings& readings)
             "OPCUA_Server::send(%ld elements)",
             readings.size());
 
-    return 0; // TODO
+#warning "TODO : OPCUA_Server::send"
+    return 0;
 }
 
 /**************************************************************************/
@@ -185,7 +205,8 @@ setpointCallbacks(north_write_event_t write, north_operation_event_t operation)
 {
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER,
             "OPCUA_Server::setpointCallbacks(.., ..)");
-    return; // TODO
+#warning "TODO : OPCUA_Server::setpointCallbacks"
+    return;
 }
 
 } // namespace fledge_power_s2opc_north

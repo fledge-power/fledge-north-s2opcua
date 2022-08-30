@@ -84,6 +84,7 @@ private:
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
     int32_t mServerOnline;
+    SOPC_S2OPC_Config* s2opc_config;
     static OPCUA_Server* mInstance;
 };
 

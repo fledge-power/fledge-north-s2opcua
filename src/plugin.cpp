@@ -27,6 +27,8 @@
 #include <plugin_api.h>
 
 /* This file implements a north OPCUA bridge for Fledge.
+ * In particular, this file simply routes the required interfaces to the C++ class
+ * "OPCUA_Server".
  * The interface is specified in:
  *      https://fledge-iot.readthedocs.io/en/develop/plugin_developers_guide/04_north_plugins.html#c-c-plugins
  * The following services must be defined:
@@ -73,20 +75,20 @@ static PLUGIN_INFORMATION g_plugin_info = {
  */
 extern "C" {
 
-/**
- * Return the information about this plugin
- */
+/**************************************************************************/
 PLUGIN_INFORMATION* plugin_info()
 {
     Logger::getLogger()->info("OPC UA Server Config is %s", ::g_plugin_info.config);
     return &::g_plugin_info;
 }
 
+/**************************************************************************/
 PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
 {
     using namespace fledge_power_s2opc_north;
     try
     {
+        Logger::getLogger()->setMinLevel("debug");
         Logger::getLogger()->warn("OPC UA Server plugin_init()");
         return (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
     }
@@ -97,22 +99,25 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
     }
 }
 
+/**************************************************************************/
 void plugin_shutdown(PLUGIN_HANDLE handle)
 {
     delete handleToPlugin(handle);
 }
 
+/**************************************************************************/
 uint32_t plugin_send(PLUGIN_HANDLE handle, fledge_power_s2opc_north::Readings& readings)
 {
     return handleToPlugin(handle)->send(readings);
 }
 
+/**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
         fledge_power_s2opc_north::north_write_event_t write,
         fledge_power_s2opc_north::north_operation_event_t operation)
 {
     handleToPlugin(handle)->setpointCallbacks(write, operation);
-}// TODO JCH
+}
 
 }
 

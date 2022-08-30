@@ -44,8 +44,8 @@ public:
 private:
     std::string extractString(const ConfigCategory& config, const std::string& name);
     bool extractStringIs(const ConfigCategory& config, const std::string& name, const std::string& compare);
-    SOPC_S2OPC_Config extractOpcConfig(const ConfigCategory& config);
 public:
+    SOPC_S2OPC_Config* extractOpcConfig(const ConfigCategory& config)const;
     const std::string url;
     const std::string appUri;
     const std::string productUri;
@@ -56,8 +56,7 @@ public:
     const std::string caCrlPath;
     const bool withLogs;
     const SOPC_Log_Level logLevel;
-    // s2opc_config must be the last field as it is initialized using other private members
-    const SOPC_S2OPC_Config s2opc_config;
+    const std::string logPath;
 };
 
 

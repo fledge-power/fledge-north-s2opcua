@@ -42,28 +42,28 @@
         "order" : "5"
         },
     "serverCertPath" : {
-        "description" : "Path to the server certificate (DER format)",
+        "description" : "Name of the server certificate file (DER format), without path and extension",
         "type" : "string",
         "default" : "",
         "displayName" : "Server certificate",
         "order" : "6"
     },
     "serverKeyPath" : {
-        "description" : "Path to the server Key",
+        "description" : "Name of the server private key file (PEM format), without path and extension",
         "type" : "string",
         "default" : "",
         "displayName" : "Server key",
         "order" : "7"
     },
     "caCertPath" : {
-        "description" : "Path to the C.A. certificate (DER format)",
+        "description" : "Name of the C.A. certificate file (DER format), without path and extension",
         "type" : "string",
         "default" : "",
         "displayName" : "C.A. certificate",
         "order" : "8"
     },
     "caCrlPath" : {
-        "description" : "Path to the C.A. Revocation list (DER format)",
+        "description" : "Name of the C.A revocation list file (DER format), without path and extension",
         "type" : "string",
         "default" : "",
         "displayName" : "C.A. CRL",
