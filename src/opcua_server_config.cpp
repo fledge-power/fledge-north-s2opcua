@@ -19,6 +19,7 @@
 
 extern "C" {
 // S2OPC Headers
+#include "s2opc/common/sopc_assert.h"
 #include "s2opc/common/sopc_atomic.h"
 #include "s2opc/common/sopc_common.h"
 #include "s2opc/common/sopc_encodeabletype.h"
@@ -33,11 +34,6 @@ extern "C" {
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 #include "s2opc/clientserver/sopc_user_manager.h"
 }
-
-#define DEBUG_ME 1
-#if DEBUG_ME
-#warning "DEBUG_ME flag activated"
-#endif
 
 namespace
 {
@@ -115,47 +111,18 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     logPath(::logDir)
 {
     Logger::getLogger()->info("OpcUa_Server_Config() OK.");
-#if DEBUG_ME
     Logger::getLogger()->debug("Conf : url = %s", url.c_str());
+    Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
+    Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
+    Logger::getLogger()->debug("Conf : caCertPath = %s", caCertPath.c_str());
+    Logger::getLogger()->debug("Conf : caCrlPath = %s", caCrlPath.c_str());
+    Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
+    Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
 
-    // Note: it is possible to accept all certificate fields empty (DER + PEM) in case they are ALL empty
-    // Otherwies, all files must exist
-
-    if (serverCertPath.empty() and serverKeyPath.empty()
-            and caCertPath.empty() and caCrlPath.empty())
-    {
-        // No security enabled
-        Logger::getLogger()->warn("No certificate provided. Security disabled");
-
-#warning "TODO :  confirm if behavior is acceptable or not"
-    }
-    else
-    {
-        if (serverCertPath.empty())
-        {
-            Logger::getLogger()->warn("serverCertPath is missing");
-        }
-        if (serverKeyPath.empty())
-        {
-            Logger::getLogger()->warn("serverKeyPath is missing");
-        }
-        if (caCertPath.empty())
-        {
-            Logger::getLogger()->warn("caCertPath is missing");
-        }
-        if (caCrlPath.empty())
-        {
-            Logger::getLogger()->warn("caCrlPath is missing");
-        }
-        Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
-        Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
-        Logger::getLogger()->debug("Conf : caCertPath = %s", caCertPath.c_str());
-        Logger::getLogger()->debug("Conf : caCrlPath = %s", caCrlPath.c_str());
-        Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
-        Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
-
-    }
-#endif
+    SOPC_ASSERT(not serverCertPath.empty() && "serverCertPath is missing");
+    SOPC_ASSERT(not serverKeyPath.empty() && "serverKeyPath is missing");
+    SOPC_ASSERT(not caCertPath.empty() && "caCertPath is missing");
+    SOPC_ASSERT(not caCrlPath.empty() && "caCrlPath is missing");
 }
 
 /**************************************************************************/
@@ -188,7 +155,7 @@ extractString(const ConfigCategory& config, const std::string& name)
         return config.getValue(name);
     }
     Logger::getLogger()->fatal("Missing config parameter:'%s'" ,name.c_str());
-    throw runtime_error("Missing config parameter");
+    SOPC_ASSERT("Missing config parameter");
 }
 
 /**************************************************************************/
@@ -205,11 +172,8 @@ OpcUa_Server_Config::
 extractOpcConfig(const ConfigCategory& config) const
 {
     SOPC_S2OPC_Config* pOpc_config = new SOPC_S2OPC_Config;
-    if (pOpc_config == NULL)
-    {
-        Logger::getLogger()->fatal("# Error: extractOpcConfig() failed to allocate a configuration");
-        throw runtime_error("# Error: extractOpcConfig() failed to allocate a configuration");
-    }
+    SOPC_ASSERT(pOpc_config != NULL && "extractOpcConfig() failed to allocate a configuration");
+
     SOPC_S2OPC_Config_Initialize(pOpc_config);
     SOPC_S2OPC_Config& opc_config = *pOpc_config;
 
@@ -248,61 +212,45 @@ extractOpcConfig(const ConfigCategory& config) const
     SOPC_CRLList* static_cacrl = NULL;
 
     status = SOPC_KeyManager_SerializedCertificate_CreateFromFile(serverCertPath.c_str(),
-                                                                 &opc_config.serverConfig.serverCertificate);
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("extractOpcConfig() failed to open server certificate:%s", serverCertPath.c_str());
-        throw runtime_error("extractOpcConfig() failed to open server certificate");
-    }
+            &opc_config.serverConfig.serverCertificate);
+    SOPC_ASSERT(SOPC_STATUS_OK == status && "extractOpcConfig() failed to open server certificate");
 
     status = SOPC_KeyManager_SerializedAsymmetricKey_CreateFromFile(serverKeyPath.c_str(),
             &opc_config.serverConfig.serverKey);
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("extractOpcConfig() failed to open server KEY:%s", serverKeyPath.c_str());
-        throw runtime_error("extractOpcConfig() failed to open server KEY");
-    }
+    SOPC_ASSERT(SOPC_STATUS_OK == status && "extractOpcConfig() failed to open server KEY");
 
     status = SOPC_KeyManager_SerializedCertificate_CreateFromFile(caCertPath.c_str(), &static_cacert);
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("extractOpcConfig() failed to open CA certificate:%s", caCertPath.c_str());
-        throw runtime_error("extractOpcConfig() failed to open CA certificate");
-    }
+    SOPC_ASSERT(SOPC_STATUS_OK == status && "extractOpcConfig() failed to open CA certificate");
 
     status = SOPC_KeyManager_CRL_CreateOrAddFromFile(caCrlPath.c_str(), &static_cacrl);
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("extractOpcConfig() failed to open CA revocation list:%s", caCrlPath.c_str());
-        throw runtime_error("extractOpcConfig() failed to open CA revocation list");
-    }
+    SOPC_ASSERT(SOPC_STATUS_OK == status && "extractOpcConfig() failed to open CA revocation list");
 
     status = SOPC_PKIProviderStack_Create(static_cacert, static_cacrl, &opc_config.serverConfig.pki);
 
     /* Clean in all cases */
     SOPC_KeyManager_SerializedCertificate_Delete(static_cacert);
 
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("# Error: Failed loading certificates and key (check paths are valid).\n");
-        throw exception();
-    }
+    SOPC_ASSERT(SOPC_STATUS_OK == status && "extractOpcConfig() Failed loading certificates and key (check paths are valid)");
 
+    /* Configuration of the endpoint descriptions */
+    opc_config.serverConfig.nbEndpoints = 1;
+
+    opc_config.serverConfig.endpoints = new SOPC_Endpoint_Config;
+    SOPC_ASSERT(opc_config.serverConfig.endpoints != NULL);
+
+    if (NULL == opc_config.serverConfig.endpoints)
+    {
+        return SOPC_STATUS_NOK;
+    }
+    // Configure endpoints
+#warning "TODO: Configure endpoints"
     Logger::getLogger()->fatal("# Error: WIP JCH. To be continued: Set up endpoint(s)\n");
     throw exception();
 
-//    /* Configuration of the endpoint descriptions */
-//    opc_config.serverConfig.nbEndpoints = 1;
-//
-//    opc_config.serverConfig.endpoints = SOPC_Calloc(sizeof(SOPC_Endpoint_Config), 1);
-//
-//    if (NULL == opc_config.serverConfig.endpoints)
-//    {
-//        return SOPC_STATUS_NOK;
-//    }
-//
-//    SOPC_Endpoint_Config* pEpConfig = &opc_config.serverConfig.endpoints[0];
-//    pEpConfig->nbSecuConfigs = 3;
+
+
+    SOPC_Endpoint_Config* pEpConfig = &opc_config.serverConfig.endpoints[0];
+    pEpConfig->nbSecuConfigs = 3;
 //
 //    /* Server's listening endpoint */
 //    pEpConfig->serverConfigPtr = &opc_config.serverConfig;

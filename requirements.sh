@@ -85,7 +85,7 @@ sudo make install  || fail 11 "Install check"
     cd ${DEV_ROOT}/S2OPC || fail 20 "Enter S2OPC folder"
     git apply ${DEV_ROOT}/fledge-north-s2opcua/patches/S2OPC.patch || fail 20 "Apply patch for S2OPC"
 
-    USE_STATIC_EXT_LIBS=OFF BUILD_SHARED_LIBS=OFF CMAKE_INSTALL_PREFIX=/usr/local ./build.sh  || fail 20 "Build S2OPC"
+    WITH_USER_ASSERT=ON USE_STATIC_EXT_LIBS=OFF BUILD_SHARED_LIBS=OFF CMAKE_INSTALL_PREFIX=/usr/local ./build.sh  || fail 20 "Build S2OPC"
     echo; echo "BUILD done, INSTALLING..."; echo
     cd build && sudo make install || fail 20 "Install S2OPC"
 ) || exit

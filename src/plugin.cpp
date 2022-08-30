@@ -14,6 +14,7 @@
 //#include <string>
 
 #include <vector>
+#include <exception>
 
 #include <logger.h>
 // #include <plugin_exception.h>
@@ -25,6 +26,11 @@
 #include "opcua_server.h"
 
 #include <plugin_api.h>
+
+extern "C" {
+// S2OPC Headers
+#include "s2opc/common/sopc_assert.h"
+}
 
 /* This file implements a north OPCUA bridge for Fledge.
  * In particular, this file simply routes the required interfaces to the C++ class
@@ -48,11 +54,7 @@ namespace
 /**************************************************************************/
 static fledge_power_s2opc_north::OPCUA_Server* handleToPlugin(void* handle)
 {
-    if (handle == NULL)
-    {
-        Logger::getLogger()->fatal("OPC UA called with NULL plugin");
-        throw exception();
-    }
+    SOPC_ASSERT(handle != NULL && "OPC UA called with NULL plugin");
     return reinterpret_cast<fledge_power_s2opc_north::OPCUA_Server *> (handle);
 }
 
@@ -76,6 +78,15 @@ static PLUGIN_INFORMATION g_plugin_info = {
 extern "C" {
 
 /**************************************************************************/
+// The callback for ASSERTION failure (SOPC_ASSERT macro)
+static void plugin_Assert_UserCallback(const char* context)
+{
+    Logger::getLogger()->fatal("ASSERT failed. Context = %s", (context ? context : "<NULL>"));
+    throw std::exception();
+}
+
+
+/**************************************************************************/
 PLUGIN_INFORMATION* plugin_info()
 {
     Logger::getLogger()->info("OPC UA Server Config is %s", ::g_plugin_info.config);
@@ -86,6 +97,9 @@ PLUGIN_INFORMATION* plugin_info()
 PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
 {
     using namespace fledge_power_s2opc_north;
+
+    // the very first thing to do is to configure ASSERTs to be routed to Logger
+    SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
     try
     {
         Logger::getLogger()->setMinLevel("debug");

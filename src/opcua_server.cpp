@@ -19,6 +19,7 @@
 
 extern "C" {
 // S2OPC Headers
+#include "s2opc/common/sopc_assert.h"
 #include "s2opc/common/sopc_atomic.h"
 #include "s2opc/common/sopc_common.h"
 #include "s2opc/common/sopc_encodeabletype.h"
@@ -41,14 +42,6 @@ extern "C" {
 
 namespace
 {
-static void check_status(const SOPC_StatusCode status, const char* message)
-{
-    if (SOPC_STATUS_OK != status)
-    {
-        Logger::getLogger()->fatal("%s failed with code %d", message, static_cast<int>(status));
-        throw runtime_error("SOPC failed");
-    }
-}
 }
 
 namespace fledge_power_s2opc_north
@@ -76,11 +69,7 @@ OPCUA_Server(const ConfigCategory& configData):
     tls_threading_initialize();
 #endif
 
-    if (NULL != mInstance)
-    {
-        Logger::getLogger()->fatal("OPCUA_Server may not be instanced twice within the same plugin");
-        throw runtime_error("OPCUA_Server may not be instanced twice within the same plugin");
-    }
+    SOPC_ASSERT(mInstance == NULL && "OPCUA_Server may not be instanced twice within the same plugin");
 
     /* Configure the server logger: */
     SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
@@ -99,11 +88,7 @@ OPCUA_Server(const ConfigCategory& configData):
         {
             mkdir(logDirPath,0777);
         }
-        if (not access(logDirPath, W_OK | R_OK))
-        {
-            Logger::getLogger()->fatal("Cannot create log folder %s", logDirPath);
-            throw runtime_error("Cannot create log folder.");
-        }
+        SOPC_ASSERT(access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
     }
     else
     {
@@ -111,12 +96,12 @@ OPCUA_Server(const ConfigCategory& configData):
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
     SOPC_ReturnStatus status = SOPC_Common_Initialize(logConfig);
-    check_status(status, "SOPC_Common_Initialize");
+    SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_Common_Initialize failed");
 
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Common_Initialize() OK");
 
     status = SOPC_Toolkit_Initialize(&Server_Event);
-    check_status(status, "SOPC_Toolkit_Initialize");
+    SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_Toolkit_Initialize failed");
 
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Toolkit_Initialize() OK");
 

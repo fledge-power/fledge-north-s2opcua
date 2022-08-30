@@ -126,6 +126,10 @@ if (NOT S2OPC_COMMONWRAPPER)
         return()
 endif()
 
+# Report S2OPC build options
+add_definitions( -DWITH_USER_ASSERT=1)
+
+# Manage libraries
 message("S2OPC_COMMON: ${S2OPC_COMMON}")
 message("S2OPC_CLIENTSERVER: ${S2OPC_CLIENTSERVER}")
 message("S2OPC_SERVERWRAPPER: ${S2OPC_SERVERWRAPPER}")
