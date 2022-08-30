@@ -37,7 +37,14 @@ extern "C" {
 }
 
 // Include generated JSON file
-// See "mkjson" and "default_config.json"
+/* See "mkjson" and "default_config.json"
+   Note that the source file syntax supports enhanced features so as to
+   allow a visual intuitive edition:
+   - Using simple quotes inside strings is actuallty replaced by \"(typical usage for JSON) avoids the use
+        This is useful for filling in JSON content without needing backslashing everything
+        e.g.:  "default" : "{ 'name' : 'value'} ",
+   - As a consequence the character ' cannot be used inside strings. The escape sequence "\x27" can be used if required
+*/
 #include "default_config.inc"
 
 namespace
@@ -46,12 +53,6 @@ namespace
 
 namespace fledge_power_s2opc_north
 {
-
-/**************************************************************************/
-Exception::
-Exception(const std::string& msg):
-        mMsg(msg)
-{}
 
 /**************************************************************************/
 /**************************************************************************/
@@ -98,12 +99,12 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_ReturnStatus status = SOPC_Common_Initialize(logConfig);
     SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_Common_Initialize failed");
 
-    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Common_Initialize() OK");
+    Logger::getLogger()->debug ("OPCUA_Server::SOPC_Common_Initialize() OK");
 
     status = SOPC_Toolkit_Initialize(&Server_Event);
     SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_Toolkit_Initialize failed");
 
-    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "OPCUA_Server::SOPC_Toolkit_Initialize() OK");
+    Logger::getLogger()->debug ("OPCUA_Server::SOPC_Toolkit_Initialize() OK");
 
 #warning "TODO : SOPC_Embedded_AddressSpace_Load"
 #warning "TODO : SOPC_ToolkitServer_SetAddressSpaceConfig"
@@ -189,9 +190,8 @@ uint32_t
 OPCUA_Server::
 send(const Readings& readings)
 {
-    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER,
-            "OPCUA_Server::send(%ld elements)",
-            readings.size());
+    Logger::getLogger()->debug("OPCUA_Server::send(%ld elements)", readings.size());
+    Logger::getLogger()->warn("OPCUA_Server::send() : NOT IMPLEMENTED YET");
 
 #warning "TODO : OPCUA_Server::send"
     return 0;
@@ -202,8 +202,8 @@ void
 OPCUA_Server::
 setpointCallbacks(north_write_event_t write, north_operation_event_t operation)
 {
-    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER,
-            "OPCUA_Server::setpointCallbacks(.., ..)");
+    Logger::getLogger()->debug("OPCUA_Server::setpointCallbacks(.., ..)");
+    Logger::getLogger()->warn("OPCUA_Server::setpointCallbacks() : NOT IMPLEMENTED YET");
 #warning "TODO : OPCUA_Server::setpointCallbacks"
     return;
 }

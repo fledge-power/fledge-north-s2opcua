@@ -23,10 +23,11 @@ namespace fledge_power_s2opc_north
 END_WARNING
 /bin/echo "const char* ${VAR} = " >> ${CPP}
 # Note:
+# - replace ' by \" (This aims at easing readability of json to avoid using \" within strings)
 # - replace \ by \\
 # - replace " by \"
 # - remove leading spaces
 # - Replace each <line> by <"line"\>
-sed 's/\\/\\\\/g' ${JSON} | sed 's/"/\\"/g' | sed 's/^ *//' | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
+sed "s/'/"'\\\"'/g ${JSON} | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/^ *//' | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
 /bin/echo ';' >> ${CPP}
 /bin/echo '}' >> ${CPP}

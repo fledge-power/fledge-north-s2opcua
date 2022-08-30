@@ -34,38 +34,31 @@
         "displayName" : "Product URI",
         "order" : "4"
     },
-	"subscription" : {
-        "description" : "Variables to serve",
-        "type" : "JSON",
-        "default" : "{ \"subscriptions\" : [  \"ns=3;i=1001\", \"ns=3;i=1002\" ] }",
-        "displayName" : "OPCUA Objects",
-        "order" : "5"
-        },
     "serverCertPath" : {
         "description" : "Name of the server certificate file (DER format), without path and extension",
         "type" : "string",
-        "default" : "",
+        "default" : "server_2k_cert",
         "displayName" : "Server certificate",
         "order" : "6"
     },
     "serverKeyPath" : {
         "description" : "Name of the server private key file (PEM format), without path and extension",
         "type" : "string",
-        "default" : "",
+        "default" : "server_2k_key",
         "displayName" : "Server key",
         "order" : "7"
     },
     "caCertPath" : {
         "description" : "Name of the C.A. certificate file (DER format), without path and extension",
         "type" : "string",
-        "default" : "",
+        "default" : "cacert",
         "displayName" : "C.A. certificate",
         "order" : "8"
     },
     "caCrlPath" : {
         "description" : "Name of the C.A revocation list file (DER format), without path and extension",
         "type" : "string",
-        "default" : "",
+        "default" : "cacrl",
         "displayName" : "C.A. CRL",
         "order" : "9"
     },
@@ -75,12 +68,19 @@
         "options":["None", "Error", "Warning", "Info", "Debug"],
         "default" : "Info",
         "displayName" : "Logging level",
-        "order" : "6"
+        "order" : "98"
         },
-    "todo" : {
-        "description" : "TODO",
-        "type" : "string",
-        "default" : "TODO",
+    "endpoint" : {
+        "description" : "Configure content of server endpoint",
+        "type" : "JSON",
+        "default" : "{'policies' : [ 'None/None/anonymous+username_None', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256' ]}",
+        "displayName" : "Server endpoint configuration",
+        "order" : "10"
+        },
+    "namespaces" : {
+        "description" : "Configure content of server AddressSpace",
+        "type" : "JSON",
+        "default" : "{ 'name' : 'value'} ",
         "displayName" : "TODO",
         "order" : "99"}
 }

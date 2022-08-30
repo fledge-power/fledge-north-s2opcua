@@ -26,13 +26,6 @@ extern "C" {
 namespace fledge_power_s2opc_north
 {
 
-class Exception:public std::exception
-{
-public:
-    Exception(const std::string& msg);
-    const std::string mMsg;
-};
-
 /**
  * Configuration holder for a S2OPC server
  */
@@ -42,11 +35,13 @@ public:
     OpcUa_Server_Config(const ConfigCategory& configData);
     virtual ~OpcUa_Server_Config(void);
 private:
-    std::string extractString(const ConfigCategory& config, const std::string& name);
-    std::string extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion);
-    bool extractStringIs(const ConfigCategory& config, const std::string& name, const std::string& compare);
+    std::string extractString(const ConfigCategory& config, const std::string& name)const;
+    std::string extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion)const;
+    bool extractStringEquals(const ConfigCategory& config, const std::string& name, const std::string& compare)const;
 public:
     SOPC_S2OPC_Config* extractOpcConfig(const ConfigCategory& config)const;
+
+    typedef std::vector<std::string> StringVect;
     const std::string url;
     const std::string appUri;
     const std::string productUri;
@@ -58,6 +53,7 @@ public:
     const bool withLogs;
     const SOPC_Log_Level logLevel;
     const std::string logPath;
+    const StringVect policies;
 };
 
 

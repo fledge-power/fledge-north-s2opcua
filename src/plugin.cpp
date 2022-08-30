@@ -89,7 +89,7 @@ static void plugin_Assert_UserCallback(const char* context)
 /**************************************************************************/
 PLUGIN_INFORMATION* plugin_info()
 {
-    Logger::getLogger()->info("OPC UA Server Config is %s", ::g_plugin_info.config);
+    Logger::getLogger()->debug("OPC UA Server Config is %s", ::g_plugin_info.config);
     return &::g_plugin_info;
 }
 
@@ -103,10 +103,10 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
     try
     {
         Logger::getLogger()->setMinLevel("debug");
-        Logger::getLogger()->warn("OPC UA Server plugin_init()");
+        Logger::getLogger()->debug("OPC UA Server plugin_init()");
         return (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
     }
-    catch (const Exception& e)
+    catch (const std::exception& e)
     {
         Logger::getLogger()->fatal(std::string("OPC UA server plugin creation failed:") + e.what());
         throw exception();
