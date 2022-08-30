@@ -14,7 +14,7 @@ env:
   REGISTRY_USER: ${{ github.actor }}
   REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
   FLEDGE_IMAGE_NAME: 'fledgepower/fledge-104-opcua'
-  FLEDGE_GUI_IMAGE_NAME: 'fledgepower/fledge-gui'
+  FLEDGE_GUI_IMAGE_NAME: 'fledgepower/fledge-gui-nightly'
   IMAGE_TAG: 'latest'
 
 jobs:
