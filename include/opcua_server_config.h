@@ -15,6 +15,7 @@
 #include <utils.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <vector>
 
 extern "C" {
 // S2OPC Headers
@@ -23,8 +24,38 @@ extern "C" {
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 };
 
-namespace fledge_power_s2opc_north
+#define ASSERT(c,  ...) do \
+{\
+    if(!(c))\
+    {\
+        Logger::getLogger()->fatal ("ASSERT FAILED:" __VA_ARGS__);\
+        SOPC_ASSERT(false);\
+    }\
+} while(0)
+
+
+namespace SOPC_tools
 {
+
+extern const char* statusCodeToCString(const int status);
+
+typedef std::vector<std::string> StringVect_t;
+struct CStringVect
+{
+    CStringVect(const StringVect_t& ref);
+    virtual ~ CStringVect(void);
+    size_t size;
+    char** vect;
+};
+
+typedef std::pair<std::string, std::string> StringPair_t;
+typedef std::vector<StringPair_t> StringMap_t;
+
+}
+
+namespace s2opc_north
+{
+using namespace SOPC_tools;
 
 /**
  * Configuration holder for a S2OPC server
@@ -35,25 +66,33 @@ public:
     OpcUa_Server_Config(const ConfigCategory& configData);
     virtual ~OpcUa_Server_Config(void);
 private:
-    std::string extractString(const ConfigCategory& config, const std::string& name)const;
     std::string extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion)const;
     bool extractStringEquals(const ConfigCategory& config, const std::string& name, const std::string& compare)const;
 public:
+    void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
     SOPC_S2OPC_Config* extractOpcConfig(const ConfigCategory& config)const;
 
-    typedef std::vector<std::string> StringVect;
     const std::string url;
     const std::string appUri;
     const std::string productUri;
+    const std::string localeId;
     const std::string serverDescription;
     const std::string serverCertPath;
     const std::string serverKeyPath;
-    const std::string caCertPath;
-    const std::string caCrlPath;
+    const std::string certificates;
+    SOPC_tools::CStringVect trustedRootCert;
+    SOPC_tools::CStringVect trustedIntermCert;
+    SOPC_tools::CStringVect untrustedRootCert;
+    SOPC_tools::CStringVect untrustedIntermCert;
+    SOPC_tools::CStringVect revokedCert;
+    SOPC_tools::CStringVect issuedCert;
     const bool withLogs;
     const SOPC_Log_Level logLevel;
     const std::string logPath;
-    const StringVect policies;
+    const SOPC_tools::StringVect_t policies;
+    const std::string namespacesStr;
+    const SOPC_tools::CStringVect namespacesUri;
+    const StringMap_t users;
 };
 
 

@@ -52,10 +52,10 @@ namespace
 #define PLUGIN_FLAGS 0  // Supported NORTH flags are: SP_PERSIST_DATA, SP_BUILTIN
 
 /**************************************************************************/
-static fledge_power_s2opc_north::OPCUA_Server* handleToPlugin(void* handle)
+static s2opc_north::OPCUA_Server* handleToPlugin(void* handle)
 {
     SOPC_ASSERT(handle != NULL && "OPC UA called with NULL plugin");
-    return reinterpret_cast<fledge_power_s2opc_north::OPCUA_Server *> (handle);
+    return reinterpret_cast<s2opc_north::OPCUA_Server *> (handle);
 }
 
 /**
@@ -67,7 +67,7 @@ static PLUGIN_INFORMATION g_plugin_info = {
     PLUGIN_FLAGS,             // Flags
     PLUGIN_TYPE_NORTH,        // Type
     INTERFACE_VERSION,        // Interface version
-    fledge_power_s2opc_north::plugin_default_config  // Default configuration
+    s2opc_north::plugin_default_config  // Default configuration
 };
 
 } // namespace
@@ -87,7 +87,7 @@ static void plugin_Assert_UserCallback(const char* context)
 
 
 /**************************************************************************/
-PLUGIN_INFORMATION* plugin_info()
+PLUGIN_INFORMATION* plugin_info(void)
 {
     Logger::getLogger()->debug("OPC UA Server Config is %s", ::g_plugin_info.config);
     return &::g_plugin_info;
@@ -96,7 +96,7 @@ PLUGIN_INFORMATION* plugin_info()
 /**************************************************************************/
 PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
 {
-    using namespace fledge_power_s2opc_north;
+    using namespace s2opc_north;
 
     // the very first thing to do is to configure ASSERTs to be routed to Logger
     SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
@@ -120,15 +120,15 @@ void plugin_shutdown(PLUGIN_HANDLE handle)
 }
 
 /**************************************************************************/
-uint32_t plugin_send(PLUGIN_HANDLE handle, fledge_power_s2opc_north::Readings& readings)
+uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings)
 {
     return handleToPlugin(handle)->send(readings);
 }
 
 /**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
-        fledge_power_s2opc_north::north_write_event_t write,
-        fledge_power_s2opc_north::north_operation_event_t operation)
+        s2opc_north::north_write_event_t write,
+        s2opc_north::north_operation_event_t operation)
 {
     handleToPlugin(handle)->setpointCallbacks(write, operation);
 }

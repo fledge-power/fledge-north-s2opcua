@@ -23,6 +23,7 @@
 
 extern "C" {
 // S2OPC Headers
+#include "s2opc/common/sopc_builtintypes.h"
 #include "s2opc/common/sopc_logger.h"
 #include "s2opc/clientserver/sopc_user_app_itf.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
@@ -30,7 +31,7 @@ extern "C" {
 
 #include "opcua_server_config.h"
 
-namespace fledge_power_s2opc_north
+namespace s2opc_north
 {
 
 /*****************************************************
@@ -74,7 +75,10 @@ public:
      * TODO
      */
     void setpointCallbacks(north_write_event_t write, north_operation_event_t operation);
+
+    inline const OpcUa_Server_Config& config(void)const{return mConfig;}
 private:
+    void init_sopc_lib_and_logs(void);
     /**
      * This function is called when an event is received on the server
      */
@@ -84,7 +88,6 @@ private:
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
     int32_t mServerOnline;
-    SOPC_S2OPC_Config* s2opc_config;
     static OPCUA_Server* mInstance;
 };
 

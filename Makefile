@@ -1,6 +1,6 @@
 # Note: type 'make Q=' to get make commands debug 
 Q=@
-PLUGIN_CONF='{"name": "s2opcua_srv","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 30,"schedule_enabled": true}'
+PLUGIN_CONF='{"name": "s2opcua_srv","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 10,"schedule_enabled": true}'
 
 all: build install_plugin insert_plugin
 build:

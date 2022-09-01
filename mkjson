@@ -17,7 +17,7 @@ cat > ${CPP} << END_WARNING
  * Generation date: `date`
  */
 
-namespace fledge_power_s2opc_north
+namespace s2opc_north
 {
 
 END_WARNING

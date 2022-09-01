@@ -1,6 +1,6 @@
 {
     "plugin" : {
-        "description" : "Simple OPC UA data server plugin",
+        "description" : "OPC UA data server plugin",
         "type" : "string",
         "default" : "s2opcua",
         "readonly" : "true"
@@ -34,53 +34,68 @@
         "displayName" : "Product URI",
         "order" : "4"
     },
+    "description" : {
+        "description" : "Application description",
+        "type" : "string",
+        "default" : "Application description",
+        "displayName" : "Application description",
+        "order" : "5"
+    },
+    "localeId" : {
+        "description" : "Locale Id",
+        "type" : "string",
+        "default" : "en-US",
+        "displayName" : "Server Locale Id",
+        "order" : "6"
+    },
+    "namespaces" : {
+        "description" : "Namespaces definitions",
+        "type" : "JSON",
+        "default" : "{ 'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ] }",
+        "displayName" : "Namespace names",
+        "order" : "7"
+        },
+    "users" : {
+        "description" : "Configure the users and related passwords",
+        "type" : "JSON",
+        "default" : "{'user' : 'password', 'user2' : 'xGt4sdE3Z+' }",
+        "displayName" : "Users and passowrds",
+        "order" : "8"
+        },
     "serverCertPath" : {
         "description" : "Name of the server certificate file (DER format), without path and extension",
         "type" : "string",
         "default" : "server_2k_cert",
         "displayName" : "Server certificate",
-        "order" : "6"
+        "order" : "10"
     },
     "serverKeyPath" : {
         "description" : "Name of the server private key file (PEM format), without path and extension",
         "type" : "string",
         "default" : "server_2k_key",
         "displayName" : "Server key",
-        "order" : "7"
+        "order" : "11"
     },
-    "caCertPath" : {
-        "description" : "Name of the C.A. certificate file (DER format), without path and extension",
-        "type" : "string",
-        "default" : "cacert",
-        "displayName" : "C.A. certificate",
-        "order" : "8"
+    "certificates" : {
+        "description" : "list of certificates files (DER format), without path and extension",
+        "type" : "JSON",
+        "default" : "{ 'trusted_root' : [ 'cacert' ] , 'trusted_intermediate' : [ 'cacert' ] , 'revoked' : [ 'cacrl' ], 'untrusted_root' : [ 'empty' ], 'untrusted_intermediate' : [ 'empty' ], 'issued' : [ 'empty' ] }",
+        "displayName" : "Certificates",
+        "order" : "12"
     },
-    "caCrlPath" : {
-        "description" : "Name of the C.A revocation list file (DER format), without path and extension",
-        "type" : "string",
-        "default" : "cacrl",
-        "displayName" : "C.A. CRL",
-        "order" : "9"
-    },
+    "endpoint" : {
+        "description" : "Configure content of server endpoint",
+        "type" : "JSON",
+        "default" : "{'policies' : [ 'None/None/anonymous+username_None', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256' ]}",
+        "displayName" : "Server endpoint configuration",
+        "order" : "20"
+        },
     "logging" : {
         "description" : "Configure S2OPC logging level" ,
         "type" : "enumeration",
         "options":["None", "Error", "Warning", "Info", "Debug"],
         "default" : "Info",
         "displayName" : "Logging level",
-        "order" : "98"
-        },
-    "endpoint" : {
-        "description" : "Configure content of server endpoint",
-        "type" : "JSON",
-        "default" : "{'policies' : [ 'None/None/anonymous+username_None', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256' ]}",
-        "displayName" : "Server endpoint configuration",
-        "order" : "10"
-        },
-    "namespaces" : {
-        "description" : "Configure content of server AddressSpace",
-        "type" : "JSON",
-        "default" : "{ 'name' : 'value'} ",
-        "displayName" : "TODO",
-        "order" : "99"}
+        "order" : "99"
+        }
 }
