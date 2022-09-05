@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include <exception>
+#include <unistd.h>
 
 // FLEDGE headers
 #include <logger.h>
@@ -51,19 +52,27 @@ static const std::string dataDir (getDataDir());
 static const std::string logDir (dataDir + "/logs/");
 // Certificate folder
 static const std::string certDir (dataDir + "/etc/certs/s2opc_srv/");
+static const std::string certDirServer (::certDir + "server/");
 static const std::string certDirTrusted (::certDir + "trusted/");
 static const std::string certDirUntrusted (::certDir + "untrusted/");
 static const std::string certDirIssued (::certDir + "issued/");
 static const std::string certDirRevoked (::certDir + "revoked/");
 
 /**************************************************************************/
+/** \brief return an uppercase version of str */
 static std::string toUpper(const std::string & str)
 {
     std::string copy (str);
     std::transform(copy.begin(), copy.end(), copy.begin(), ::toupper);
     return copy;
 }
+
 /**************************************************************************/
+/** \brief split a string.
+ * \param src [inout] As input contains the string to split.
+ *  As output, contains the remaining after the separator (or empty)
+ * \param separator The string separator
+ **/
 static std::string splitString(std::string & src, const char separator = '/')
 {
     std::string result;
@@ -193,6 +202,7 @@ static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token)
 }
 
 /**************************************************************************/
+/** \brief reads a value from configuration, or raise an error if not found*/
 static std::string
 extractString(const ConfigCategory& config, const std::string& name)
 {
@@ -205,6 +215,14 @@ extractString(const ConfigCategory& config, const std::string& name)
 
 typedef void (*processConfigArrayCb)(const std::string&);
 /**************************************************************************/
+/**
+ * \brief convert a string containing a JSON-like array of string into a StringVect_t object
+ * \param value A JSON-like string (e.g. <{"policies" : [ "A", "B", "C" ] }>
+ * \param section The name of the section to read (e.g. "policies")
+ * \param string A suffix to append to each element
+ * \param prefix A prefix to prepend to each element
+ * \return a vector of string (e.g. {string("A"), string("B"), string("C")} )
+ */
 static StringVect_t extractStrArray(const std::string& value, const char* section,
         const std::string & prefix="", const std::string& suffix="")
 {
@@ -261,6 +279,7 @@ static SOPC_tools::CStringVect extractCStrArray(const std::string& value, const 
 {
     return SOPC_tools::CStringVect(extractStrArray(value, section, prefix, suffix));
 }
+
 } // namespace
 
 
@@ -308,8 +327,8 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     productUri(extractString(configData, "productUri")),
     localeId(extractString(configData, "localeId")),
     serverDescription(extractString(configData, "description")),
-    serverCertPath(extractCertificate(configData, "serverCertPath")),
-    serverKeyPath(extractCertificate(configData, "serverKeyPath")),
+    serverCertPath(::certDirServer + extractString(configData, "serverCertPath")),
+    serverKeyPath(::certDirServer + extractString(configData, "serverKeyPath")),
     certificates(extractString(configData, "certificates")),
     trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
     trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate", ::certDirTrusted)),
@@ -317,7 +336,7 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     untrustedIntermCert(extractCStrArray(certificates, "untrusted_intermediate", ::certDir + "untrusted")),
     issuedCert(extractCStrArray(certificates, "issued", ::certDirIssued)),
     revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
-    withLogs(extractStringEquals(configData, "logging", "none")),
+    withLogs(::toUpper(extractString(configData, "logging")) != "NONE"),
     logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
     logPath(::logDir),
     policies(extractStrArray(extractString(configData, "endpoint"), "policies")),
@@ -338,28 +357,10 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     ASSERT(not serverKeyPath.empty(), "serverKeyPath is missing");
     ASSERT(serverDescription.length() > 0,
             "Application description cannot be empty");
-}
-
-/**************************************************************************/
-std::string
-OpcUa_Server_Config::
-extractCertificate(const ConfigCategory& config, const std::string& name)const
-{
-    std::string result;
-    const std::string value (extractString(config, name));
-    if (not value.empty())
-    {
-        result = ::certDir + value;
-    }
-    return result;
-}
-
-/**************************************************************************/
-inline bool
-OpcUa_Server_Config::
-extractStringEquals(const ConfigCategory& config, const std::string& name, const std::string& compare)const
-{
-    return ::toUpper(extractString(config, name)) == ::toUpper(compare);
+    ASSERT(0 == access(serverCertPath.c_str(), R_OK),"Missing Server certificate file: %s" ,
+            serverCertPath.c_str());
+    ASSERT(0 == access(serverKeyPath.c_str(), R_OK),"Missing Server key file: %s" ,
+            serverKeyPath.c_str());
 }
 
 /**************************************************************************/

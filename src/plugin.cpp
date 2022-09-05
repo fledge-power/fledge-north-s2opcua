@@ -98,24 +98,29 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
 {
     using namespace s2opc_north;
 
+    PLUGIN_HANDLE handle = NULL;
     // the very first thing to do is to configure ASSERTs to be routed to Logger
     SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
     try
     {
         Logger::getLogger()->setMinLevel("debug");
-        Logger::getLogger()->debug("OPC UA Server plugin_init()");
-        return (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
+        INFO("----------------------------");
+        DEBUG("OPC UA Server plugin_init()");
+        handle = (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
     }
     catch (const std::exception& e)
     {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
         throw exception();
     }
+    WARNING("Created S2OPC server plugin (%p)...", (void*)handle);
+    return handle;
 }
 
 /**************************************************************************/
 void plugin_shutdown(PLUGIN_HANDLE handle)
 {
+    WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
     delete handleToPlugin(handle);
 }
 

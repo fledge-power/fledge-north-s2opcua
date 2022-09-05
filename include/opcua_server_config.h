@@ -31,6 +31,7 @@ extern "C" {
 #define ERROR Logger::getLogger()->error
 #define FATAL Logger::getLogger()->fatal
 
+// Improve SOPC_ASSERT to allow run-time elaborated messages
 #define ASSERT(c,  ...) do \
 {\
     if(!(c))\
@@ -43,13 +44,32 @@ extern "C" {
 namespace SOPC_tools
 {
 
+/**
+ * @param status a S2OPC status code
+ * @return a human-readable representation of a status code
+ */
 extern const char* statusCodeToCString(const int status);
 
+/** Vector of string */
 typedef std::vector<std::string> StringVect_t;
+
+/**
+ * CStringVect intends at making a String vector useable by C S2OPC layer.
+ * @field vect Contains a C-representation of the array, including a
+ *  NULL terminating string
+ * @field size The number of non-NULL elements in vect
+ */
 struct CStringVect
 {
+    /**
+     * Build a C vector using  C+ STL vector
+     */
     CStringVect(const StringVect_t& ref);
+    /** Frees vect */
     virtual ~ CStringVect(void);
+    /**
+     * \brief Checks (using ASSERT) that all elements in vector are R-O accessible files
+     */
     void checkAllFilesExist(void)const;
     size_t size;
     char** vect;
@@ -65,20 +85,24 @@ namespace s2opc_north
 using namespace SOPC_tools;
 
 /**
- * Configuration holder for a S2OPC server
+ * Configuration holder for a S2OPC server.
+ * This class intends at interpreting all parameters provided by the configuration
+ * and storing them into directly usable items.
  */
 class OpcUa_Server_Config
 {
 public:
     OpcUa_Server_Config(const ConfigCategory& configData);
     virtual ~OpcUa_Server_Config(void);
-private:
-    std::string extractCertificate(const ConfigCategory& config, const std::string& name)const;
-    bool extractStringEquals(const ConfigCategory& config, const std::string& name, const std::string& compare)const;
 public:
+    /**
+     * \brief  set up a \a SOPC_Endpoint_Config object with the  current configuration
+     * \param ep The object to initialize
+     */
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
-    SOPC_S2OPC_Config* extractOpcConfig(const ConfigCategory& config)const;
 
+public:
+    // All fields are constants, and thus can be public.
     const std::string url;
     const std::string appUri;
     const std::string productUri;
@@ -87,21 +111,20 @@ public:
     const std::string serverCertPath;
     const std::string serverKeyPath;
     const std::string certificates;
-    SOPC_tools::CStringVect trustedRootCert;
-    SOPC_tools::CStringVect trustedIntermCert;
-    SOPC_tools::CStringVect untrustedRootCert;
-    SOPC_tools::CStringVect untrustedIntermCert;
-    SOPC_tools::CStringVect revokedCert;
-    SOPC_tools::CStringVect issuedCert;
+    const SOPC_tools::CStringVect trustedRootCert;
+    const SOPC_tools::CStringVect trustedIntermCert;
+    const SOPC_tools::CStringVect untrustedRootCert;
+    const SOPC_tools::CStringVect untrustedIntermCert;
+    const SOPC_tools::CStringVect revokedCert;
+    const SOPC_tools::CStringVect issuedCert;
     const bool withLogs;
-    const SOPC_Log_Level logLevel;
+    const SOPC_Log_Level logLevel; // only relevant if withLogs is true
     const std::string logPath;
     const SOPC_tools::StringVect_t policies;
     const std::string namespacesStr;
     const SOPC_tools::CStringVect namespacesUri;
     const StringMap_t users;
 };
-
 
 }
 

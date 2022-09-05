@@ -143,7 +143,7 @@ checkAllFilesExist(void)const
     bool result (true);
     while (*p)
     {
-        if (access(*p, W_OK | R_OK))
+        if (access(*p, R_OK))
         {
             FATAL("File not found '%s'", *p);
         }
@@ -204,6 +204,7 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_Endpoint_Config* ep = SOPC_HelperConfigServer_CreateEndpoint(mConfig.url.c_str(), true);
     SOPC_ASSERT(ep != NULL);
 
+    INFO("Setting up security...");
     mConfig.setupServerSecurity(ep);
 
     // Server certificates configuration
@@ -246,6 +247,8 @@ OPCUA_Server(const ConfigCategory& configData):
 
     INFO("Test_Server_Client: Certificates and key loaded");
 
+    //////////////////////////////////
+    INFO("Loading AddressSpace ...");
 #warning WIP_JCH BEGIN
 
     // from toolkit_test_server.c : Server_SetDefaultAddressSpace
@@ -366,14 +369,16 @@ init_sopc_lib_and_logs(void)
         logConfig.logSysConfig.fileSystemLogConfig.logDirPath = logDirPath;
 
         // Check if log folder exist and create it if needed
-        if (not access(logDirPath, W_OK | R_OK))
+        if (access(logDirPath, W_OK | R_OK))
         {
+            INFO ("Creating log folder %s", logDirPath);
             mkdir(logDirPath,0777);
         }
-        SOPC_ASSERT(access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
+        SOPC_ASSERT(0 == access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
     }
     else
     {
+        INFO ("S2OPC logger not configured.");
         logConfig.logLevel = SOPC_LOG_LEVEL_INFO;
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
