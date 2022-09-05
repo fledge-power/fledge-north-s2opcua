@@ -116,7 +116,7 @@ static SOPC_Log_Level toSOPC_Log_Level(const std::string & str)
 /**************************************************************************/
 static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy)
 {
-    Logger::getLogger()->debug("Converting value '%s' to security policy" ,policy.c_str());
+    DEBUG("Converting value '%s' to security policy" ,policy.c_str());
     if (policy == "None")
     {
         return SOPC_SecurityPolicy_None;
@@ -138,14 +138,14 @@ static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy)
         return SOPC_SecurityPolicy_Aes256Sha256RsaPss;
     }
 
-    Logger::getLogger()->error("Invalid security policy '%s'" , policy.c_str());
+    ERROR("Invalid security policy '%s'" , policy.c_str());
     throw exception();
 }
 
 /**************************************************************************/
 static SOPC_SecurityModeMask toSecurityMode(const std::string& mode)
 {
-    Logger::getLogger()->debug("Converting value '%s' to security mode" ,mode.c_str());
+    DEBUG("Converting value '%s' to security mode" ,mode.c_str());
     const std::string sUpper (::toUpper(mode));
     if (sUpper == "NONE")
     {
@@ -160,7 +160,7 @@ static SOPC_SecurityModeMask toSecurityMode(const std::string& mode)
         return SOPC_SecurityModeMask_SignAndEncrypt;
     }
 
-    Logger::getLogger()->error("Invalid security mode '%s'" , mode.c_str());
+    ERROR("Invalid security mode '%s'" , mode.c_str());
     throw exception();
 }
 
@@ -170,7 +170,7 @@ static SOPC_SecurityModeMask toSecurityMode(const std::string& mode)
  */
 static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token)
 {
-    Logger::getLogger()->debug("Converting value '%s' to user token Id" ,token.c_str());
+    DEBUG("Converting value '%s' to user token Id" ,token.c_str());
     if (token == SOPC_UserTokenPolicy_Anonymous_ID)
     {
         return &SOPC_UserTokenPolicy_Anonymous;
@@ -188,7 +188,7 @@ static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token)
         return &SOPC_UserTokenPolicy_UserName_Basic256Sha256SecurityPolicy;
     }
 
-    Logger::getLogger()->error("Invalid user token policy '%s'" , token.c_str());
+    ERROR("Invalid user token policy '%s'" , token.c_str());
     throw exception();
 }
 
@@ -198,7 +198,7 @@ extractString(const ConfigCategory& config, const std::string& name)
 {
     ASSERT(config.itemExists(name),"Missing config parameter:'%s'" ,name.c_str());
 
-    Logger::getLogger()->debug("Reading config parameter:'%s'" ,name.c_str());
+    DEBUG("Reading config parameter:'%s'" ,name.c_str());
     return config.getValue(name);
 }
 
@@ -215,7 +215,7 @@ static StringVect_t extractStrArray(const std::string& value, const char* sectio
     doc.Parse(value.c_str());
     if (doc.HasParseError() || (!doc.HasMember(section) && doc[section].IsArray()))
     {
-        Logger::getLogger()->error("Invalid section configuration :%s", section);
+        ERROR("Invalid section configuration :%s", section);
         SOPC_ASSERT(false);
     }
 
@@ -235,14 +235,14 @@ static StringMap_t extractUsersPasswords(const std::string& config)
     StringMap_t result;
     rapidjson::Value::ConstMemberIterator it;
 
-    Logger::getLogger()->debug("extractUsersPasswords(%s)", config.c_str()); //TOO remove
+    DEBUG("extractUsersPasswords(%s)", config.c_str()); //TOO remove
 
     Document doc;
     doc.Parse(config.c_str());
     ASSERT(not doc.HasParseError(),
             "Invalid users configuration :%s", config.c_str());
 
-    Logger::getLogger()->debug("extractUsersPasswords - 2"); //TOO remove
+    DEBUG("extractUsersPasswords - 2"); //TOO remove
 
     for (it = doc.MemberBegin() ; it != doc.MemberEnd(); it++)
     {
@@ -325,14 +325,14 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     namespacesUri(extractCStrArray(namespacesStr, "namespaces")),
     users(extractUsersPasswords(extractString(configData, "users")))
 {
-    Logger::getLogger()->info("OpcUa_Server_Config() OK.");
-    Logger::getLogger()->info("Conf : logPath = %s", logPath.c_str());
-    Logger::getLogger()->debug("Conf : url = %s", url.c_str());
-    Logger::getLogger()->debug("Conf : serverCertPath = %s", serverCertPath.c_str());
-    Logger::getLogger()->debug("Conf : serverKeyPath = %s", serverKeyPath.c_str());
-    Logger::getLogger()->debug("Conf : certificates = %s", certificates.c_str());
-    Logger::getLogger()->debug("Conf : logLevel = %d", logLevel);
-    Logger::getLogger()->debug("Conf : withLogs = %d", withLogs);
+    INFO("OpcUa_Server_Config() OK.");
+    INFO("Conf : logPath = %s", logPath.c_str());
+    DEBUG("Conf : url = %s", url.c_str());
+    DEBUG("Conf : serverCertPath = %s", serverCertPath.c_str());
+    DEBUG("Conf : serverKeyPath = %s", serverKeyPath.c_str());
+    DEBUG("Conf : certificates = %s", certificates.c_str());
+    DEBUG("Conf : logLevel = %d", logLevel);
+    DEBUG("Conf : withLogs = %d", withLogs);
 
     ASSERT(not serverCertPath.empty(), "serverCertPath is missing");
     ASSERT(not serverKeyPath.empty(), "serverKeyPath is missing");
@@ -369,7 +369,7 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const
 {
     for (std::string rawPolicy : policies)
     {
-        Logger::getLogger()->debug("process policy %s", rawPolicy.c_str());
+        DEBUG("process policy %s", rawPolicy.c_str());
         const SOPC_SecurityModeMask mode(::toSecurityMode(::splitString(rawPolicy)));
         const SOPC_SecurityPolicy_URI policy(::toSecurityPolicy(::splitString(rawPolicy)));
         SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, policy);

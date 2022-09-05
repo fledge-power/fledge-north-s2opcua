@@ -145,7 +145,7 @@ checkAllFilesExist(void)const
     {
         if (access(*p, W_OK | R_OK))
         {
-            Logger::getLogger()->fatal("File not found '%s'", *p);
+            FATAL("File not found '%s'", *p);
         }
         p++;
     }
@@ -178,7 +178,7 @@ OPCUA_Server(const ConfigCategory& configData):
 
     // Global initialization
     init_sopc_lib_and_logs();
-    Logger::getLogger()->debug ("S2OPC initialization OK");
+    DEBUG ("S2OPC initialization OK");
 
     // Namespaces initialization
     status = SOPC_HelperConfigServer_SetNamespaces(mConfig.namespacesUri.size, mConfig.namespacesUri.vect);
@@ -244,7 +244,7 @@ OPCUA_Server(const ConfigCategory& configData):
             "SOPC_HelperConfigServer_SetPKIprovider() returned code %s(%d)",
             statusCodeToCString(status), status);
 
-    Logger::getLogger()->info("Test_Server_Client: Certificates and key loaded");
+    INFO("Test_Server_Client: Certificates and key loaded");
 
 #warning WIP_JCH BEGIN
 
@@ -312,7 +312,7 @@ Server_Event(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr
     switch (event)
     {
     case SE_CLOSED_ENDPOINT:
-        printf("# Info: Closed endpoint event.\n");
+        INFO("# Info: Closed endpoint event.\n");
         SOPC_Atomic_Int_Set(&mInstance->mServerOnline, 0);
         return;
     case SE_LOCAL_SERVICE_RESPONSE:
@@ -343,7 +343,7 @@ Server_Event(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr
         }
         return;
     default:
-        printf("# Warning: Unexpected endpoint event: %d.\n", event);
+        ERROR("# Warning: Unexpected endpoint event: %d.\n", event);
         return;
     }
 }
@@ -389,8 +389,8 @@ uint32_t
 OPCUA_Server::
 send(const Readings& readings)
 {
-    Logger::getLogger()->debug("OPCUA_Server::send(%ld elements)", readings.size());
-    Logger::getLogger()->warn("OPCUA_Server::send() : NOT IMPLEMENTED YET");
+    DEBUG("OPCUA_Server::send(%ld elements)", readings.size());
+    WARNING("OPCUA_Server::send() : NOT IMPLEMENTED YET");
 
 #warning "TODO : OPCUA_Server::send"
     return 0;
@@ -401,8 +401,8 @@ void
 OPCUA_Server::
 setpointCallbacks(north_write_event_t write, north_operation_event_t operation)
 {
-    Logger::getLogger()->debug("OPCUA_Server::setpointCallbacks(.., ..)");
-    Logger::getLogger()->warn("OPCUA_Server::setpointCallbacks() : NOT IMPLEMENTED YET");
+    DEBUG("OPCUA_Server::setpointCallbacks(.., ..)");
+    WARNING("OPCUA_Server::setpointCallbacks() : NOT IMPLEMENTED YET");
 #warning "TODO : OPCUA_Server::setpointCallbacks"
     return;
 }

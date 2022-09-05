@@ -81,7 +81,7 @@ extern "C" {
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 static void plugin_Assert_UserCallback(const char* context)
 {
-    Logger::getLogger()->fatal("ASSERT failed. Context = %s", (context ? context : "<NULL>"));
+    FATAL("ASSERT failed. Context = %s", (context ? context : "<NULL>"));
     throw std::exception();
 }
 
@@ -108,7 +108,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
     }
     catch (const std::exception& e)
     {
-        Logger::getLogger()->fatal(std::string("OPC UA server plugin creation failed:") + e.what());
+        FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
         throw exception();
     }
 }

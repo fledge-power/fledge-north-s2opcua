@@ -24,15 +24,21 @@ extern "C" {
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 };
 
+/* HELPER MACROS*/
+#define DEBUG Logger::getLogger()->debug
+#define INFO Logger::getLogger()->info
+#define WARNING Logger::getLogger()->warn
+#define ERROR Logger::getLogger()->error
+#define FATAL Logger::getLogger()->fatal
+
 #define ASSERT(c,  ...) do \
 {\
     if(!(c))\
     {\
-        Logger::getLogger()->fatal ("ASSERT FAILED:" __VA_ARGS__);\
+        FATAL ("ASSERT FAILED:" __VA_ARGS__);\
         SOPC_ASSERT(false);\
     }\
 } while(0)
-
 
 namespace SOPC_tools
 {

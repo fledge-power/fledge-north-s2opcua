@@ -5,7 +5,7 @@ PLUGIN_CONF='{"name": "s2opcua_srv","plugin": "s2opcua","type": "north","schedul
 all: build install_plugin insert_plugin
 build:
 	$(Q)mkdir -p build
-	$(Q)cd build && cmake -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
+	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
 clean:
 	$(Q)rm -fr build
