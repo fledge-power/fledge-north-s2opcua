@@ -342,7 +342,8 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     policies(extractStrArray(extractString(configData, "endpoint"), "policies")),
     namespacesStr(extractString(configData, "namespaces")),
     namespacesUri(extractCStrArray(namespacesStr, "namespaces")),
-    users(extractUsersPasswords(extractString(configData, "users")))
+    users(extractUsersPasswords(extractString(configData, "users"))),
+    addrSpace(extractString(configData, "exchanged_data"))
 {
     INFO("OpcUa_Server_Config() OK.");
     INFO("Conf : logPath = %s", logPath.c_str());

@@ -10,9 +10,12 @@
 
 #define USE_MBEDTLS 0
 
-#include <opcua_server.h>
-#include <opcua_server_config.h>
+/// Project includes
+#include "opcua_server_addrspace.h"
+#include "opcua_server.h"
+#include "opcua_server_config.h"
 
+// System headers
 #include <exception>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -248,21 +251,26 @@ OPCUA_Server(const ConfigCategory& configData):
     INFO("Test_Server_Client: Certificates and key loaded");
 
     //////////////////////////////////
-    INFO("Loading AddressSpace ...");
+
 #warning WIP_JCH BEGIN
 
-    // from toolkit_test_server.c : Server_SetDefaultAddressSpace
-    // TODO fill in sopc_embedded_is_const_addspace, SOPC_Embedded_AddressSpace_nNodes
-    // SOPC_Embedded_AddressSpace_Nodes
-    SOPC_AddressSpace* addSpace = SOPC_Embedded_AddressSpace_Load();
+    SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
+    INFO("Loading AddressSpace /2");
     SOPC_ASSERT(addSpace != NULL);
+
+    NodeVect_t& nodes (mConfig.addrSpace.nodes);
+    INFO("Loading AddressSpace (%u nodes)...", nodes.size());
+    for (SOPC_AddressSpace_Node& node : nodes)
+    {
+        status = SOPC_AddressSpace_Append(addSpace, &node);
+        SOPC_ASSERT(status == SOPC_STATUS_OK);
+    }
 
     status = SOPC_HelperConfigServer_SetAddressSpace(addSpace);
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetAddressSpace() returned code %s(%d)",
             statusCodeToCString(status), status);
 
-#warning "TODO : make a user-access level ?"
     SOPC_UserAuthorization_Manager* authorizationManager = SOPC_UserAuthorization_CreateManager_AllowAll();
 
     /* User Management configuration */

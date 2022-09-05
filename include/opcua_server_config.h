@@ -9,13 +9,17 @@
  *
  * Author: Jeremie Chabod
  */
-#include <config_category.h>
+
+// System includes
 #include <string>
-#include <logger.h>
-#include <utils.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
+
+// Fledge includes
+#include <config_category.h>
+#include <logger.h>
+#include <utils.h>
 
 extern "C" {
 // S2OPC Headers
@@ -23,6 +27,9 @@ extern "C" {
 #include "s2opc/clientserver/sopc_user_app_itf.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 };
+
+/// Project includes
+#include "opcua_server_addrspace.h"
 
 /* HELPER MACROS*/
 #define DEBUG Logger::getLogger()->debug
@@ -124,6 +131,7 @@ public:
     const std::string namespacesStr;
     const SOPC_tools::CStringVect namespacesUri;
     const StringMap_t users;
+    const Server_AddrSpace addrSpace;
 };
 
 }
