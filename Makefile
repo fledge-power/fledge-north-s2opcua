@@ -20,7 +20,7 @@ install_plugin: check
 	$(Q)make -C build install
 	@echo "Install demo certificates..."
 	$(Q)mkdir -p $(FLEDGE_INSTALL)/data/etc/cert/ > /dev/null
-	$(Q)cp -f ./samples/cert/* $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/
+	$(Q)cp -arf ./samples/cert/* $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/
 	
 insert_plugin: del_plugin
 	@echo "Insert plugin service in Fledge..."
