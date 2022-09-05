@@ -28,6 +28,6 @@ END_WARNING
 # - replace " by \"
 # - remove leading spaces
 # - Replace each <line> by <"line"\>
-sed "s/'/"'\\\"'/g ${JSON} | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/^ *//' | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
+cat  ${JSON} | sed 's/\\$//g' | sed "s/'/"'\\\"'/g | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/^ *//' | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
 /bin/echo ';' >> ${CPP}
 /bin/echo '}' >> ${CPP}

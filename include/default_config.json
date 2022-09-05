@@ -83,10 +83,26 @@
         "displayName" : "Certificates",
         "order" : "12"
     },
+    "exchanged_data" : {
+        "description" : "exchanged data list",
+        "type" : "string",
+        "displayName" : "Exchanged data list",
+        "order" : "13",
+        "default" : " 'exchanged_data' : {\
+            'name' : 'iec104client',\
+            'version' : '1.0',\
+            'asdu_list' : [\
+                { \
+                    'ca' : 41025, \
+                    'type_id' : 'M_ME_NA_1',\
+                    'label' : 'TM-1',\
+                    'ioa' : 4202832\
+                }]"
+    },
     "endpoint" : {
         "description" : "Configure content of server endpoint",
         "type" : "JSON",
-        "default" : "{'policies' : [ 'None/None/anonymous+username_None', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256' ]}",
+        "default" : "{'policies' : [ 'None/None/anonymous', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256+username_None' ]}",
         "displayName" : "Server endpoint configuration",
         "order" : "20"
         },
