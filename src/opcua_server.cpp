@@ -134,6 +134,23 @@ const char* statusCodeToCString(const int code)
             return ("Invalid code");
     }
 }
+
+void
+CStringVect::
+checkAllFilesExist(void)const
+{
+    char*const *p = vect;
+    bool result (true);
+    while (*p)
+    {
+        if (access(*p, W_OK | R_OK))
+        {
+            Logger::getLogger()->fatal("File not found '%s'", *p);
+        }
+        p++;
+    }
+    SOPC_ASSERT(result);
+}
 } // namespace SOPC_tools
 
 /**************************************************************************/
@@ -204,12 +221,22 @@ OPCUA_Server(const ConfigCategory& configData):
     char* lPathsIssuedCerts[] = {NULL};
     SOPC_PKIProvider* pkiProvider = NULL;
 
+    // Certificates presence is checked beforehand because S2OPC PKI implementation
+    // has no ability to log properly the defaults.
+    mConfig.trustedRootCert.checkAllFilesExist();
+    mConfig.trustedIntermCert.checkAllFilesExist();
+    mConfig.untrustedRootCert.checkAllFilesExist();
+    mConfig.untrustedIntermCert.checkAllFilesExist();
+    mConfig.issuedCert.checkAllFilesExist();
+    mConfig.revokedCert.checkAllFilesExist();
+
     status = SOPC_PKIProviderStack_CreateFromPaths(
             mConfig.trustedRootCert.vect, mConfig.trustedIntermCert.vect,
             mConfig.untrustedRootCert.vect, mConfig.untrustedIntermCert.vect,
             mConfig.issuedCert.vect, mConfig.revokedCert.vect, &pkiProvider);
     ASSERT(status == SOPC_STATUS_OK,
-            "SOPC_PKIProviderStack_CreateFromPaths() returned code %s(%d)",
+            "SOPC_PKIProviderStack_CreateFromPaths() returned code %s(%d). "
+            "Check that certificates have correct format.",
             statusCodeToCString(status), status);
 
     status = SOPC_HelperConfigServer_SetPKIprovider(pkiProvider);

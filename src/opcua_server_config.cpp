@@ -51,9 +51,10 @@ static const std::string dataDir (getDataDir());
 static const std::string logDir (dataDir + "/logs/");
 // Certificate folder
 static const std::string certDir (dataDir + "/etc/certs/s2opc_srv/");
-
-static const std::string pemExt (".pem");
-static const std::string derExt (".der");
+static const std::string certDirTrusted (::certDir + "trusted/");
+static const std::string certDirUntrusted (::certDir + "untrusted/");
+static const std::string certDirIssued (::certDir + "issued/");
+static const std::string certDirRevoked (::certDir + "revoked/");
 
 /**************************************************************************/
 static std::string toUpper(const std::string & str)
@@ -204,7 +205,8 @@ extractString(const ConfigCategory& config, const std::string& name)
 
 typedef void (*processConfigArrayCb)(const std::string&);
 /**************************************************************************/
-static StringVect_t extractStrArray(const std::string& value, const char* section)
+static StringVect_t extractStrArray(const std::string& value, const char* section,
+        const std::string & prefix="", const std::string& suffix="")
 {
     SOPC_ASSERT(NULL != section);
     StringVect_t result;
@@ -220,7 +222,7 @@ static StringVect_t extractStrArray(const std::string& value, const char* sectio
     const rapidjson::Value& subs = doc[section];
     for (rapidjson::SizeType i = 0; i < subs.Size(); i++)
     {
-        const std::string value (subs[i].GetString()) ;
+        const std::string value (prefix + subs[i].GetString() + suffix);
         result.push_back(value);
     }
     return result;
@@ -254,9 +256,10 @@ static StringMap_t extractUsersPasswords(const std::string& config)
 
 
 /**************************************************************************/
-static SOPC_tools::CStringVect extractCStrArray(const std::string& value, const char* section)
+static SOPC_tools::CStringVect extractCStrArray(const std::string& value, const char* section,
+        const std::string & prefix="", const std::string& suffix="")
 {
-    return SOPC_tools::CStringVect(extractStrArray(value, section));
+    return SOPC_tools::CStringVect(extractStrArray(value, section, prefix, suffix));
 }
 } // namespace
 
@@ -305,15 +308,15 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     productUri(extractString(configData, "productUri")),
     localeId(extractString(configData, "localeId")),
     serverDescription(extractString(configData, "description")),
-    serverCertPath(extractCertificate(configData, "serverCertPath", derExt)),
-    serverKeyPath(extractCertificate(configData, "serverKeyPath", pemExt)),
+    serverCertPath(extractCertificate(configData, "serverCertPath")),
+    serverKeyPath(extractCertificate(configData, "serverKeyPath")),
     certificates(extractString(configData, "certificates")),
-    trustedRootCert(extractCStrArray(certificates, "trusted_root")),
-    trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate")),
-    untrustedRootCert(extractCStrArray(certificates, "untrusted_root")),
-    untrustedIntermCert(extractCStrArray(certificates, "untrusted_intermediate")),
-    issuedCert(extractCStrArray(certificates, "issued")),
-    revokedCert(extractCStrArray(certificates, "revoked")),
+    trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
+    trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate", ::certDirTrusted)),
+    untrustedRootCert(extractCStrArray(certificates, "untrusted_root", ::certDirUntrusted)),
+    untrustedIntermCert(extractCStrArray(certificates, "untrusted_intermediate", ::certDir + "untrusted")),
+    issuedCert(extractCStrArray(certificates, "issued", ::certDirIssued)),
+    revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
     withLogs(extractStringEquals(configData, "logging", "none")),
     logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
     logPath(::logDir),
@@ -340,13 +343,13 @@ OpcUa_Server_Config(const ConfigCategory& configData):
 /**************************************************************************/
 std::string
 OpcUa_Server_Config::
-extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion)const
+extractCertificate(const ConfigCategory& config, const std::string& name)const
 {
     std::string result;
     const std::string value (extractString(config, name));
     if (not value.empty())
     {
-        result = ::certDir + value + extenstion;
+        result = ::certDir + value;
     }
     return result;
 }

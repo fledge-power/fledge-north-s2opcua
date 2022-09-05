@@ -44,6 +44,7 @@ struct CStringVect
 {
     CStringVect(const StringVect_t& ref);
     virtual ~ CStringVect(void);
+    void checkAllFilesExist(void)const;
     size_t size;
     char** vect;
 };
@@ -66,7 +67,7 @@ public:
     OpcUa_Server_Config(const ConfigCategory& configData);
     virtual ~OpcUa_Server_Config(void);
 private:
-    std::string extractCertificate(const ConfigCategory& config, const std::string& name, const std::string& extenstion)const;
+    std::string extractCertificate(const ConfigCategory& config, const std::string& name)const;
     bool extractStringEquals(const ConfigCategory& config, const std::string& name, const std::string& compare)const;
 public:
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;

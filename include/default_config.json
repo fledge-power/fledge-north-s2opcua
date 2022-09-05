@@ -63,23 +63,23 @@
         "order" : "8"
         },
     "serverCertPath" : {
-        "description" : "Name of the server certificate file (DER format), without path and extension",
+        "description" : "Name of the server certificate file (DER format)",
         "type" : "string",
-        "default" : "server_2k_cert",
+        "default" : "server_2k_cert.der",
         "displayName" : "Server certificate",
         "order" : "10"
     },
     "serverKeyPath" : {
-        "description" : "Name of the server private key file (PEM format), without path and extension",
+        "description" : "Name of the server private key file (PEM format)",
         "type" : "string",
-        "default" : "server_2k_key",
+        "default" : "server_2k_key.pem",
         "displayName" : "Server key",
         "order" : "11"
     },
     "certificates" : {
-        "description" : "list of certificates files (DER format), without path and extension",
+        "description" : "list of certificates files (DER format)",
         "type" : "JSON",
-        "default" : "{ 'trusted_root' : [ 'cacert' ] , 'trusted_intermediate' : [ 'cacert' ] , 'revoked' : [ 'cacrl' ], 'untrusted_root' : [ 'empty' ], 'untrusted_intermediate' : [ 'empty' ], 'issued' : [ 'empty' ] }",
+        "default" : "{ 'trusted_root' : [ 'cacert.der' ] , 'trusted_intermediate' : [ ] , 'revoked' : [ 'cacrl.der' ], 'untrusted_root' : [ ], 'untrusted_intermediate' : [  ], 'issued' : [  ] }",
         "displayName" : "Certificates",
         "order" : "12"
     },
