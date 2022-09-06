@@ -151,6 +151,12 @@ std::string toString(const SOPC_User* pUser)
     return "<No username>";
 }
 
+/**************************************************************************/
+static void sopcDoLog(const char* category, const char* const line)
+{
+    INFO("[S2OPC] %s", line);
+}
+
 } // extern C
 
 namespace SOPC_tools
@@ -424,19 +430,20 @@ init_sopc_lib_and_logs(void)
     {
         const std::string traceFilePath = getDataDir() + string("/logs/");
         logConfig.logLevel = mConfig.logLevel;
-        logConfig.logSystem = SOPC_LOG_SYSTEM_FILE;
-
-        // Note : other fields of fileSystemLogConfig are initialized by SOPC_Common_GetDefaultLogConfiguration()
-        const char* logDirPath = mConfig.logPath.c_str();
-        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = logDirPath;
-
-        // Check if log folder exist and create it if needed
-        if (access(logDirPath, W_OK | R_OK))
-        {
-            INFO ("Creating log folder %s", logDirPath);
-            mkdir(logDirPath,0777);
-        }
-        SOPC_ASSERT(0 == access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
+        logConfig.logSystem = SOPC_LOG_SYSTEM_USER;
+        logConfig.logSysConfig.userSystemLogConfig.doLog = &sopcDoLog;
+//
+//        // Note : other fields of fileSystemLogConfig are initialized by SOPC_Common_GetDefaultLogConfiguration()
+//        const char* logDirPath = mConfig.logPath.c_str();
+//        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = logDirPath;
+//
+//         Check if log folder exist and create it if needed
+//        if (access(logDirPath, W_OK | R_OK))
+//        {
+//            INFO ("Creating log folder %s", logDirPath);
+//            mkdir(logDirPath,0777);
+//        }
+//        SOPC_ASSERT(0 == access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
     }
     else
     {
