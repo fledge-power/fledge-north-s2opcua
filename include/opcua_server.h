@@ -93,7 +93,6 @@ private:
      */
     static void Server_Event(SOPC_App_Com_Event event,
             uint32_t idOrStatus, void* param, uintptr_t appContext);
-
 public:
     // It is mandatory that mEnvironment is the first member
     const OpcUa_Server_Config mConfig;
@@ -101,6 +100,7 @@ public:
     static OPCUA_Server* mInstance;
 private:
     int32_t mServerOnline;
+    SOPC_Endpoint_Config* mEpConfig;
 };
 
 }

@@ -35,11 +35,13 @@ extern "C" {
 #include "s2opc/common/sopc_types.h"
 #include "s2opc/common/sopc_mem_alloc.h"
 #include "s2opc/clientserver/frontend/libs2opc_common_config.h"
+#include "s2opc/clientserver/frontend/libs2opc_server.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 #include "s2opc/clientserver/sopc_user_manager.h"
 #include "s2opc/clientserver/embedded/sopc_addspace_loader.h"
+#include "s2opc/clientserver/sopc_toolkit_async_api.h"
 
 #if USE_MBEDTLS
 #include "threading_alt.h"
@@ -118,7 +120,7 @@ static const SOPC_UserAuthentication_Functions authentication_functions = {
 /**
  * Callback for write-event on the server
  */
-void C_serverWriteEvent (const SOPC_CallContext* callCtxPtr,
+static void C_serverWriteEvent (const SOPC_CallContext* callCtxPtr,
         OpcUa_WriteValue* writeValue,
         SOPC_StatusCode writeStatus)
 {
@@ -138,7 +140,7 @@ void C_serverWriteEvent (const SOPC_CallContext* callCtxPtr,
 }
 
 /**************************************************************************/
-std::string toString(const SOPC_User* pUser)
+static std::string toString(const SOPC_User* pUser)
 {
     if (pUser != NULL && SOPC_User_IsUsername(pUser))
     {
@@ -219,6 +221,7 @@ OPCUA_Server(const ConfigCategory& configData):
 #endif
 
     ASSERT(mInstance == NULL, "OPCUA_Server may not be instanced twice within the same plugin");
+    mInstance = this;
 
     // Configure the server according to mConfig
 
@@ -247,11 +250,11 @@ OPCUA_Server(const ConfigCategory& configData):
             statusCodeToCString(status), status);
 
     // Create endpoints configuration
-    SOPC_Endpoint_Config* ep = SOPC_HelperConfigServer_CreateEndpoint(mConfig.url.c_str(), true);
-    SOPC_ASSERT(ep != NULL);
+    mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mConfig.url.c_str(), true);
+    SOPC_ASSERT(mEpConfig != NULL);
 
     INFO("Setting up security...");
-    mConfig.setupServerSecurity(ep);
+    mConfig.setupServerSecurity(mEpConfig);
 
     // Server certificates configuration
     status = SOPC_HelperConfigServer_SetKeyCertPairFromPath(
@@ -330,21 +333,39 @@ OPCUA_Server(const ConfigCategory& configData):
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetWriteNotifCallback() returned code %s(%d)",
             statusCodeToCString(status), status);
+//
+//    status = SOPC_ServerHelper_StartServer(&syncServerStoppedCb);
+//    ASSERT(status == SOPC_STATUS_OK,
+//            "StartServer() returned code %s(%d)",
+//            statusCodeToCString(status), status);
 
-#warning "TODO : SOPC_ServerHelper_Serve"
+#warning WIP
+
+    SOPC_Endpoint_Config* pEpConfig = new SOPC_Endpoint_Config;
+
+    uint32_t epConfigIdx = SOPC_ToolkitServer_AddEndpointConfig(mEpConfig);
+    ASSERT(epConfigIdx > 0,
+            "SOPC_ToolkitServer_AddEndpointConfig() returned epConfigIdx = %d",
+            epConfigIdx);
+
+    status = SOPC_ToolkitServer_Configured();
+    ASSERT(status == SOPC_STATUS_OK,
+            "SOPC_ToolkitServer_Configured() returned code %s(%d)",
+            statusCodeToCString(status), status);
+
+    SOPC_ToolkitServer_AsyncOpenEndpoint(epConfigIdx);
+#warning "TODO : SOPC_Atomic_Int_Set(&serverOnline, 1);"
 
     INFO("Started OPC UA server on endpoint %s", mConfig.url.c_str());
-
-    mInstance = this;
 }
 
 /**************************************************************************/
 OPCUA_Server::
 ~OPCUA_Server()
 {
+    SOPC_ServerHelper_StopServer();
     SOPC_HelperConfigServer_Clear();
     SOPC_CommonHelper_Clear();
-
 }
 
 /**************************************************************************/
