@@ -114,6 +114,43 @@ static const SOPC_UserAuthentication_Functions authentication_functions = {
     .pFuncFree = (SOPC_UserAuthentication_Free_Func*) &SOPC_Free,
     .pFuncValidateUserIdentity = &authentication_check};
 
+/**************************************************************************/
+/**
+ * Callback for write-event on the server
+ */
+void C_serverWriteEvent (const SOPC_CallContext* callCtxPtr,
+        OpcUa_WriteValue* writeValue,
+        SOPC_StatusCode writeStatus)
+{
+    s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::mInstance);
+    if (srv != NULL)
+    {
+        if (SOPC_STATUS_OK == writeStatus)
+        {
+            srv->writeNotificationCallback(callCtxPtr, writeValue);
+        }
+        else
+        {
+            WARNING("Client write failed on server. returned code %s(%d)",
+                    SOPC_tools::statusCodeToCString(writeStatus), writeStatus);
+        }
+    }
+}
+
+/**************************************************************************/
+std::string toString(const SOPC_User* pUser)
+{
+    if (pUser != NULL && SOPC_User_IsUsername(pUser))
+    {
+        const SOPC_String* str (SOPC_User_GetUsername(pUser));
+        if (str)
+        {
+            return std::string(SOPC_String_GetRawCString(str));
+        }
+    }
+    return "<No username>";
+}
+
 } // extern C
 
 namespace SOPC_tools
@@ -283,11 +320,14 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_HelperConfigServer_SetUserAuthenticationManager(authenticationManager);
     SOPC_HelperConfigServer_SetUserAuthorizationManager(authorizationManager);
 
+    status = SOPC_HelperConfigServer_SetWriteNotifCallback(&C_serverWriteEvent);
+    ASSERT(status == SOPC_STATUS_OK,
+            "SOPC_HelperConfigServer_SetWriteNotifCallback() returned code %s(%d)",
+            statusCodeToCString(status), status);
 
-#warning WIP_JCH END
+#warning "TODO : SOPC_ServerHelper_Serve"
 
-
-#warning "TODO : Server_ConfigureStartServer"
+    INFO("Started OPC UA server on endpoint %s", mConfig.url.c_str());
 
     mInstance = this;
 }
@@ -299,6 +339,24 @@ OPCUA_Server::
     SOPC_HelperConfigServer_Clear();
     SOPC_CommonHelper_Clear();
 
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+writeNotificationCallback(const SOPC_CallContext* callContextPtr,
+        OpcUa_WriteValue* writeValue)
+{
+    const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
+    if (NULL != pUser)
+    {
+        const std::string username (toString(pUser));
+        const char* nodeId (SOPC_NodeId_ToCString(&writeValue->NodeId));
+        INFO("Client '%s' wrote into node [%s]", username.c_str(), nodeId);
+
+        delete nodeId;
+    }
+#warning "TODO : manage write events"
 }
 
 /**************************************************************************/

@@ -23,6 +23,7 @@
 
 extern "C" {
 // S2OPC Headers
+#include "s2opc/common/sopc_types.h"
 #include "s2opc/common/sopc_builtintypes.h"
 #include "s2opc/common/sopc_logger.h"
 #include "s2opc/clientserver/sopc_user_app_itf.h"
@@ -70,13 +71,21 @@ public:
      * @return The number of element written
      */
     uint32_t send(const Readings& readings);
-
     /**
      * TODO
      */
     void setpointCallbacks(north_write_event_t write, north_operation_event_t operation);
 
     inline const OpcUa_Server_Config& config(void)const{return mConfig;}
+
+    /**
+     * Process a write event on the server
+     * \param callContextPtr The write context (including user)
+     * \param  writeValue The value written
+     */
+    void writeNotificationCallback(
+            const SOPC_CallContext* callContextPtr,
+            OpcUa_WriteValue* writeValue);
 private:
     void init_sopc_lib_and_logs(void);
     /**
@@ -84,11 +93,14 @@ private:
      */
     static void Server_Event(SOPC_App_Com_Event event,
             uint32_t idOrStatus, void* param, uintptr_t appContext);
+
+public:
     // It is mandatory that mEnvironment is the first member
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
-    int32_t mServerOnline;
     static OPCUA_Server* mInstance;
+private:
+    int32_t mServerOnline;
 };
 
 }
