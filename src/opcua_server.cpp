@@ -251,18 +251,14 @@ OPCUA_Server(const ConfigCategory& configData):
     INFO("Test_Server_Client: Certificates and key loaded");
 
     //////////////////////////////////
-
-#warning WIP_JCH BEGIN
-
-    SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
-    INFO("Loading AddressSpace /2");
+    SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(true);
     SOPC_ASSERT(addSpace != NULL);
 
-    NodeVect_t& nodes (mConfig.addrSpace.nodes);
+    const NodeVect_t& nodes (mConfig.addrSpace.nodes);
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
-    for (SOPC_AddressSpace_Node& node : nodes)
+    for (SOPC_AddressSpace_Node* node : nodes)
     {
-        status = SOPC_AddressSpace_Append(addSpace, &node);
+        status = SOPC_AddressSpace_Append(addSpace, node);
         SOPC_ASSERT(status == SOPC_STATUS_OK);
     }
 

@@ -24,18 +24,41 @@ extern "C" {
 // Fledge headers
 #include <logger.h>
 
+extern "C"
+{
+// Nano NS0 namespace
+extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;
+extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];
+}
+
 namespace s2opc_north
 {
 /** Vector of nodes */
-typedef std::vector<SOPC_AddressSpace_Node> NodeVect_t;
+typedef std::vector<SOPC_AddressSpace_Node*> NodeVect_t;
 
+/**
+ * \brief THis calls represents the content of an address space
+ */
 class Server_AddrSpace
 {
 public:
+    /**
+     * \brief Builds up an address space from a json configuration string
+     * \param json A string providing the Address space content, with following format:
+     *  "[ { "TODO" : "TODO", } ]
+     */
     Server_AddrSpace(const std::string& json);
+    /**
+     * \brief Deletes an address space
+     */
     virtual ~Server_AddrSpace(void);
-    mutable NodeVect_t nodes;
-};
-}
+
+    /**
+     * The content of the address space.
+     */
+    NodeVect_t nodes;
+}; // Server_AddrSpace
+
+} // namespace s2opc_north
 
 #endif // _OPCUA_SERVER_ADDRSPACE_H
