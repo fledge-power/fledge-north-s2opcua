@@ -58,33 +58,15 @@ if (NOT FLEDGE_FOUND)
 endif()
 # On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set 
 
-# if(NOT S2OPC_COMMON_DEFS_SET)
-#   include(../../CommonDefs.cmake)
-# endif()
-
-# Find the S2OPC library source tree
-if (NOT "$ENV{S2OPC}" STREQUAL "")
-	set(OPCUADIR $ENV{S2OPC})
-else()
-	set(OPCUADIR "../S2OPC")
-endif()
-message("OPCUADIR: ${OPCUADIR}")
-
 # Add ./include
 include_directories(include)
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
 
-include_directories(/usr/local/include/s2opc/common)
-include_directories(/usr/local/include/s2opc/clientserver) # TODO
-include_directories(/usr/local/include/s2opc/clientserver/frontend) # TODO
+find_package(S2OPC 1.2.0)
 
 # Add Fledge lib path
 link_directories(${FLEDGE_LIB_DIRS})
-
-# Add additional link directories
-# We assume the 'S2OPC' libraries are available here: 
-link_directories(/usr/local/lib)
 
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -Wl,--no-as-needed")
 
@@ -92,53 +74,14 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -Wl,--no-as-needed")
 add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h default_config.inc)
 
 # Add Fledge library names
-target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${NEEDED_FLEDGE_LIBS})
 
 # Add additional libraries
-target_link_libraries(${PROJECT_NAME} -lpthread -ldl)
-
-# Add S2OPC libraries
-find_library(S2OPC_COMMON s2opc_common ${OPCUADIR}/build/lib)
-if (NOT S2OPC_COMMON)
-        message(FATAL_ERROR "S2OPC library s2opc_common not found.\n"
-                        "Please build S2OPC library and set the environment variable S2OPC to library source tree root")
-        return()
-endif()
-
-find_library(S2OPC_CLIENTSERVER s2opc_clientserver ${OPCUADIR}/build/lib)
-if (NOT S2OPC_CLIENTSERVER)
-        message(FATAL_ERROR "S2OPC library s2opc_clientserver not found.\n"
-                        "Please build S2OPC library and set the environment variable S2OPC to library source tree root")
-        return()
-endif()
-
-find_library(S2OPC_SERVERWRAPPER s2opc_serverwrapper ${OPCUADIR}/build/lib)
-if (NOT S2OPC_SERVERWRAPPER)
-        message(FATAL_ERROR "S2OPC library s2opc_serverwrapper not found.\n"
-                        "Please build S2OPC library and set the environment variable S2OPC to library source tree root")
-        return()
-endif()
-
-find_library(S2OPC_COMMONWRAPPER s2opc_commonwrapper ${OPCUADIR}/build/lib)
-if (NOT S2OPC_COMMONWRAPPER)
-        message(FATAL_ERROR "S2OPC library s2opc_commonwrapper not found.\n"
-                        "Please build S2OPC library and set the environment variable S2OPC to library source tree root")
-        return()
-endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE -ldl)
 
 # Report S2OPC build options
 add_definitions( -DWITH_USER_ASSERT=1)
-
-# Manage libraries
-message("S2OPC_COMMON: ${S2OPC_COMMON}")
-message("S2OPC_CLIENTSERVER: ${S2OPC_CLIENTSERVER}")
-message("S2OPC_SERVERWRAPPER: ${S2OPC_SERVERWRAPPER}")
-message("S2OPC_COMMONWRAPPER: ${S2OPC_COMMONWRAPPER}")
-target_link_libraries(${PROJECT_NAME} ${S2OPC_COMMON} ${S2OPC_CLIENTSERVER} ${S2OPC_SERVERWRAPPER} ${S2OPC_COMMONWRAPPER} -lmbedtls -lmbedcrypto)
-
-target_compile_options(${PROJECT_NAME} PRIVATE ${S2OPC_COMPILER_FLAGS})
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${S2OPC_DEFINITIONS})
-
+target_link_libraries(${PROJECT_NAME} PRIVATE s2opc_serverwrapper)
 
 # Set the build version 
 set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION 1)
