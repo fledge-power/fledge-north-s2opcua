@@ -80,6 +80,7 @@ struct CStringVect
     void checkAllFilesExist(void)const;
     size_t size;
     char** vect;
+    const char** cVect;
 };
 
 typedef std::pair<std::string, std::string> StringPair_t;

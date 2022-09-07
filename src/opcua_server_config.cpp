@@ -291,7 +291,8 @@ namespace SOPC_tools
 CStringVect::
 CStringVect(const SOPC_tools::StringVect_t& ref):
     size(ref.size()),
-    vect(new char*[size + 1])
+    vect(new char*[size + 1]),
+    cVect((const char**)(vect))
 {
     for (size_t i=0 ; i < size; i++)
     {

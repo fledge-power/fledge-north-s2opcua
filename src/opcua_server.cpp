@@ -230,14 +230,14 @@ OPCUA_Server(const ConfigCategory& configData):
     DEBUG ("S2OPC initialization OK");
 
     // Namespaces initialization
-    status = SOPC_HelperConfigServer_SetNamespaces(mConfig.namespacesUri.size, mConfig.namespacesUri.vect);
+    status = SOPC_HelperConfigServer_SetNamespaces(mConfig.namespacesUri.size,
+            mConfig.namespacesUri.cVect);
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetNamespaces returned code %s(%d)",
             statusCodeToCString(status), status);
 
     const char* localesArray [2] = {mConfig.localeId.c_str(), NULL};
-#warning "TODO : remove this ugly cast when S2OPC #1012 is merged"
-    status = SOPC_HelperConfigServer_SetLocaleIds(1, (char**)localesArray);
+    status = SOPC_HelperConfigServer_SetLocaleIds(1, localesArray);
     ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");
 
     // Global descriptions initialization
