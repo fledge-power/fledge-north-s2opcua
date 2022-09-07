@@ -175,7 +175,7 @@ static SOPC_SecurityModeMask toSecurityMode(const std::string& mode)
 
 /**************************************************************************/
 /**
- * @param toekn the token amongst [Anonymous|UserName_None|UserName|UserName_Basic256Sha256]
+ * @param token the token amongst [Anonymous|UserName_None|UserName|UserName_Basic256Sha256]
  */
 static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token)
 {

@@ -156,7 +156,35 @@ static std::string toString(const SOPC_User* pUser)
 /**************************************************************************/
 static void sopcDoLog(const char* category, const char* const line)
 {
-    INFO("[S2OPC] %s", line);
+    SOPC_UNUSED_ARG(category);
+    // The Log formats is:
+    // [2022/09/07 13:20:18.787] (Error) ....
+    static const size_t datelen (strlen("[YYYY/MM/DD HH:MM:SS.SSS] "));
+    static const std::string prefixError("(Error)");
+    const size_t len = strlen(line);
+
+    if (len > datelen + 2)
+    {
+        const char* text(line + datelen);
+        switch (text[1])
+        {
+        case 'E':
+            ERROR("[S2OPC] %s", text);
+            break;
+        case 'W':
+            WARNING("[S2OPC] %s", text);
+            break;
+        case 'I':
+            INFO("[S2OPC] %s", text);
+            break;
+        case 'D':
+            DEBUG("[S2OPC] %s", text);
+            break;
+        default:
+            INFO("[S2OPC] %s", text);
+            break;
+        }
+    }
 }
 
 } // extern C
