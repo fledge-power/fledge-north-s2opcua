@@ -1,5 +1,5 @@
-#ifndef _OPCUA_SERVER_CONFIG_H
-#define _OPCUA_SERVER_CONFIG_H
+#ifndef  INCLUDE_OPCUA_SERVER_CONFIG_H_
+#define  INCLUDE_OPCUA_SERVER_CONFIG_H_
 /*
  * Fledge north service plugin
  *
@@ -11,15 +11,16 @@
  */
 
 // System includes
-#include <string>
 #include <stdint.h>
 #include <stdlib.h>
 #include <vector>
+#include <utility>
+#include <string>
 
 // Fledge includes
-#include <config_category.h>
-#include <logger.h>
-#include <utils.h>
+#include "config_category.h"
+#include "logger.h"
+#include "utils.h"
 
 extern "C" {
 // S2OPC Headers
@@ -39,17 +40,14 @@ extern "C" {
 #define FATAL Logger::getLogger()->fatal
 
 // Improve SOPC_ASSERT to allow run-time elaborated messages
-#define ASSERT(c,  ...) do \
-{\
-    if(!(c))\
-    {\
-        FATAL ("ASSERT FAILED:" __VA_ARGS__);\
+#define ASSERT(c,  ...) do { \
+    if (!(c)) {\
+        FATAL("ASSERT FAILED:" __VA_ARGS__);\
         SOPC_ASSERT(false);\
     }\
-} while(0)
+} while (0)
 
-namespace SOPC_tools
-{
+namespace SOPC_tools {
 
 /**
  * @param status a S2OPC status code
@@ -66,14 +64,13 @@ typedef std::vector<std::string> StringVect_t;
  *  NULL terminating string
  * @field size The number of non-NULL elements in vect
  */
-struct CStringVect
-{
+struct CStringVect {
     /**
      * Build a C vector using  C+ STL vector
      */
-    CStringVect(const StringVect_t& ref);
+    explicit CStringVect(const StringVect_t& ref);
     /** Frees vect */
-    virtual ~ CStringVect(void);
+    virtual ~CStringVect(void);
     /**
      * \brief Checks (using ASSERT) that all elements in vector are R-O accessible files
      */
@@ -86,30 +83,28 @@ struct CStringVect
 typedef std::pair<std::string, std::string> StringPair_t;
 typedef std::vector<StringPair_t> StringMap_t;
 
-}
+}   // namespace SOPC_tools
 
-namespace s2opc_north
-{
-using namespace SOPC_tools;
+namespace s2opc_north {
 
 /**
  * Configuration holder for a S2OPC server.
  * This class intends at interpreting all parameters provided by the configuration
  * and storing them into directly usable items.
  */
-class OpcUa_Server_Config
-{
-public:
-    OpcUa_Server_Config(const ConfigCategory& configData);
+class OpcUa_Server_Config {
+ public:
+    explicit OpcUa_Server_Config(const ConfigCategory& configData);
     virtual ~OpcUa_Server_Config(void);
-public:
+
+ public:
     /**
      * \brief  set up a \a SOPC_Endpoint_Config object with the  current configuration
      * \param ep The object to initialize
      */
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
 
-public:
+ public:
     // All fields are constants, and thus can be public.
     const std::string url;
     const std::string appUri;
@@ -126,15 +121,15 @@ public:
     const SOPC_tools::CStringVect revokedCert;
     const SOPC_tools::CStringVect issuedCert;
     const bool withLogs;
-    const SOPC_Log_Level logLevel; // only relevant if withLogs is true
+    const SOPC_Log_Level logLevel;  // only relevant if withLogs is true
     const std::string logPath;
     const SOPC_tools::StringVect_t policies;
     const std::string namespacesStr;
     const SOPC_tools::CStringVect namespacesUri;
-    const StringMap_t users;
+    const SOPC_tools::StringMap_t users;
     const Server_AddrSpace addrSpace;
 };
 
-}
+}   // namespace s2opc_north
 
-#endif
+#endif  //   INCLUDE_OPCUA_SERVER_CONFIG_H_

@@ -1,6 +1,7 @@
 # Note: type 'make Q=' to get make commands debug 
 Q=@
 PLUGIN_CONF='{"name": "s2opcua_srv","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 10,"schedule_enabled": true}'
+CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11'
 
 all: build install_plugin insert_plugin
 build:
@@ -32,5 +33,7 @@ del_plugin:
 	@echo "Delete plugin if already installed in FLEDGE..."
 	$(Q)(curl -sX DELETE http://localhost:8081/fledge/scheduled/task/s2opcua_srv | grep -o '"[ A-Za-z0-9_-]*deleted successfully."') || true
 	
+cpplint:
+	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/s2opc_addrspace_nano.c src/* include/*
 		
-.PHONY: all clean build check del_plugin install_plugin insert_plugin
+.PHONY: all clean build check del_plugin install_plugin insert_plugin cpplint

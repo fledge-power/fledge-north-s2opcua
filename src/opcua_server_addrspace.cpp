@@ -25,20 +25,18 @@ extern "C" {
 }
 
 // Fledge headers
-#include <config_category.h>
-#include <logger.h>
+#include "config_category.h"
+#include "logger.h"
 
-namespace
-{
-s2opc_north::NodeVect_t getNS0(void)
-{
+namespace {
+
+s2opc_north::NodeVect_t getNS0(void) {
     s2opc_north::NodeVect_t result;
 
     const uint32_t nbNodes(SOPC_Embedded_AddressSpace_nNodes_nano);
     SOPC_AddressSpace_Node* nodes(SOPC_Embedded_AddressSpace_Nodes_nano);
 
-    for (uint32_t i = 0 ; i < nbNodes; i++)
-    {
+    for (uint32_t i = 0 ; i < nbNodes; i++) {
         SOPC_AddressSpace_Node* node(nodes + i);
         result.push_back(node);
     }
@@ -46,25 +44,22 @@ s2opc_north::NodeVect_t getNS0(void)
     return result;
 }
 
-} // namespace
+}   // namespace
 
-namespace s2opc_north
-{
+namespace s2opc_north {
 /**************************************************************************/
 Server_AddrSpace::
 Server_AddrSpace(const std::string& json):
-    nodes(getNS0())
-{
+    nodes(getNS0()) {
 #warning "TODO : Add possibility to setup nano/mbedded ns0"
 #warning "TODO : fill address space!"
 }
 
 /**************************************************************************/
 Server_AddrSpace::
-~ Server_AddrSpace(void)
-{
+~Server_AddrSpace(void) {
     // Note: nodes are freed automatically (See call to ::SOPC_AddressSpace_Create)
 }
 
-} //namespace s2opc_north
+}   // namespace s2opc_north
 

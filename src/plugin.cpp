@@ -8,24 +8,21 @@
  * Author: Jeremie Chabod / Mark Riddoch
  */
 
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <strings.h>
-//#include <string>
+// System headers
 
 #include <vector>
 #include <exception>
 
-#include <logger.h>
-// #include <plugin_exception.h>
-#include <config_category.h>
-#include <reading.h>
-#include <rapidjson/document.h>
-#include <version.h>
+// Fledge includes
+#include "logger.h"
+#include "config_category.h"
+#include "reading.h"
+#include "rapidjson/document.h"
+#include "version.h"
+#include "plugin_api.h"
 
+/// Project includes
 #include "opcua_server.h"
-
-#include <plugin_api.h>
 
 extern "C" {
 // S2OPC Headers
@@ -45,15 +42,13 @@ extern "C" {
  * - plugin_register
  */
 
-namespace
-{
+namespace {
 #define PLUGIN_NAME  "s2opcua"
 #define INTERFACE_VERSION  "1.0.0"
 #define PLUGIN_FLAGS 0  // Supported NORTH flags are: SP_PERSIST_DATA, SP_BUILTIN
 
 /**************************************************************************/
-static s2opc_north::OPCUA_Server* handleToPlugin(void* handle)
-{
+static s2opc_north::OPCUA_Server* handleToPlugin(void* handle) {
     SOPC_ASSERT(handle != NULL && "OPC UA called with NULL plugin");
     return reinterpret_cast<s2opc_north::OPCUA_Server *> (handle);
 }
@@ -70,7 +65,7 @@ static PLUGIN_INFORMATION g_plugin_info = {
     s2opc_north::plugin_default_config  // Default configuration
 };
 
-} // namespace
+}   // namespace
 
 /**
  * The OPCUA plugin interface
@@ -79,37 +74,30 @@ extern "C" {
 
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
-static void plugin_Assert_UserCallback(const char* context)
-{
+static void plugin_Assert_UserCallback(const char* context) {
     FATAL("ASSERT failed. Context = %s", (context ? context : "<NULL>"));
     throw std::exception();
 }
 
 
 /**************************************************************************/
-PLUGIN_INFORMATION* plugin_info(void)
-{
+PLUGIN_INFORMATION* plugin_info(void) {
     Logger::getLogger()->debug("OPC UA Server Config is %s", ::g_plugin_info.config);
     return &::g_plugin_info;
 }
 
 /**************************************************************************/
-PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
-{
-    using namespace s2opc_north;
-
+PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
     PLUGIN_HANDLE handle = NULL;
     // the very first thing to do is to configure ASSERTs to be routed to Logger
     SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
-    try
-    {
+    try {
         Logger::getLogger()->setMinLevel("debug");
         INFO("----------------------------");
         DEBUG("OPC UA Server plugin_init()");
-        handle = (PLUGIN_HANDLE)(new OPCUA_Server(*configData));
+        handle = (PLUGIN_HANDLE)(new s2opc_north::OPCUA_Server(*configData));
     }
-    catch (const std::exception& e)
-    {
+    catch (const std::exception& e) {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
         throw exception();
     }
@@ -118,23 +106,20 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData)
 }
 
 /**************************************************************************/
-void plugin_shutdown(PLUGIN_HANDLE handle)
-{
+void plugin_shutdown(PLUGIN_HANDLE handle) {
     WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
     delete handleToPlugin(handle);
 }
 
 /**************************************************************************/
-uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings)
-{
+uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings) {
     return handleToPlugin(handle)->send(readings);
 }
 
 /**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
         s2opc_north::north_write_event_t write,
-        s2opc_north::north_operation_event_t operation)
-{
+        s2opc_north::north_operation_event_t operation) {
     handleToPlugin(handle)->setpointCallbacks(write, operation);
 }
 
