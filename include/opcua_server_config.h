@@ -32,21 +32,6 @@ extern "C" {
 /// Project includes
 #include "opcua_server_addrspace.h"
 
-/* HELPER MACROS*/
-#define DEBUG Logger::getLogger()->debug
-#define INFO Logger::getLogger()->info
-#define WARNING Logger::getLogger()->warn
-#define ERROR Logger::getLogger()->error
-#define FATAL Logger::getLogger()->fatal
-
-// Improve SOPC_ASSERT to allow run-time elaborated messages
-#define ASSERT(c,  ...) do { \
-    if (!(c)) {\
-        FATAL("ASSERT FAILED:" __VA_ARGS__);\
-        SOPC_ASSERT(false);\
-    }\
-} while (0)
-
 namespace SOPC_tools {
 
 /**

@@ -303,7 +303,7 @@ OpcUa_Server_Config(const ConfigCategory& configData):
         namespacesStr(extractString(configData, "namespaces")),
         namespacesUri(extractCStrArray(namespacesStr, "namespaces")),
         users(extractUsersPasswords(extractString(configData, "users"))),
-        addrSpace(extractString(configData, "exchanged_data")) {
+        addrSpace(extractString(configData, "nodes")) {
     INFO("OpcUa_Server_Config() OK.");
     INFO("Conf : logPath = %s", logPath.c_str());
     DEBUG("Conf : url = %s", url.c_str());

@@ -83,6 +83,16 @@
         "displayName" : "Certificates",
         "order" : "12"
     },
+    "nodes" : {
+        "description" : "Additionnal OPCUA nodes",
+        "type" : "string",
+        "default" : "{ 'nodes' : [\
+         {'nodeid':'ns=1;s=sample', 'display' : 'sample Display name', 'description' : 'sample description', 'parent' : 'i=84', 'readonly' : false, 'value' : '64', 'type' : 'UInt32'}\
+        ,{'nodeid':'ns=1;s=sample2', 'display' : 'sample2 Display name', 'description' : 'sample2 description', 'parent' : 'i=84', 'readonly' : true, 'value' : '65', 'type' : 'UInt32'}\
+         ]}",
+        "displayName" : "Additionnal OPCUA nodes",
+        "order" : "20"
+    },
     "exchanged_data" : {
         "description" : "exchanged data list",
         "type" : "string",
@@ -97,7 +107,7 @@
                     'type_id' : 'M_ME_NA_1',\
                     'label' : 'TM-1',\
                     'ioa' : 4202832\
-                }]"
+                }]}"
     },
     "endpoint" : {
         "description" : "Configure content of server endpoint",
