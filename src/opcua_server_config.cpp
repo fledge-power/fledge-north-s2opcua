@@ -349,6 +349,9 @@ OpcUa_Server_Config(const ConfigCategory& configData):
     INFO("OpcUa_Server_Config() OK.");
     INFO("Conf : logPath = %s", logPath.c_str());
     DEBUG("Conf : url = %s", url.c_str());
+    DEBUG("Conf : appUri = %s", appUri.c_str());
+    DEBUG("Conf : productUri = %s", productUri.c_str());
+    DEBUG("Conf : serverDescription = %s", serverDescription.c_str());
     DEBUG("Conf : serverCertPath = %s", serverCertPath.c_str());
     DEBUG("Conf : serverKeyPath = %s", serverKeyPath.c_str());
     DEBUG("Conf : certificates = %s", certificates.c_str());
@@ -357,8 +360,9 @@ OpcUa_Server_Config(const ConfigCategory& configData):
 
     ASSERT(not serverCertPath.empty(), "serverCertPath is missing");
     ASSERT(not serverKeyPath.empty(), "serverKeyPath is missing");
-    ASSERT(serverDescription.length() > 0,
-            "Application description cannot be empty");
+    ASSERT(appUri.length() > 0, "Application URI cannot be empty");
+    ASSERT(productUri.length() > 0, "Product URI cannot be empty");
+    ASSERT(serverDescription.length() > 0, "Application description cannot be empty");
     ASSERT(0 == access(serverCertPath.c_str(), R_OK),"Missing Server certificate file: %s" ,
             serverCertPath.c_str());
     ASSERT(0 == access(serverKeyPath.c_str(), R_OK),"Missing Server key file: %s" ,

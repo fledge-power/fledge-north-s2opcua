@@ -140,6 +140,15 @@ static void C_serverWriteEvent (const SOPC_CallContext* callCtxPtr,
 }
 
 /**************************************************************************/
+static void serverStopped_Fct(SOPC_ReturnStatus status)
+{
+    WARNING("Server stopped!");
+    ASSERT(false, "Server stopped with return code %s(%d).",
+            SOPC_tools::statusCodeToCString(status), status);
+#warning "TODO : how can the plugin be stopped properly?"
+}
+
+/**************************************************************************/
 static std::string toString(const SOPC_User* pUser)
 {
     if (pUser != NULL && SOPC_User_IsUsername(pUser))
@@ -211,6 +220,7 @@ const char* statusCodeToCString(const int code)
     }
 }
 
+/**************************************************************************/
 void
 CStringVect::
 checkAllFilesExist(void)const
@@ -253,10 +263,12 @@ OPCUA_Server(const ConfigCategory& configData):
 
     // Configure the server according to mConfig
 
+    //////////////////////////////////
     // Global initialization
     init_sopc_lib_and_logs();
     DEBUG ("S2OPC initialization OK");
 
+    //////////////////////////////////
     // Namespaces initialization
     status = SOPC_HelperConfigServer_SetNamespaces(mConfig.namespacesUri.size,
             mConfig.namespacesUri.cVect);
@@ -268,6 +280,7 @@ OPCUA_Server(const ConfigCategory& configData):
     status = SOPC_HelperConfigServer_SetLocaleIds(1, localesArray);
     ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");
 
+    //////////////////////////////////
     // Global descriptions initialization
     status = SOPC_HelperConfigServer_SetApplicationDescription(
             mConfig.appUri.c_str(), mConfig.productUri.c_str(),
@@ -277,6 +290,7 @@ OPCUA_Server(const ConfigCategory& configData):
             "SOPC_HelperConfigServer_SetApplicationDescription() returned code %s(%d)",
             statusCodeToCString(status), status);
 
+    //////////////////////////////////
     // Create endpoints configuration
     mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mConfig.url.c_str(), true);
     SOPC_ASSERT(mEpConfig != NULL);
@@ -284,6 +298,7 @@ OPCUA_Server(const ConfigCategory& configData):
     INFO("Setting up security...");
     mConfig.setupServerSecurity(mEpConfig);
 
+    //////////////////////////////////
     // Server certificates configuration
     status = SOPC_HelperConfigServer_SetKeyCertPairFromPath(
             mConfig.serverCertPath.c_str(),
@@ -325,6 +340,7 @@ OPCUA_Server(const ConfigCategory& configData):
     INFO("Test_Server_Client: Certificates and key loaded");
 
     //////////////////////////////////
+    // Setup AddressSpace
     SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(true);
     SOPC_ASSERT(addSpace != NULL);
 
@@ -343,7 +359,8 @@ OPCUA_Server(const ConfigCategory& configData):
 
     SOPC_UserAuthorization_Manager* authorizationManager = SOPC_UserAuthorization_CreateManager_AllowAll();
 
-    /* User Management configuration */
+    //////////////////////////////////
+    // User Management configuration
     SOPC_UserAuthentication_Manager* authenticationManager = new SOPC_UserAuthentication_Manager;
     SOPC_ASSERT(authenticationManager != NULL && authorizationManager != NULL);
 
@@ -361,29 +378,14 @@ OPCUA_Server(const ConfigCategory& configData):
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetWriteNotifCallback() returned code %s(%d)",
             statusCodeToCString(status), status);
-//
-//    status = SOPC_ServerHelper_StartServer(&syncServerStoppedCb);
-//    ASSERT(status == SOPC_STATUS_OK,
-//            "StartServer() returned code %s(%d)",
-//            statusCodeToCString(status), status);
 
-#warning WIP
-
-    SOPC_Endpoint_Config* pEpConfig = new SOPC_Endpoint_Config;
-
-    uint32_t epConfigIdx = SOPC_ToolkitServer_AddEndpointConfig(mEpConfig);
-    ASSERT(epConfigIdx > 0,
-            "SOPC_ToolkitServer_AddEndpointConfig() returned epConfigIdx = %d",
-            epConfigIdx);
-
-    status = SOPC_ToolkitServer_Configured();
+    //////////////////////////////////
+    // Start the server
+    status = SOPC_ServerHelper_StartServer(&serverStopped_Fct);
     ASSERT(status == SOPC_STATUS_OK,
-            "SOPC_ToolkitServer_Configured() returned code %s(%d)",
+            "StartServer() returned code %s(%d)",
             statusCodeToCString(status), status);
-
-    SOPC_ToolkitServer_AsyncOpenEndpoint(epConfigIdx);
-#warning "TODO : SOPC_Atomic_Int_Set(&serverOnline, 1);"
-
+#warning "TODO : check server status after a few seconds?"
     INFO("Started OPC UA server on endpoint %s", mConfig.url.c_str());
 }
 
@@ -477,22 +479,9 @@ init_sopc_lib_and_logs(void)
     SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
     if (mConfig.withLogs)
     {
-        const std::string traceFilePath = getDataDir() + string("/logs/");
         logConfig.logLevel = mConfig.logLevel;
         logConfig.logSystem = SOPC_LOG_SYSTEM_USER;
         logConfig.logSysConfig.userSystemLogConfig.doLog = &sopcDoLog;
-//
-//        // Note : other fields of fileSystemLogConfig are initialized by SOPC_Common_GetDefaultLogConfiguration()
-//        const char* logDirPath = mConfig.logPath.c_str();
-//        logConfig.logSysConfig.fileSystemLogConfig.logDirPath = logDirPath;
-//
-//         Check if log folder exist and create it if needed
-//        if (access(logDirPath, W_OK | R_OK))
-//        {
-//            INFO ("Creating log folder %s", logDirPath);
-//            mkdir(logDirPath,0777);
-//        }
-//        SOPC_ASSERT(0 == access(logDirPath, W_OK | R_OK) && "Cannot create log folder");
     }
     else
     {

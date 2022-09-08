@@ -23,21 +23,21 @@
     "appUri" : {
         "description" : "Applicative URI",
         "type" : "string",
-        "default" : "",
+        "default" : "urn:S2OPC:localhost",
         "displayName" : "Applicative URI",
         "order" : "3"
     },
     "productUri" : {
         "description" : "Product URI",
         "type" : "string",
-        "default" : "",
+        "default" : "urn:S2OPC:localhost",
         "displayName" : "Product URI",
         "order" : "4"
     },
     "description" : {
         "description" : "Application description",
         "type" : "string",
-        "default" : "Application description",
+        "default" : "LF Energy s2opc nort plugin example",
         "displayName" : "Application description",
         "order" : "5"
     },
