@@ -82,8 +82,6 @@ class OPCUA_Server {
      */
     void setpointCallbacks(north_write_event_t write, north_operation_event_t operation);
 
-    const OpcUa_Server_Config& config(void)const;
-
     /**
      * Process a write event on the server
      * \param callContextPtr The write context (including user)
@@ -103,13 +101,13 @@ class OPCUA_Server {
             uint32_t idOrStatus, void* param, uintptr_t appContext);
 
  public:
-    // It is mandatory that mEnvironment is the first member
+    const OpcUa_Protocol mProtocol;
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
     static OPCUA_Server* mInstance;
-    std::atomic<bool> mStopped;
 
  private:
+    std::atomic<bool> mStopped;
     int32_t mServerOnline;
     SOPC_Endpoint_Config* mEpConfig;
 };
@@ -118,11 +116,6 @@ inline void
 OPCUA_Server::
 setStopped(void) {
     mStopped = true;
-}
-
-inline const OpcUa_Server_Config&
-OPCUA_Server::config(void)const {
-    return mConfig;
 }
 
 }   // namespace s2opc_north

@@ -13,109 +13,56 @@
         "order" : "1",
         "mandatory": "true"
     },
-    "url" : {
-        "description" : "URL of the OPC UA Server",
-        "type" : "string",
-        "default" : "opc.tcp://localhost:4841/OPCUA/s2opc",
-        "displayName" : "OPCUA Server URL",
-        "order" : "2"
-    },
-    "appUri" : {
-        "description" : "Applicative URI",
-        "type" : "string",
-        "default" : "urn:S2OPC:localhost",
-        "displayName" : "Applicative URI",
-        "order" : "3"
-    },
-    "productUri" : {
-        "description" : "Product URI",
-        "type" : "string",
-        "default" : "urn:S2OPC:localhost",
-        "displayName" : "Product URI",
-        "order" : "4"
-    },
-    "description" : {
-        "description" : "Application description",
-        "type" : "string",
-        "default" : "LF Energy s2opc nort plugin example",
-        "displayName" : "Application description",
-        "order" : "5"
-    },
-    "localeId" : {
-        "description" : "Locale Id",
-        "type" : "string",
-        "default" : "en-US",
-        "displayName" : "Server Locale Id",
-        "order" : "6"
-    },
-    "namespaces" : {
-        "description" : "Namespaces definitions",
+    "protocol_stack" : {
+        "description" : "Stack protocol paremeters",
         "type" : "JSON",
-        "default" : "{ 'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ] }",
-        "displayName" : "Namespace names",
-        "order" : "7"
-        },
-    "users" : {
-        "description" : "Configure the users and related passwords",
-        "type" : "JSON",
-        "default" : "{'user' : 'password', 'user2' : 'xGt4sdE3Z+' }",
-        "displayName" : "Users and passowrds",
-        "order" : "8"
-        },
-    "serverCertPath" : {
-        "description" : "Name of the server certificate file (DER format)",
-        "type" : "string",
-        "default" : "server_2k_cert.der",
-        "displayName" : "Server certificate",
-        "order" : "10"
-    },
-    "serverKeyPath" : {
-        "description" : "Name of the server private key file (PEM format)",
-        "type" : "string",
-        "default" : "server_2k_key.pem",
-        "displayName" : "Server key",
-        "order" : "11"
-    },
-    "certificates" : {
-        "description" : "list of certificates files (DER format)",
-        "type" : "JSON",
-        "default" : "{ 'trusted_root' : [ 'cacert.der' ] , 'trusted_intermediate' : [ ] , 'revoked' : [ 'cacrl.der' ], 'untrusted_root' : [ ], 'untrusted_intermediate' : [  ], 'issued' : [  ] }",
-        "displayName" : "Certificates",
-        "order" : "12"
-    },
-    "nodes" : {
-        "description" : "Additionnal OPCUA nodes",
-        "type" : "string",
-        "default" : "{ 'nodes' : [\
-         {'nodeid':'ns=1;s=sample', 'display' : 'sample Display name', 'description' : 'sample description', 'parent' : 'i=84', 'readonly' : false, 'value' : '64', 'type' : 'UInt32'}\
-        ,{'nodeid':'ns=1;s=sample2', 'display' : 'sample2 Display name', 'description' : 'sample2 description', 'parent' : 'i=84', 'readonly' : true, 'value' : '65', 'type' : 'UInt32'}\
-         ]}",
-        "displayName" : "Additionnal OPCUA nodes",
-        "order" : "20"
+        "default" : "{'protocol_stack' : { 'name' : 's2opcserver',\
+                          'version':'1.0', \
+                          'transport_layer':{ \
+                              'url' : 'opc.tcp://localhost:4841/OPCUA/s2opc', \
+                              'appUri' : 'urn:S2OPC:localhost', \
+                              'productUri' : 'urn:S2OPC:localhost', \
+                              'appDescription': 'Application description', \
+                              'localeId' : 'en-US', \
+                              'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ], \
+                              'policies' : [ 'None/None/anonymous',  \
+                                             'Sign/Basic256/anonymous+username', \
+                                             'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256+username_None' ], \
+                              'users' : {'user' : 'password', 'user2' : 'xGt4sdE3Z+' }, \
+                              'certificates' : { \
+                                  'serverCertPath' : 'server_2k_cert.der', \
+                                  'serverKeyPath' : 'server_2k_key.pem', \
+                                  'trusted_root' : [ 'cacert.der' ],  \
+                                  'trusted_intermediate' : [ ], \
+                                  'revoked' : [ 'cacrl.der' ], \
+                                  'untrusted_root' : [ ], \
+                                  'untrusted_intermediate' : [ ], \
+                                  'issued' : [  ] } \
+                            } \
+                        } }",
+        "displayName" : "Stack protocol paremeters",
+        "order" : "2",
+        "mandatory": "true"
     },
     "exchanged_data" : {
         "description" : "exchanged data list",
-        "type" : "string",
-        "displayName" : "Exchanged data list",
-        "order" : "13",
-        "default" : " 'exchanged_data' : {\
-            'name' : 'iec104client',\
-            'version' : '1.0',\
-            'asdu_list' : [\
-                { \
-                    'ca' : 41025, \
-                    'type_id' : 'M_ME_NA_1',\
-                    'label' : 'TM-1',\
-                    'ioa' : 4202832\
-                }]}"
-    },
-    "endpoint" : {
-        "description" : "Configure content of server endpoint",
         "type" : "JSON",
-        "default" : "{'policies' : [ 'None/None/anonymous', 'Sign/Basic256/anonymous+username', 'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256+username_None' ]}",
-        "displayName" : "Server endpoint configuration",
-        "order" : "20"
-        },
+        "displayName" : "Exchanged data list",
+        "order" : "3",
+        "default" : " { 'exchanged_data' : {\
+            'name' : 'SAMPLE',\
+            'version' : '1.0',\
+            'datapoints' : [\
+                {'label':'TS1','pivot_id':'ID114562','pivot_type':'SpsTyp', \
+                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C301_yyy', 'typeid':'UInt32'}, \
+                                  { 'name' : 'iec104', 'address':'45-6672', 'typeid':'M_SP_TB_1', 'gi_groups':'station'}]\
+                }, \
+                {'label':'TM1','pivot_id':'ID114563','pivot_type':'DpsTyp', \
+                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C302_yyy', 'typeid':'UInt32'}, \
+                                  { 'name' : 'iec104', 'address':'45-984', 'typeid':'M_ME_NA_1'}]\
+                } \
+             ]}}"
+    },
     "logging" : {
         "description" : "Configure S2OPC logging level" ,
         "type" : "enumeration",

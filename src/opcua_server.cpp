@@ -73,7 +73,7 @@ static SOPC_ReturnStatus authentication_check(SOPC_UserAuthentication_Manager* a
     assert(NULL != token && NULL != authenticated && NULL != authn);
     const s2opc_north::OPCUA_Server& server = *reinterpret_cast<const s2opc_north::OPCUA_Server*>(authn->pData);
 
-    const SOPC_tools::StringMap_t& users(server.config().users);
+    const SOPC_tools::StringMap_t& users(server.mProtocol.users);
 
     *authenticated = SOPC_USER_AUTHENTICATION_REJECTED_TOKEN;
     assert(SOPC_ExtObjBodyEncoding_Object == token->Encoding);
@@ -214,7 +214,12 @@ checkAllFilesExist(void)const {
     }
     SOPC_ASSERT(result);
 }
+
 }   // namespace SOPC_tools
+
+/**************************************************************************/
+namespace {
+}   // namespace
 
 /**************************************************************************/
 namespace s2opc_north {
@@ -225,6 +230,7 @@ OPCUA_Server* OPCUA_Server::mInstance = NULL;
 /**************************************************************************/
 OPCUA_Server::
 OPCUA_Server(const ConfigCategory& configData):
+    mProtocol(configData.getValue("protocol_stack")),
     mConfig(configData),
     mBuildInfo(SOPC_CommonHelper_GetBuildInfo()),
     mServerOnline(false),
@@ -243,21 +249,21 @@ OPCUA_Server(const ConfigCategory& configData):
 
     //////////////////////////////////
     // Namespaces initialization
-    status = SOPC_HelperConfigServer_SetNamespaces(mConfig.namespacesUri.size,
-            mConfig.namespacesUri.cVect);
+    status = SOPC_HelperConfigServer_SetNamespaces(mProtocol.namespacesUri.size,
+            mProtocol.namespacesUri.cVect);
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetNamespaces returned code %s(%d)",
             statusCodeToCString(status), status);
 
-    const char* localesArray[2] = {mConfig.localeId.c_str(), NULL};
+    const char* localesArray[2] = {mProtocol.localeId.c_str(), NULL};
     status = SOPC_HelperConfigServer_SetLocaleIds(1, localesArray);
     ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");
 
     //////////////////////////////////
     // Global descriptions initialization
     status = SOPC_HelperConfigServer_SetApplicationDescription(
-            mConfig.appUri.c_str(), mConfig.productUri.c_str(),
-            mConfig.serverDescription.c_str(), mConfig.localeId.c_str(),
+            mProtocol.appUri.c_str(), mProtocol.productUri.c_str(),
+            mProtocol.serverDescription.c_str(), mProtocol.localeId.c_str(),
             OpcUa_ApplicationType_Server);
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetApplicationDescription() returned code %s(%d)",
@@ -265,17 +271,17 @@ OPCUA_Server(const ConfigCategory& configData):
 
     //////////////////////////////////
     // Create endpoints configuration
-    mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mConfig.url.c_str(), true);
+    mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mProtocol.url.c_str(), true);
     SOPC_ASSERT(mEpConfig != NULL);
 
     INFO("Setting up security...");
-    mConfig.setupServerSecurity(mEpConfig);
+    mProtocol.setupServerSecurity(mEpConfig);
 
     //////////////////////////////////
     // Server certificates configuration
     status = SOPC_HelperConfigServer_SetKeyCertPairFromPath(
-            mConfig.serverCertPath.c_str(),
-            mConfig.serverKeyPath.c_str());
+            mProtocol.serverCertPath.c_str(),
+            mProtocol.serverKeyPath.c_str());
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_HelperConfigServer_SetKeyCertPairFromPath() returned code %s(%d)",
             statusCodeToCString(status), status);
@@ -289,17 +295,17 @@ OPCUA_Server(const ConfigCategory& configData):
 
     // Certificates presence is checked beforehand because S2OPC PKI implementation
     // has no ability to log properly the defaults.
-    mConfig.trustedRootCert.checkAllFilesExist();
-    mConfig.trustedIntermCert.checkAllFilesExist();
-    mConfig.untrustedRootCert.checkAllFilesExist();
-    mConfig.untrustedIntermCert.checkAllFilesExist();
-    mConfig.issuedCert.checkAllFilesExist();
-    mConfig.revokedCert.checkAllFilesExist();
+    mProtocol.trustedRootCert.checkAllFilesExist();
+    mProtocol.trustedIntermCert.checkAllFilesExist();
+    mProtocol.untrustedRootCert.checkAllFilesExist();
+    mProtocol.untrustedIntermCert.checkAllFilesExist();
+    mProtocol.issuedCert.checkAllFilesExist();
+    mProtocol.revokedCert.checkAllFilesExist();
 
     status = SOPC_PKIProviderStack_CreateFromPaths(
-            mConfig.trustedRootCert.vect, mConfig.trustedIntermCert.vect,
-            mConfig.untrustedRootCert.vect, mConfig.untrustedIntermCert.vect,
-            mConfig.issuedCert.vect, mConfig.revokedCert.vect, &pkiProvider);
+            mProtocol.trustedRootCert.vect, mProtocol.trustedIntermCert.vect,
+            mProtocol.untrustedRootCert.vect, mProtocol.untrustedIntermCert.vect,
+            mProtocol.issuedCert.vect, mProtocol.revokedCert.vect, &pkiProvider);
     ASSERT(status == SOPC_STATUS_OK,
             "SOPC_PKIProviderStack_CreateFromPaths() returned code %s(%d). "
             "Check that certificates have correct format.",
@@ -362,7 +368,7 @@ OPCUA_Server(const ConfigCategory& configData):
     this_thread::sleep_for(chrono::milliseconds(100));
     ASSERT(!mStopped, "Server failed to start.");
 
-    INFO("Started OPC UA server on endpoint %s", mConfig.url.c_str());
+    INFO("Started OPC UA server on endpoint %s", mProtocol.url.c_str());
 }
 
 /**************************************************************************/

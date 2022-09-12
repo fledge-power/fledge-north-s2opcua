@@ -25,6 +25,7 @@ extern "C" {
 
 // Fledge headers
 #include "logger.h"
+#include "rapidjson/document.h"
 
 /* HELPER MACROS*/
 #define DEBUG Logger::getLogger()->debug
@@ -88,7 +89,7 @@ struct CVarInfo {
 class CNode {
  public:
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
-
+    void insertAndCompleteReferences(NodeVect_t& nodes);
  protected:
     explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
     SOPC_AddressSpace_Node mNode;

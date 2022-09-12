@@ -185,50 +185,35 @@ extractString(const ConfigCategory& config, const std::string& name) {
     return config.getValue(name);
 }
 
-
-typedef void (*processConfigArrayCb)(const std::string&);
 /**************************************************************************/
-/**
- * \brief convert a string containing a JSON-like array of string into a StringVect_t object
- * \param value A JSON-like string (e.g. <{"policies" : [ "A", "B", "C" ] }>
- * \param section The name of the section to read (e.g. "policies")
- * \param string A suffix to append to each element
- * \param prefix A prefix to prepend to each element
- * \return a vector of string (e.g. {string("A"), string("B"), string("C")} )
- */
-static StringVect_t extractStrArray(const std::string& value, const char* section,
+static SOPC_tools::CStringVect extractCStrArray(
+        const rapidjson::Value& value, const char* section,
         const std::string & prefix = "", const std::string& suffix = "") {
-    SOPC_ASSERT(NULL != section);
+    using rapidjson::Value;
     StringVect_t result;
+    ASSERT(value.HasMember(section), "Missing section '%s' for ARRAY", section);
+    const Value& array(value[section]);
+    ASSERT(array.IsArray(), "Section '%s' must be an ARRAY", section);
 
-    rapidjson::Document doc;
-    doc.Parse(value.c_str());
-    if (doc.HasParseError() || (!doc.HasMember(section) && doc[section].IsArray())) {
-        ERROR("Invalid section configuration :%s", section);
-        SOPC_ASSERT(false);
+    for (const rapidjson::Value& subV : array.GetArray()) {
+        ASSERT(subV.IsString(), "Section '%s' must be an ARRAY of STRINGS", section);
+        const std::string str(prefix + subV.GetString() + suffix);
+        result.push_back(str);
     }
-
-    const rapidjson::Value& subs = doc[section];
-    for (rapidjson::SizeType i = 0; i < subs.Size(); i++) {
-        const std::string value(prefix + subs[i].GetString() + suffix);
-        result.push_back(value);
-    }
-    return result;
+    return SOPC_tools::CStringVect(result);
 }
 
 /**************************************************************************/
-static StringMap_t extractUsersPasswords(const std::string& config) {
+static StringMap_t extractUsersPasswords(const rapidjson::Value& config) {
     using rapidjson::Document;
     using rapidjson::Value;
     StringMap_t result;
     Value::ConstMemberIterator it;
 
-    Document doc;
-    doc.Parse(config.c_str());
-    ASSERT(!doc.HasParseError(),
-            "Invalid users configuration :%s", config.c_str());
+    ASSERT(config.IsObject(),
+            "Invalid users configuration.");
 
-    for (it = doc.MemberBegin() ; it != doc.MemberEnd(); it++) {
+    for (it = config.MemberBegin() ; it != config.MemberEnd(); it++) {
         const char* user = it->name.GetString();
         const char* pass = it->value.GetString();
         result.push_back(std::make_pair(user, pass));
@@ -236,14 +221,6 @@ static StringMap_t extractUsersPasswords(const std::string& config) {
 
     return result;
 }
-
-
-/**************************************************************************/
-static SOPC_tools::CStringVect extractCStrArray(const std::string& value, const char* section,
-        const std::string & prefix = "", const std::string& suffix = "") {
-    return SOPC_tools::CStringVect(extractStrArray(value, section, prefix, suffix));
-}
-
 }   // namespace
 
 
@@ -253,12 +230,29 @@ namespace SOPC_tools {
 
 /**************************************************************************/
 CStringVect::
-CStringVect(const SOPC_tools::StringVect_t& ref):
-    size(ref.size()),
-    vect(new char*[size + 1]),
-    cVect((const char**)(vect)) {
+CStringVect(const StringVect_t& ref):
+size(ref.size()),
+vect(new char*[size + 1]),
+cVect((const char**)(vect)) {
     for (size_t i=0 ; i < size; i++) {
-        vect[i] = strdup(ref[i].c_str());
+        cppVect.push_back(ref[i]);
+        vect[i] = strdup(cppVect.back().c_str());
+    }
+    vect[size] = NULL;
+}
+
+/**************************************************************************/
+CStringVect::
+CStringVect(const rapidjson::Value& ref, const std::string& context):
+size(ref.GetArray().Size()),
+vect(new char*[size + 1]),
+cVect((const char**)(vect)) {
+    size_t i(0);
+    for (const rapidjson::Value& value : ref.GetArray()) {
+        ASSERT(value.IsString(), "Expecting a String in array '%s'", context);
+        cppVect.push_back(value.GetString());
+        vect[i] = strdup(cppVect.back().c_str());
+        i++;
     }
     vect[size] = NULL;
 }
@@ -266,8 +260,8 @@ CStringVect(const SOPC_tools::StringVect_t& ref):
 /**************************************************************************/
 CStringVect::
 ~CStringVect(void) {
-    for (size_t i=0 ; i < size; i++) {
-        delete (vect[i]);
+    for (size_t i =0 ; i < size ; i++) {
+        delete vect[i];
     }
     delete vect;
 }
@@ -279,43 +273,66 @@ using SOPC_tools::statusCodeToCString;
 
 // Important note: OPC stack is not initialized yet while parsing configuration,
 // thus it is not possible to use S2OPC logging at this point.
+
+
+ExchangedDataC::
+ExchangedDataC(const rapidjson::Value& json):
+mPreCheck(internalChecks(json)),
+address(json[JSON_PROT_ADDR].GetString()),
+typeId(json[JSON_PROT_TYPEID].GetString()) {
+}
+
+ExchangedDataC::
+~ExchangedDataC(void) {
+}
+
+bool
+ExchangedDataC::internalChecks(const rapidjson::Value& json)
+{
+    ASSERT(json.IsObject(), "datapoint protocol description must be JSON");
+    ASSERT(json.HasMember(JSON_PROT_NAME) || json[JSON_PROT_NAME].IsString()
+            , "datapoint protocol description must have a 'name' key defining a STRING");
+    const std::string protocolName(json[JSON_PROT_NAME].GetString());
+    if (protocolName != PROTOCOL_S2OPC) {
+        throw NotAnS2opcInstance();
+    }
+    ASSERT(json.HasMember(JSON_PROT_ADDR) || json[JSON_PROT_ADDR].IsString()
+            , "datapoint protocol description must have a '" JSON_PROT_ADDR "' key defining a STRING");
+    ASSERT(json.HasMember(JSON_PROT_TYPEID) || json[JSON_PROT_TYPEID].IsString()
+            , "datapoint protocol description must have a '" JSON_PROT_TYPEID "' key defining a STRING");
+    return true;
+}
+
+
 /**************************************************************************/
-OpcUa_Server_Config::
-OpcUa_Server_Config(const ConfigCategory& configData):
-        url(extractString(configData, "url")),
-        appUri(extractString(configData, "appUri")),
-        productUri(extractString(configData, "productUri")),
-        localeId(extractString(configData, "localeId")),
-        serverDescription(extractString(configData, "description")),
-        serverCertPath(::certDirServer + extractString(configData, "serverCertPath")),
-        serverKeyPath(::certDirServer + extractString(configData, "serverKeyPath")),
-        certificates(extractString(configData, "certificates")),
-        trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
-        trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate", ::certDirTrusted)),
-        untrustedRootCert(extractCStrArray(certificates, "untrusted_root", ::certDirUntrusted)),
-        untrustedIntermCert(extractCStrArray(certificates, "untrusted_intermediate", ::certDir + "untrusted")),
-        issuedCert(extractCStrArray(certificates, "issued", ::certDirIssued)),
-        revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
-        withLogs(::toUpper(extractString(configData, "logging")) != "NONE"),
-        logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
-        logPath(::logDir),
-        policies(extractStrArray(extractString(configData, "endpoint"), "policies")),
-        namespacesStr(extractString(configData, "namespaces")),
-        namespacesUri(extractCStrArray(namespacesStr, "namespaces")),
-        users(extractUsersPasswords(extractString(configData, "users"))),
-        addrSpace(extractString(configData, "nodes")) {
-    INFO("OpcUa_Server_Config() OK.");
-    INFO("Conf : logPath = %s", logPath.c_str());
+OpcUa_Protocol::
+OpcUa_Protocol(const std::string& protocol):
+mDoc(initDoc(protocol)),
+mProtocol(mDoc["protocol_stack"]),
+mTransport(mProtocol["transport_layer"]),
+url(mTransport["url"].GetString()),
+appUri(mTransport["appUri"].GetString()),
+productUri(mTransport["productUri"].GetString()),
+localeId(mTransport["localeId"].GetString()),
+serverDescription(mTransport["appDescription"].GetString()),
+certificates(mTransport["certificates"]),
+serverCertPath(::certDirServer + certificates["serverCertPath"].GetString()),
+serverKeyPath(::certDirServer + certificates["serverKeyPath"].GetString()),
+trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
+trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate", ::certDirTrusted)),
+untrustedRootCert(extractCStrArray(certificates, "untrusted_root", ::certDirUntrusted)),
+untrustedIntermCert(extractCStrArray(certificates, "untrusted_intermediate", ::certDir + "untrusted")),
+issuedCert(extractCStrArray(certificates, "issued", ::certDirIssued)),
+revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
+policies(SOPC_tools::CStringVect(mTransport["policies"], "policies")),
+namespacesUri(SOPC_tools::CStringVect(mTransport["namespaces"], "namespaces")),
+users(extractUsersPasswords(mTransport["users"])) {
     DEBUG("Conf : url = %s", url.c_str());
     DEBUG("Conf : appUri = %s", appUri.c_str());
     DEBUG("Conf : productUri = %s", productUri.c_str());
     DEBUG("Conf : serverDescription = %s", serverDescription.c_str());
     DEBUG("Conf : serverCertPath = %s", serverCertPath.c_str());
     DEBUG("Conf : serverKeyPath = %s", serverKeyPath.c_str());
-    DEBUG("Conf : certificates = %s", certificates.c_str());
-    DEBUG("Conf : logLevel = %d", logLevel);
-    DEBUG("Conf : withLogs = %d", withLogs);
-
     ASSERT(!serverCertPath.empty(), "serverCertPath is missing");
     ASSERT(!serverKeyPath.empty(), "serverKeyPath is missing");
     ASSERT(appUri.length() > 0, "Application URI cannot be empty");
@@ -328,10 +345,34 @@ OpcUa_Server_Config(const ConfigCategory& configData):
 }
 
 /**************************************************************************/
+OpcUa_Protocol::
+~OpcUa_Protocol(void) {
+}
+
+/**************************************************************************/
+rapidjson::Document
+OpcUa_Protocol::
+initDoc(const std::string& json)const {
+    rapidjson::Document doc;
+    doc.Parse(json.c_str());
+    ASSERT(!doc.HasParseError(), "Malformed JSON (section '%s', offset= %u) :%s",
+            JSON_PROTOCOLS, doc.GetErrorOffset(), json.c_str());
+
+    ASSERT(doc.HasMember("protocol_stack") && doc["protocol_stack"].IsObject(),
+            "Invalid section 'protocol_stack'");
+
+    const rapidjson::Value& protocol(doc["protocol_stack"]);
+
+    ASSERT(protocol.HasMember("transport_layer") && protocol["transport_layer"].IsObject(),
+            "Invalid section 'protocol_stack':'transport_layer'");
+    return doc;
+}
+
+/**************************************************************************/
 void
-OpcUa_Server_Config::
+OpcUa_Protocol::
 setupServerSecurity(SOPC_Endpoint_Config* ep)const {
-    for (std::string rawPolicy : policies) {
+    for (std::string rawPolicy : policies.cppVect) {
         DEBUG("process policy %s", rawPolicy.c_str());
         const SOPC_SecurityModeMask mode(::toSecurityMode(::splitString(&rawPolicy)));
         const SOPC_SecurityPolicy_URI policy(::toSecurityPolicy(::splitString(&rawPolicy)));
@@ -353,6 +394,19 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
                     statusCodeToCString(status), status);
         } while (!rawPolicy.empty());
     }
+}
+
+/**************************************************************************/
+OpcUa_Server_Config::
+OpcUa_Server_Config(const ConfigCategory& configData):
+        withLogs(::toUpper(extractString(configData, "logging")) != "NONE"),
+        logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
+        logPath(::logDir),
+        addrSpace(extractString(configData, "exchanged_data")) {
+    INFO("OpcUa_Server_Config() OK.");
+    INFO("Conf : logPath = %s", logPath.c_str());
+    DEBUG("Conf : logLevel = %d", logLevel);
+    DEBUG("Conf : withLogs = %d", withLogs);
 }
 
 /**************************************************************************/
