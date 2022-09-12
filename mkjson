@@ -26,8 +26,8 @@ END_WARNING
 # - replace ' by \" (This aims at easing readability of json to avoid using \" within strings)
 # - replace \ by \\
 # - replace " by \"
-# - remove leading spaces
+# - Trim  spaces and tab. (beginning and end of line) 
 # - Replace each <line> by <"line"\>
-cat  ${JSON} | sed 's/\\$//g' | sed "s/'/"'\\\"'/g | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/^ *//' | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
+cat  ${JSON} | sed 's/^[\t ]*//g' | sed 's/[\t ]*$//g' | sed 's/\\$//g' | sed "s/'/"'\\\"'/g | sed 's/\\/\\\\/g' | sed 's/"/\\"/g'  | sed 's/^\(.*\)$/"\1"\\/'>> ${CPP}
 /bin/echo ';' >> ${CPP}
 /bin/echo '}' >> ${CPP}
