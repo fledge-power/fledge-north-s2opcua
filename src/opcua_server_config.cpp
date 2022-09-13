@@ -126,7 +126,7 @@ static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
     if (policy == "Aes128Sha256RsaOaep") {
         return SOPC_SecurityPolicy_Aes128Sha256RsaOaep;
     }
-    if (policy == "Aes128Sha256RsaOaep") {
+    if (policy == "Aes128Sha256RsaPss") {
         return SOPC_SecurityPolicy_Aes256Sha256RsaPss;
     }
 
