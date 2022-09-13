@@ -51,7 +51,6 @@ namespace SOPC_tools {
 /** \brief this function ensures there are no non-ASCII chars sent to logger because
  * this can makes FLEDGE logger crash, and results in no log at all
  */
-
 const char* loggableString(const std::string& log);
 
 /**
@@ -115,10 +114,10 @@ class ExchangedDataC {
  private:
     const bool mPreCheck;
     bool internalChecks(const rapidjson::Value& json);
+
  public:
     const std::string address;
     const std::string typeId;
-
 };  // class ExchangedDataC
 
 
@@ -127,8 +126,8 @@ class ExchangedDataC {
  */
 class OpcUa_Protocol {
  public:
-   explicit OpcUa_Protocol(const std::string& protocol);
-   virtual ~OpcUa_Protocol(void);
+    explicit OpcUa_Protocol(const std::string& protocol);
+    virtual ~OpcUa_Protocol(void);
     /**
      * \brief  set up a \a SOPC_Endpoint_Config object with the  current configuration
      * \param ep The object to initialize
@@ -143,24 +142,24 @@ class OpcUa_Protocol {
 
 
  public:
-   // All fields are constants, and thus can be public.
-   const std::string url;
-   const std::string appUri;
-   const std::string productUri;
-   const std::string localeId;
-   const std::string serverDescription;
-   const rapidjson::Value& certificates;
-   const std::string serverCertPath;
-   const std::string serverKeyPath;
-   const SOPC_tools::CStringVect trustedRootCert;
-   const SOPC_tools::CStringVect trustedIntermCert;
-   const SOPC_tools::CStringVect untrustedRootCert;
-   const SOPC_tools::CStringVect untrustedIntermCert;
-   const SOPC_tools::CStringVect revokedCert;
-   const SOPC_tools::CStringVect issuedCert;
-   const SOPC_tools::CStringVect policies;
-   const SOPC_tools::CStringVect namespacesUri;
-   const SOPC_tools::StringMap_t users;
+    // All fields are constants, and thus can be public.
+    const std::string url;
+    const std::string appUri;
+    const std::string productUri;
+    const std::string localeId;
+    const std::string serverDescription;
+    const rapidjson::Value& certificates;
+    const std::string serverCertPath;
+    const std::string serverKeyPath;
+    const SOPC_tools::CStringVect trustedRootCert;
+    const SOPC_tools::CStringVect trustedIntermCert;
+    const SOPC_tools::CStringVect untrustedRootCert;
+    const SOPC_tools::CStringVect untrustedIntermCert;
+    const SOPC_tools::CStringVect revokedCert;
+    const SOPC_tools::CStringVect issuedCert;
+    const SOPC_tools::CStringVect policies;
+    const SOPC_tools::CStringVect namespacesUri;
+    const SOPC_tools::StringMap_t users;
 };
 
 /**

@@ -59,8 +59,7 @@ static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& te
 }
 
 static string getString(const rapidjson::Value& value,
-        const char* section, const std::string& context)
-{
+        const char* section, const std::string& context) {
     ASSERT(value.HasMember(section), "Missing STRING '%s' in '%s'",
             section, context.c_str());
     const rapidjson::Value& object(value[section]);
@@ -70,8 +69,7 @@ static string getString(const rapidjson::Value& value,
 }
 
 static const rapidjson::Value& getObject(const rapidjson::Value& value,
-        const char* section, const std::string& context)
-{
+        const char* section, const std::string& context) {
     ASSERT(value.HasMember(section), "Missing OBJECT '%s' in '%s'",
             section, context.c_str());
     const rapidjson::Value& object(value[section]);
@@ -82,8 +80,7 @@ static const rapidjson::Value& getObject(const rapidjson::Value& value,
 
 
 static const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
-        const char* section, const std::string& context)
-{
+        const char* section, const std::string& context) {
     ASSERT(value.HasMember(section), "Missing ARRAY '%s' in '%s'",
             section, context.c_str());
     const rapidjson::Value& object(value[section]);
@@ -104,7 +101,8 @@ template <typename T>
 class GarbageCollectorC {
  public:
     typedef T* pointer;
-    void reallocate(pointer& ptr, size_t oldSize, size_t newSize);
+    void reallocate(pointer* ptr, size_t oldSize, size_t newSize);
+    virtual ~GarbageCollectorC(void);
 
  private:
     typedef map<pointer, bool>  ptrMap;  // Note that only key is used
@@ -115,23 +113,32 @@ static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;
 template<typename T>
 void
 GarbageCollectorC<T>::
-reallocate(pointer& ptr, size_t oldSize, size_t newSize) {
-
-    const pointer oldPtr(ptr);
+reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
+    SOPC_ASSERT(NULL != ptr);
+    const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
-    ptr = new T[newSize];
-    SOPC_ASSERT(NULL != ptr);
+    *ptr = new T[newSize];
+    SOPC_ASSERT(NULL != *ptr);
 
-    memcpy(ptr, oldPtr, oldSize * sizeof(T));
+    memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
-    WARNING("JCH TODO reallocate %p : %p [DELETE=%d ,%u elts]", oldPtr, ptr, it != mAllocated.end(), newSize);
+    WARNING("JCH TODO reallocate %p : %p [DELETE=%d ,%u elts]", oldPtr, *ptr, it != mAllocated.end(), newSize);
     if (it != mAllocated.end()) {
         delete(oldPtr);
         mAllocated.erase(it);
     }
-    mAllocated.insert({ptr, true});
+    mAllocated.insert({*ptr, true});
 }
+
+template<typename T>
+GarbageCollectorC<T>::
+~GarbageCollectorC(void) {
+    for (auto alloc : mAllocated) {
+        delete alloc.first;
+    }
+}
+
 }   // namespace
 
 namespace {
@@ -143,9 +150,7 @@ static const SOPC_NodeId NodeId_HasTypeDefinition = {SOPC_IdentifierType_Numeric
 static const SOPC_NodeId NodeId_HasComponent = {SOPC_IdentifierType_Numeric, nameSpace0, 47};
 static const SOPC_NodeId NodeId_BaseDataVariableType = {SOPC_IdentifierType_Numeric, nameSpace0, 63};
 static const SOPC_NodeId NodeId_Root_Objects = {SOPC_IdentifierType_Numeric, nameSpace0, 85};
-
 }
-
 
 namespace s2opc_north {
 
@@ -160,8 +165,8 @@ CNode(SOPC_StatusCode defaultStatusCode) {
 /**************************************************************************/
 void
 CNode::
-insertAndCompleteReferences(NodeVect_t& nodes){
-    nodes.push_back(&mNode);
+insertAndCompleteReferences(NodeVect_t* nodes) {
+    nodes->push_back(&mNode);
     // Find references and invert them
     const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
     const uint32_t nbRef(mNode.data.variable.NoOfReferences);
@@ -172,9 +177,9 @@ insertAndCompleteReferences(NodeVect_t& nodes){
             // create a reverse reference
 
             // Find matching node in 'nodes'
-            bool found (false);
-            for (SOPC_AddressSpace_Node* pNode : nodes) {
-                if (NULL != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)){
+            bool found(false);
+            for (SOPC_AddressSpace_Node* pNode : *nodes) {
+                if (NULL != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
                     // Insert space in target references
                     ASSERT(!found, "Several match for the same Node Id");
                     found = true;
@@ -182,12 +187,12 @@ insertAndCompleteReferences(NodeVect_t& nodes){
                     // elements explicitly allocated here
                     const size_t oldSize(pNode->data.variable.NoOfReferences);
                     const size_t newSize(oldSize + 1);
-                    referencesGarbageCollector.reallocate(pNode->data.variable.References,
+                    referencesGarbageCollector.reallocate(&pNode->data.variable.References,
                             oldSize, newSize);
 
                     // Fill new reference with inverted reference
                     OpcUa_ReferenceNode& reverse(pNode->data.variable.References[oldSize]);
-                    reverse.IsInverse = not ref->IsInverse;
+                    reverse.IsInverse = !ref->IsInverse;
                     reverse.ReferenceTypeId = ref->ReferenceTypeId;
                     reverse.TargetId.NodeId = nodeId;
                     reverse.TargetId.ServerIndex = serverIndex;
@@ -284,16 +289,14 @@ Server_AddrSpace(const std::string& json):
     const Value& exData(::getObject(doc, JSON_EXCHANGED_DATA, JSON_EXCHANGED_DATA));
     const Value::ConstArray datapoints(::getArray(exData, JSON_DATAPOINTS, JSON_EXCHANGED_DATA));
 
-    for (const Value& datapoint : datapoints)
-    {
+    for (const Value& datapoint : datapoints) {
         const string label(::getString(datapoint, JSON_LABEL, JSON_DATAPOINTS));
         DEBUG("Parsing DATAPOINT(%s)", label.c_str());
         const string pivot_id(::getString(datapoint, JSON_PIVOT_ID, JSON_DATAPOINTS));
         const string pivot_type(::getString(datapoint, JSON_PIVOT_TYPE, JSON_DATAPOINTS));
         const Value::ConstArray& protocols(::getArray(datapoint, JSON_PROTOCOLS, JSON_DATAPOINTS));
 
-        for (const Value& protocol : protocols)
-        {
+        for (const Value& protocol : protocols) {
             try {
                 const ExchangedDataC data(protocol);
                 const std::string browseName;
@@ -303,9 +306,9 @@ Server_AddrSpace(const std::string& json):
                 const bool readOnly(true);
                 const uint32_t value(45);
                 CVarInfo cVarInfo(data.address, browseName, displayName, description, parent, readOnly);
-                CVarNode* pNode= new CVarNode(cVarInfo, value);
+                CVarNode* pNode(new CVarNode(cVarInfo, value));
                 WARNING("Adding node data '%s' of type '%s'", data.address.c_str(), data.typeId.c_str());
-                pNode->insertAndCompleteReferences(nodes);
+                pNode->insertAndCompleteReferences(&nodes);
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
                 // Just ignore other protcols

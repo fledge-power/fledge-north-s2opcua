@@ -47,6 +47,7 @@ extern "C" {
 namespace {
 using SOPC_tools::StringVect_t;
 using SOPC_tools::StringMap_t;
+using SOPC_tools::loggableString;
 
 // Plugin data storage
 static const std::string dataDir(getDataDir());
@@ -278,6 +279,7 @@ CStringVect::
 /**************************************************************************/
 namespace s2opc_north {
 using SOPC_tools::statusCodeToCString;
+using SOPC_tools::loggableString;
 
 // Important note: OPC stack is not initialized yet while parsing configuration,
 // thus it is not possible to use S2OPC logging at this point.
@@ -295,8 +297,7 @@ ExchangedDataC::
 }
 
 bool
-ExchangedDataC::internalChecks(const rapidjson::Value& json)
-{
+ExchangedDataC::internalChecks(const rapidjson::Value& json) {
     ASSERT(json.IsObject(), "datapoint protocol description must be JSON");
     ASSERT(json.HasMember(JSON_PROT_NAME) || json[JSON_PROT_NAME].IsString()
             , "datapoint protocol description must have a 'name' key defining a STRING");
