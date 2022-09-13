@@ -75,14 +75,14 @@ extern "C" {
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 static void plugin_Assert_UserCallback(const char* context) {
-    FATAL("ASSERT failed. Context = %s", (context ? context : "[NULL]"));
+    FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
     throw std::exception();
 }
 
 
 /**************************************************************************/
 PLUGIN_INFORMATION* plugin_info(void) {
-    Logger::getLogger()->debug("OPC UA Server Config is %s", ::g_plugin_info.config);
+    Logger::getLogger()->debug("OPC UA Server Config is %s", LOGGABLE(g_plugin_info.config));
     return &::g_plugin_info;
 }
 

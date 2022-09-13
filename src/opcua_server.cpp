@@ -156,22 +156,22 @@ static void sopcDoLog(const char* category, const char* const line) {
     const size_t len = strlen(line);
 
     if (len > datelen + 2) {
-        const char* text(SOPC_tools::loggableString(line + datelen));
+        const std::string text(SOPC_tools::loggableString(line + datelen));
         switch (text[1]) {
         case 'E':
-            ERROR("[S2OPC] %s", text);
+            ERROR("[S2OPC] %s", text.c_str());
             break;
         case 'W':
-            WARNING("[S2OPC] %s", text);
+            WARNING("[S2OPC] %s", text.c_str());
             break;
         case 'I':
-            INFO("[S2OPC] %s", text);
+            INFO("[S2OPC] %s", text.c_str());
             break;
         case 'D':
-            DEBUG("[S2OPC] %s", text);
+            DEBUG("[S2OPC] %s", text.c_str());
             break;
         default:
-            INFO("[S2OPC] %s", text);
+            INFO("[S2OPC] %s", text.c_str());
             break;
         }
     }
@@ -201,6 +201,59 @@ const char* statusCodeToCString(const int code) {
 }
 
 /**************************************************************************/
+string getString(const rapidjson::Value& value,
+        const char* section, const std::string& context) {
+    ASSERT(value.HasMember(section), "Missing STRING '%s' in '%s'",
+            section, context.c_str());
+    const rapidjson::Value& object(value[section]);
+    ASSERT(object.IsString(), "Error :'%s' in '%s' must be an STRING",
+            section, context.c_str());
+    return object.GetString();
+}
+
+/**************************************************************************/
+string getString(const rapidjson::Value& value, const std::string& context) {
+    ASSERT(value.IsString(), "Error : '%s' must be an STRING",
+            context.c_str());
+    return value.GetString();
+}
+
+/**************************************************************************/
+const rapidjson::Value& getObject(const rapidjson::Value& value,
+        const char* section, const std::string& context) {
+    ASSERT(value.HasMember(section), "Missing OBJECT '%s' in '%s'",
+            section, context.c_str());
+    const rapidjson::Value& object(value[section]);
+    ASSERT(object.IsObject(), "Error :'%s' in '%s' must be an OBJECT",
+            section, context.c_str());
+    return object;
+}
+
+/**************************************************************************/
+void checkObject(const rapidjson::Value& value, const std::string& context) {
+    ASSERT(value.IsObject(), "Error :'%s' must be an OBJECT",
+            context.c_str());
+}
+
+/**************************************************************************/
+const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
+        const char* section, const std::string& context) {
+    ASSERT(value.HasMember(section), "Missing ARRAY '%s' in '%s'",
+            section, context.c_str());
+    const rapidjson::Value& object(value[section]);
+    ASSERT(object.IsArray(), "Error :'%s' in '%s' must be an ARRAY",
+            section, context.c_str());
+    return object.GetArray();
+}
+
+/**************************************************************************/
+std::string toString(const SOPC_NodeId& nodeid) {
+    char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
+    string result(nodeIdStr);
+    delete nodeIdStr;
+    return result;
+}
+/**************************************************************************/
 void
 CStringVect::
 checkAllFilesExist(void)const {
@@ -208,7 +261,7 @@ checkAllFilesExist(void)const {
     bool result(true);
     while (*p) {
         if (access(*p, R_OK)) {
-            FATAL("File not found '%s'", loggableString(*p));
+            FATAL("File not found '%s'", LOGGABLE(*p));
             result = false;
         }
         p++;
@@ -369,7 +422,7 @@ OPCUA_Server(const ConfigCategory& configData):
     this_thread::sleep_for(chrono::milliseconds(100));
     ASSERT(!mStopped, "Server failed to start.");
 
-    INFO("Started OPC UA server on endpoint %s", loggableString(mProtocol.url));
+    INFO("Started OPC UA server on endpoint %s", LOGGABLE(mProtocol.url));
 }
 
 /**************************************************************************/
@@ -389,7 +442,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     if (NULL != pUser) {
         const std::string username(toString(pUser));
         const char* nodeId(SOPC_NodeId_ToCString(&writeValue->NodeId));
-        INFO("Client '%s' wrote into node [%s]", loggableString(username), loggableString(nodeId));
+        INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeId));
 
         delete nodeId;
     }

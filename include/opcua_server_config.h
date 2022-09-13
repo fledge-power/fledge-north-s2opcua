@@ -28,6 +28,8 @@ extern "C" {
 #include "s2opc/common/sopc_log_manager.h"
 #include "s2opc/clientserver/sopc_user_app_itf.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
+#include "s2opc/clientserver/frontend/libs2opc_server_config.h"
+#include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
 };
 
 /// Project includes
@@ -51,13 +53,29 @@ namespace SOPC_tools {
 /** \brief this function ensures there are no non-ASCII chars sent to logger because
  * this can makes FLEDGE logger crash, and results in no log at all
  */
-const char* loggableString(const std::string& log);
+const std::string loggableString(const std::string& log);
+
+// Note: it is possible (for performance reasons) to remove the logging compliancy by simply
+// using:
+// #define LOGGABLE(s) (s).c_str()
+#define LOGGABLE(s) SOPC_tools::loggableString(s).c_str()
 
 /**
  * @param status a S2OPC status code
  * @return a human-readable representation of a status code
  */
 extern const char* statusCodeToCString(const int status);
+
+/* Basic JSON parsers with related asserts */
+string getString(const rapidjson::Value& value,
+        const char* section, const std::string& context);
+string getString(const rapidjson::Value& value, const std::string& context);
+const rapidjson::Value& getObject(const rapidjson::Value& value,
+        const char* section, const std::string& context);
+void checkObject(const rapidjson::Value& value, const std::string& context);
+const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
+        const char* section, const std::string& context);
+std::string toString(const SOPC_NodeId& nodeid);
 
 /** Vector of string */
 typedef std::vector<std::string> StringVect_t;
@@ -134,12 +152,23 @@ class OpcUa_Protocol {
      */
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
 
+    struct PolicyS {
+        explicit PolicyS(const std::string& modeStr, const std::string& policyStr, const rapidjson::Value::ConstArray& userPolicies);
+        const std::string name;
+        SOPC_SecurityModeMask mode;
+        SOPC_SecurityPolicy_URI policy;
+        std::vector<const SOPC_UserTokenPolicy*> userTokens;
+    };
+    struct PoliciesVect : public std::vector<PolicyS> {
+        explicit PoliciesVect(rapidjson::Value& transport);
+    };
+
  private:
     rapidjson::Document initDoc(const std::string& json)const;
+
     rapidjson::Document mDoc;
     rapidjson::Value& mProtocol;
     rapidjson::Value& mTransport;
-
 
  public:
     // All fields are constants, and thus can be public.
@@ -157,7 +186,7 @@ class OpcUa_Protocol {
     const SOPC_tools::CStringVect untrustedIntermCert;
     const SOPC_tools::CStringVect revokedCert;
     const SOPC_tools::CStringVect issuedCert;
-    const SOPC_tools::CStringVect policies;
+    const PoliciesVect policies;
     const SOPC_tools::CStringVect namespacesUri;
     const SOPC_tools::StringMap_t users;
 };

@@ -32,6 +32,11 @@ extern "C" {
 /// Project includes
 #include "opcua_server_config.h"
 
+using SOPC_tools::toString;
+using SOPC_tools::getArray;
+using SOPC_tools::getString;
+using SOPC_tools::getObject;
+
 namespace {
 using std::string;
 
@@ -58,45 +63,12 @@ static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& te
     SOPC_String_InitializeFromCString(&localText->defaultText, text.c_str());
 }
 
-static string getString(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing STRING '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsString(), "Error :'%s' in '%s' must be an STRING",
-            section, context.c_str());
-    return object.GetString();
-}
-
-static const rapidjson::Value& getObject(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing OBJECT '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsObject(), "Error :'%s' in '%s' must be an OBJECT",
-            section, context.c_str());
-    return object;
-}
-
-
-static const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing ARRAY '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsArray(), "Error :'%s' in '%s' must be an ARRAY",
-            section, context.c_str());
-    return object.GetArray();
-}
-
-static std::string toString(const SOPC_NodeId& nodeid) {
-    char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
-    string result(nodeIdStr);
-    delete nodeIdStr;
-    return result;
-}
-
-
+/**************************************************************************/
+/**
+ * \brief This "Garbage collector" is used to allow multiple realloc on the same object
+ * while the first realloc must not FREE the initial value. This is use by Address space
+ * references which are statically generated but are also completed depending on configuration.
+ */
 template <typename T>
 class GarbageCollectorC {
  public:
@@ -287,14 +259,14 @@ Server_AddrSpace(const std::string& json):
             "Malformed JSON (section '%s')", JSON_EXCHANGED_DATA);
 
     const Value& exData(::getObject(doc, JSON_EXCHANGED_DATA, JSON_EXCHANGED_DATA));
-    const Value::ConstArray datapoints(::getArray(exData, JSON_DATAPOINTS, JSON_EXCHANGED_DATA));
+    const Value::ConstArray datapoints(getArray(exData, JSON_DATAPOINTS, JSON_EXCHANGED_DATA));
 
     for (const Value& datapoint : datapoints) {
         const string label(::getString(datapoint, JSON_LABEL, JSON_DATAPOINTS));
-        DEBUG("Parsing DATAPOINT(%s)", label.c_str());
+        DEBUG("Parsing DATAPOINT(%s)", LOGGABLE(label));
         const string pivot_id(::getString(datapoint, JSON_PIVOT_ID, JSON_DATAPOINTS));
         const string pivot_type(::getString(datapoint, JSON_PIVOT_TYPE, JSON_DATAPOINTS));
-        const Value::ConstArray& protocols(::getArray(datapoint, JSON_PROTOCOLS, JSON_DATAPOINTS));
+        const Value::ConstArray& protocols(getArray(datapoint, JSON_PROTOCOLS, JSON_DATAPOINTS));
 
         for (const Value& protocol : protocols) {
             try {
@@ -307,7 +279,8 @@ Server_AddrSpace(const std::string& json):
                 const uint32_t value(45);
                 CVarInfo cVarInfo(data.address, browseName, displayName, description, parent, readOnly);
                 CVarNode* pNode(new CVarNode(cVarInfo, value));
-                WARNING("Adding node data '%s' of type '%s'", data.address.c_str(), data.typeId.c_str());
+                WARNING("Adding node data '%s' of type '%s'",
+                        LOGGABLE(data.address), data.typeId.c_str());
                 pNode->insertAndCompleteReferences(&nodes);
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
