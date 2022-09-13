@@ -25,9 +25,11 @@
                               'appDescription': 'Application description', \
                               'localeId' : 'en-US', \
                               'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ], \
-                              'policies' : [ 'None/None/anonymous',  \
-                                             'Sign/Basic256/anonymous+username', \
-                                             'SignAndEncrypt/Basic256Sha256/anonymous+username_Basic256Sha256+username_None' ], \
+                              'policies' : [ \
+                                { 'securityPolicy' : 'None', 'securityMode' : 'None', 'userPolicies' : [ 'anonymous' ] },\
+                                { 'securityPolicy' : 'Sign', 'securityMode' : 'Basic256', 'userPolicies' : [ 'anonymous', 'username' ] }, \
+                                { 'securityPolicy' : 'SignAndEncrypt', 'securityMode' : 'Basic256Sha256', 'userPolicies' : \
+                                  [ 'anonymous', 'anonymous', 'username_Basic256Sha256', 'username_None' ] } ], \
                               'users' : {'user' : 'password', 'user2' : 'xGt4sdE3Z+' }, \
                               'certificates' : { \
                                   'serverCertPath' : 'server_2k_cert.der', \
@@ -54,7 +56,7 @@
             'version' : '1.0',\
             'datapoints' : [\
                 {'label':'TS1','pivot_id':'ID114562','pivot_type':'SpsTyp', \
-                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C301_yyy', 'typeid':'UInt32'}, \
+                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C301_yyy', 'typeid':'UInt32', 'default': '1'}, \
                                   { 'name' : 'iec104', 'address':'45-6672', 'typeid':'M_SP_TB_1', 'gi_groups':'station'}]\
                 }, \
                 {'label':'TM1','pivot_id':'ID114563','pivot_type':'DpsTyp', \

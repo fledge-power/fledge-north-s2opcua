@@ -125,7 +125,7 @@ reallocate(pointer& ptr, size_t oldSize, size_t newSize) {
 
     memcpy(ptr, oldPtr, oldSize * sizeof(T));
 
-    WARNING("JCH TODO reallocate %p => %p [DELETE=%d ,%u elts]", oldPtr, ptr, it != mAllocated.end(), newSize);
+    WARNING("JCH TODO reallocate %p : %p [DELETE=%d ,%u elts]", oldPtr, ptr, it != mAllocated.end(), newSize);
     if (it != mAllocated.end()) {
         delete(oldPtr);
         mAllocated.erase(it);
@@ -194,7 +194,7 @@ insertAndCompleteReferences(NodeVect_t& nodes){
                     reverse.TargetId.NamespaceUri = String_NULL;
 
                     pNode->data.variable.NoOfReferences = newSize;
-                    WARNING("JCH DEBUG reversed reference OK for nodeId '%s' => '%s'",
+                    WARNING("JCH DEBUG reversed reference OK for nodeId '%s' : '%s'",
                             toString(nodeId).c_str(), toString(pNode->data.variable.NodeId).c_str());
                 }
             }

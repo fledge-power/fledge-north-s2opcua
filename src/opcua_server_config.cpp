@@ -113,7 +113,7 @@ static SOPC_Log_Level toSOPC_Log_Level(const std::string & str) {
 
 /**************************************************************************/
 static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
-    DEBUG("Converting value '%s' to security policy", policy.c_str());
+    DEBUG("Converting value '%s' to security policy", loggableString(policy));
     if (policy == "None") {
         return SOPC_SecurityPolicy_None;
     }
@@ -136,7 +136,7 @@ static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
 
 /**************************************************************************/
 static SOPC_SecurityModeMask toSecurityMode(const std::string& mode) {
-    DEBUG("Converting value '%s' to security mode", mode.c_str());
+    DEBUG("Converting value '%s' to security mode", loggableString(mode));
     const std::string sUpper(::toUpper(mode));
     if (sUpper == "NONE") {
         return SOPC_SecurityModeMask_None;
@@ -148,7 +148,7 @@ static SOPC_SecurityModeMask toSecurityMode(const std::string& mode) {
         return SOPC_SecurityModeMask_SignAndEncrypt;
     }
 
-    ERROR("Invalid security mode '%s'" , mode.c_str());
+    ERROR("Invalid security mode '%s'" , loggableString(mode));
     throw exception();
 }
 
@@ -157,7 +157,7 @@ static SOPC_SecurityModeMask toSecurityMode(const std::string& mode) {
  * @param token the token amongst [Anonymous|UserName_None|UserName|UserName_Basic256Sha256]
  */
 static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token) {
-    DEBUG("Converting value '%s' to user token Id", token.c_str());
+    DEBUG("Converting value '%s' to user token Id", loggableString(token));
     if (token == SOPC_UserTokenPolicy_Anonymous_ID) {
         return &SOPC_UserTokenPolicy_Anonymous;
     }
@@ -171,7 +171,7 @@ static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token) {
         return &SOPC_UserTokenPolicy_UserName_Basic256Sha256SecurityPolicy;
     }
 
-    ERROR("Invalid user token policy '%s'" , token.c_str());
+    ERROR("Invalid user token policy '%s'" , loggableString(token));
     throw exception();
 }
 
@@ -179,9 +179,9 @@ static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token) {
 /** \brief reads a value from configuration, or raise an error if not found*/
 static std::string
 extractString(const ConfigCategory& config, const std::string& name) {
-    ASSERT(config.itemExists(name), "Missing config parameter:'%s'", name.c_str());
+    ASSERT(config.itemExists(name), "Missing config parameter:'%s'", loggableString(name));
 
-    DEBUG("Reading config parameter:'%s'", name.c_str());
+    DEBUG("Reading config parameter:'%s'", loggableString(name));
     return config.getValue(name);
 }
 
@@ -191,12 +191,12 @@ static SOPC_tools::CStringVect extractCStrArray(
         const std::string & prefix = "", const std::string& suffix = "") {
     using rapidjson::Value;
     StringVect_t result;
-    ASSERT(value.HasMember(section), "Missing section '%s' for ARRAY", section);
+    ASSERT(value.HasMember(section), "Missing section '%s' for ARRAY", loggableString(section));
     const Value& array(value[section]);
-    ASSERT(array.IsArray(), "Section '%s' must be an ARRAY", section);
+    ASSERT(array.IsArray(), "Section '%s' must be an ARRAY", loggableString(section));
 
     for (const rapidjson::Value& subV : array.GetArray()) {
-        ASSERT(subV.IsString(), "Section '%s' must be an ARRAY of STRINGS", section);
+        ASSERT(subV.IsString(), "Section '%s' must be an ARRAY of STRINGS", loggableString(section));
         const std::string str(prefix + subV.GetString() + suffix);
         result.push_back(str);
     }
@@ -229,6 +229,14 @@ static StringMap_t extractUsersPasswords(const rapidjson::Value& config) {
 namespace SOPC_tools {
 
 /**************************************************************************/
+const char* loggableString(const std::string& log) {
+    string str(log);
+    // Remmove chars from 0 ..31 and 128..255 (As char is signed, this is simplified in < ' ')
+    str.erase(std::remove_if(str.begin(), str.end(), [](const char& c) {return c < ' ';}), str.end());
+    return str.c_str();
+}
+
+/**************************************************************************/
 CStringVect::
 CStringVect(const StringVect_t& ref):
 size(ref.size()),
@@ -249,7 +257,7 @@ vect(new char*[size + 1]),
 cVect((const char**)(vect)) {
     size_t i(0);
     for (const rapidjson::Value& value : ref.GetArray()) {
-        ASSERT(value.IsString(), "Expecting a String in array '%s'", context);
+        ASSERT(value.IsString(), "Expecting a String in array '%s'", loggableString(context));
         cppVect.push_back(value.GetString());
         vect[i] = strdup(cppVect.back().c_str());
         i++;
@@ -356,7 +364,7 @@ initDoc(const std::string& json)const {
     rapidjson::Document doc;
     doc.Parse(json.c_str());
     ASSERT(!doc.HasParseError(), "Malformed JSON (section '%s', offset= %u) :%s",
-            JSON_PROTOCOLS, doc.GetErrorOffset(), json.c_str());
+            JSON_PROTOCOLS, doc.GetErrorOffset(), loggableString(json));
 
     ASSERT(doc.HasMember("protocol_stack") && doc["protocol_stack"].IsObject(),
             "Invalid section 'protocol_stack'");

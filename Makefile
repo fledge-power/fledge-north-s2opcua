@@ -10,6 +10,10 @@ build:
 	$(Q)make -C build -j4
 clean:
 	$(Q)rm -fr build
+log:
+	@echo "Showing logs from s2opcua_srv plugin"
+	$(Q)tail -f /var/log/syslog |grep -o 'Fledge s2opcua_srv.*$$'
+	
 check:
 	@echo "Check validity of plugin 'libs2opcua.so'..."
 	$(Q)! [ -z "$(FLEDGE_SRC)" ] || (echo "FLEDGE_SRC not set" && false)

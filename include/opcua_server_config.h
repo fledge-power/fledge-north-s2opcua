@@ -48,6 +48,11 @@ extern "C" {
 
 
 namespace SOPC_tools {
+/** \brief this function ensures there are no non-ASCII chars sent to logger because
+ * this can makes FLEDGE logger crash, and results in no log at all
+ */
+
+const char* loggableString(const std::string& log);
 
 /**
  * @param status a S2OPC status code

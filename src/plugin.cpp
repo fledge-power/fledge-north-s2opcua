@@ -75,7 +75,7 @@ extern "C" {
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 static void plugin_Assert_UserCallback(const char* context) {
-    FATAL("ASSERT failed. Context = %s", (context ? context : "<NULL>"));
+    FATAL("ASSERT failed. Context = %s", (context ? context : "[NULL]"));
     throw std::exception();
 }
 

@@ -143,7 +143,7 @@ static std::string toString(const SOPC_User* pUser) {
             return std::string(SOPC_String_GetRawCString(str));
         }
     }
-    return "<No username>";
+    return "No username";
 }
 
 /**************************************************************************/
@@ -156,7 +156,7 @@ static void sopcDoLog(const char* category, const char* const line) {
     const size_t len = strlen(line);
 
     if (len > datelen + 2) {
-        const char* text(line + datelen);
+        const char* text(SOPC_tools::loggableString(line + datelen));
         switch (text[1]) {
         case 'E':
             ERROR("[S2OPC] %s", text);
@@ -179,6 +179,7 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 }   // extern C
 
+using SOPC_tools::loggableString;
 namespace SOPC_tools {
 /**************************************************************************/
 const char* statusCodeToCString(const int code) {
@@ -207,7 +208,7 @@ checkAllFilesExist(void)const {
     bool result(true);
     while (*p) {
         if (access(*p, R_OK)) {
-            FATAL("File not found '%s'", *p);
+            FATAL("File not found '%s'", loggableString(*p));
             result = false;
         }
         p++;
@@ -368,7 +369,7 @@ OPCUA_Server(const ConfigCategory& configData):
     this_thread::sleep_for(chrono::milliseconds(100));
     ASSERT(!mStopped, "Server failed to start.");
 
-    INFO("Started OPC UA server on endpoint %s", mProtocol.url.c_str());
+    INFO("Started OPC UA server on endpoint %s", loggableString(mProtocol.url));
 }
 
 /**************************************************************************/
@@ -388,7 +389,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     if (NULL != pUser) {
         const std::string username(toString(pUser));
         const char* nodeId(SOPC_NodeId_ToCString(&writeValue->NodeId));
-        INFO("Client '%s' wrote into node [%s]", username.c_str(), nodeId);
+        INFO("Client '%s' wrote into node [%s]", loggableString(username), loggableString(nodeId));
 
         delete nodeId;
     }
