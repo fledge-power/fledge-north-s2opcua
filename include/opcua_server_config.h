@@ -153,14 +153,16 @@ class OpcUa_Protocol {
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
 
     struct PolicyS {
-        explicit PolicyS(const std::string& modeStr, const std::string& policyStr, const rapidjson::Value::ConstArray& userPolicies);
+        explicit PolicyS(const std::string& modeStr,
+                const std::string& policyStr,
+                const rapidjson::Value::ConstArray& userPolicies);
         const std::string name;
         SOPC_SecurityModeMask mode;
         SOPC_SecurityPolicy_URI policy;
         std::vector<const SOPC_UserTokenPolicy*> userTokens;
     };
     struct PoliciesVect : public std::vector<PolicyS> {
-        explicit PoliciesVect(rapidjson::Value& transport);
+        explicit PoliciesVect(const rapidjson::Value& transport);
     };
 
  private:

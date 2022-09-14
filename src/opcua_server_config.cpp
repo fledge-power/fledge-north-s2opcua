@@ -8,14 +8,13 @@
  * Author: Jeremie Chabod
  */
 
-#define USE_TLS 0   // TODO(JCH) remove that!
-
 #include "opcua_server_config.h"
 
 // System headers
 #include <unistd.h>
 #include <algorithm>
 #include <string>
+#include <map>
 #include <exception>
 
 // FLEDGE headers
@@ -69,48 +68,28 @@ static const std::string certDirRevoked(::certDir + "revoked/");
 /** \brief return an uppercase version of str */
 static std::string toUpperString(const std::string & str) {
     std::string copy(str);
-    for (auto & c: copy) c = ::toupper(c);
-    return copy;
-}
-
-/**************************************************************************/
-/** \brief split a string.
- * \param src [inout] As input contains the string to split.
- *  As output, contains the remaining after the separator (or empty)
- * \param separator The string separator
- **/
-static std::string splitString(std::string* src, const char separator = '/') {
-    std::string result;
-    size_t pos(src->find_first_of(separator));
-
-    if (pos == string::npos) {
-        result = *src;
-        src->clear();
-    } else {
-        if (pos == 0) {
-            result = "";
-        } else {
-            result = src->substr(0, pos);
-        }
-        src->erase(0, pos + 1);
+    for (char& c : copy) {
+        c = ::toupper(c);
     }
-    return result;
+    return copy;
 }
 
 /**************************************************************************/
 static SOPC_Log_Level toSOPC_Log_Level(const std::string & str) {
     const std::string sUpper(::toUpperString(str));
-    if (sUpper == "DEBUG") {
-        return SOPC_LOG_LEVEL_DEBUG;
-    }
-    if (sUpper == "INFO") {
-        return SOPC_LOG_LEVEL_INFO;
-    }
-    if (sUpper == "WARNING") {
-        return SOPC_LOG_LEVEL_WARNING;
-    }
-    if (sUpper == "ERROR") {
-        return SOPC_LOG_LEVEL_ERROR;
+    typedef std::pair<std::string, SOPC_Log_Level> Pair;
+    typedef std::map<std::string, SOPC_Log_Level> LevelMap;
+    // Note:  static_cast is only used to help editor parser.
+    static const LevelMap map {
+        {"DEBUG", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_DEBUG)},
+        {"INFO", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_INFO)},
+        {"WARNING", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_WARNING)},
+        {"ERROR", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_ERROR)}
+    };
+    LevelMap::const_iterator it(map.find(sUpper));
+
+    if (it != map.end()) {
+        return (*it).second;
     }
     // Default value
     return SOPC_LOG_LEVEL_INFO;
@@ -118,23 +97,21 @@ static SOPC_Log_Level toSOPC_Log_Level(const std::string & str) {
 
 /**************************************************************************/
 static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
-    DEBUG("Converting value '%s' to security policy", loggableString(policy));
-    if (policy == "None") {
-        return SOPC_SecurityPolicy_None;
-    }
-    if (policy == "Basic256") {
-        return SOPC_SecurityPolicy_Basic256;
-    }
-    if (policy == "Basic256Sha256") {
-        return SOPC_SecurityPolicy_Basic256Sha256;
-    }
-    if (policy == "Aes128Sha256RsaOaep") {
-        return SOPC_SecurityPolicy_Aes128Sha256RsaOaep;
-    }
-    if (policy == "Aes128Sha256RsaPss") {
-        return SOPC_SecurityPolicy_Aes256Sha256RsaPss;
-    }
+    typedef std::pair<std::string, SOPC_SecurityPolicy_URI> Pair;
+    typedef std::map<std::string, SOPC_SecurityPolicy_URI> PolicyMap;
+    static const PolicyMap map {
+        {"None", SOPC_SecurityPolicy_None},
+        {"Basic256", SOPC_SecurityPolicy_Basic256},
+        {"Basic256Sha256", SOPC_SecurityPolicy_Basic256Sha256},
+        {"Aes128Sha256RsaOaep", SOPC_SecurityPolicy_Aes128Sha256RsaOaep},
+        {"Aes128Sha256RsaPss", SOPC_SecurityPolicy_Aes256Sha256RsaPss}
+    };
+    DEBUG("Converting value '%s' to security policy", LOGGABLE(policy));
+    PolicyMap::const_iterator it(map.find(policy));
 
+    if (it != map.end()) {
+        return (*it).second;
+    }
     ERROR("Invalid security policy '%s'" , policy.c_str());
     throw exception();
 }
@@ -142,21 +119,21 @@ static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
 /**************************************************************************/
 static SOPC_SecurityModeMask toSecurityMode(const std::string& mode) {
     const std::string sUpper(::toUpperString(mode));
-    DEBUG("Converting value '%s/%s'(len=%u) to security mode",
-            LOGGABLE(mode), LOGGABLE(sUpper), mode.length());
-    ASSERT(mode.length() == sUpper.length(), "Conversion failed %s(%u)/%s(%u)",
-            LOGGABLE(mode), mode.length(), LOGGABLE(sUpper), sUpper.length());
-    if (sUpper == "NONE") {
-        return SOPC_SecurityModeMask_None;
-    }
-    if (sUpper == "SIGN") {
-        return SOPC_SecurityModeMask_Sign;
-    }
-    if (sUpper == "SIGNANDENCRYPT") {
-        return SOPC_SecurityModeMask_SignAndEncrypt;
+    typedef std::pair<std::string, SOPC_SecurityModeMask> Pair;
+    typedef std::map<std::string, SOPC_SecurityModeMask> ModeMap;
+    static const ModeMap map {
+        {"NONE", SOPC_SecurityModeMask_None},
+        {"SIGN", SOPC_SecurityModeMask_Sign},
+        {"SIGNANDENCRYPT", SOPC_SecurityModeMask_SignAndEncrypt}
+    };
+    DEBUG("Converting value '%s' to security mode", LOGGABLE(mode));
+    ModeMap::const_iterator it(map.find(sUpper));
+
+    if (it != map.end()) {
+        return (*it).second;
     }
 
-    ERROR("Invalid security mode: '%s'" , LOGGABLE(sUpper));
+    ERROR("Invalid security mode: '%s'" , LOGGABLE(mode));
     throw exception();
 }
 
@@ -389,8 +366,6 @@ PolicyS(const std::string& modeStr, const std::string& policyStr,
         const rapidjson::Value::ConstArray& userPolicies):
 name(modeStr + "/" + policyStr) {
     using rapidjson::Value;
-    WARNING("JCH TODO: policyStr :'%s' / modeStr :'%s' (%s)",
-            policyStr.c_str(), modeStr.c_str(), name.c_str());
 
     mode = (::toSecurityMode(modeStr));
     policy = (::toSecurityPolicy(policyStr));
@@ -406,7 +381,7 @@ name(modeStr + "/" + policyStr) {
 
 /**************************************************************************/
 OpcUa_Protocol::PoliciesVect::
-PoliciesVect(rapidjson::Value& transport) {
+PoliciesVect(const rapidjson::Value& transport) {
     using rapidjson::Value;
     const Value::ConstArray& policies(getArray(transport, "policies", "transport_layer"));
     for (const Value& policy : policies) {
@@ -415,7 +390,6 @@ PoliciesVect(rapidjson::Value& transport) {
         const string secuModeStr(getString(policy, "securityMode", "policies"));
         const rapidjson::Value::ConstArray userPolicies(getArray(policy, "userPolicies", "policies"));
 
-        WARNING("JCH TODO: %s / %s", secuPolicyStr.c_str(), secuModeStr.c_str());
         this->push_back(PolicyS(secuModeStr, secuPolicyStr, userPolicies));
     }
     ASSERT(false, "OK!");

@@ -95,7 +95,6 @@ reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
-    WARNING("JCH TODO reallocate %p : %p [DELETE=%d ,%u elts]", oldPtr, *ptr, it != mAllocated.end(), newSize);
     if (it != mAllocated.end()) {
         delete(oldPtr);
         mAllocated.erase(it);

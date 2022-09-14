@@ -502,12 +502,12 @@ init_sopc_lib_and_logs(void) {
     /* Configure the server logger: */
     SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
     if (mConfig.withLogs) {
-        logConfig.logLevel = mConfig.logLevel;
+        logConfig.logLevel = SOPC_LOG_LEVEL_DEBUG;
         logConfig.logSystem = SOPC_LOG_SYSTEM_USER;
         logConfig.logSysConfig.userSystemLogConfig.doLog = &sopcDoLog;
     } else {
         INFO("S2OPC logger not configured.");
-        logConfig.logLevel = SOPC_LOG_LEVEL_INFO;
+        logConfig.logLevel = SOPC_LOG_LEVEL_ERROR;
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
     SOPC_ReturnStatus status = SOPC_CommonHelper_Initialize(&logConfig);
