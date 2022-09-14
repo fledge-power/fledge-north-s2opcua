@@ -50,7 +50,7 @@ struct CVarInfo {
             const string& browseName,
             const string& displayName,
             const string& description,
-            const string& parentNodeId,
+            const SOPC_NodeId& parentNodeId,
             const bool readOnly):
                 mNodeId(nodeId),
                 mBrowseName(browseName),
@@ -63,7 +63,7 @@ struct CVarInfo {
     const string mBrowseName;
     const string mDisplayName;
     const string mDescription;
-    const string mParentNodeId;
+    const SOPC_NodeId mParentNodeId;
     const bool mReadOnly;
 };  // class CVarInfo
 
@@ -93,7 +93,7 @@ class CCommonVarNode : public CNode {
  */
 class CVarNode : public CCommonVarNode {
  public:
-    explicit CVarNode(const CVarInfo& varInfo, uint32_t defVal);
+    explicit CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId);
 
  private:
     void initializeCommonFields(const CVarInfo& varInfo);

@@ -116,8 +116,7 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
         if (SOPC_STATUS_OK == writeStatus) {
             srv->writeNotificationCallback(callCtxPtr, writeValue);
         } else {
-            WARNING("Client write failed on server. returned code %s(%d)",
-                    SOPC_tools::statusCodeToCString(writeStatus), writeStatus);
+            WARNING("Client write failed on server. returned code 0x%08X", writeStatus);
         }
     }
 }

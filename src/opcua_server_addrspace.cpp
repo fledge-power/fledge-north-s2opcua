@@ -170,8 +170,6 @@ insertAndCompleteReferences(NodeVect_t* nodes) {
                     reverse.TargetId.NamespaceUri = String_NULL;
 
                     pNode->data.variable.NoOfReferences = newSize;
-                    WARNING("JCH DEBUG reversed reference OK for nodeId '%s' : '%s'",
-                            toString(nodeId).c_str(), toString(pNode->data.variable.NodeId).c_str());
                 }
             }
             if (!found) {
@@ -183,17 +181,19 @@ insertAndCompleteReferences(NodeVect_t* nodes) {
 
 /**************************************************************************/
 CVarNode::
-CVarNode(const CVarInfo& varInfo, uint32_t defVal):
+CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId):
 CCommonVarNode(varInfo) {
     OpcUa_VariableNode& variableNode = mNode.data.variable;
-    variableNode.Value.ArrayType = SOPC_VariantArrayType_SingleValue;
-    variableNode.Value.BuiltInTypeId = SOPC_UInt32_Id;
+    variableNode.Value.BuiltInTypeId = sopcTypeId;
     variableNode.Value.DoNotClear = true;
-    variableNode.Value.Value.Uint32 = defVal;
+
     variableNode.DataType.IdentifierType = SOPC_IdentifierType_Numeric;
     variableNode.DataType.Namespace = 0;
-    variableNode.DataType.Data.Numeric = 7;
-    variableNode.ValueRank = -1;
+    variableNode.DataType.Data.Numeric = static_cast<uint32_t>(sopcTypeId);
+
+    memset(&variableNode.Value.Value, 0, sizeof(variableNode.Value.Value));
+
+    mNode.value_status = (varInfo.mReadOnly ? OpcUa_BadWaitingForInitialData : GoodStatus);
 }
 
 /**************************************************************************/
@@ -208,6 +208,9 @@ CCommonVarNode(const CVarInfo& varInfo) {
     variableNode.AccessLevel = (varInfo.mReadOnly ? ReadOnlyAccess : ReadWriteAccess);
     variableNode.UserAccessLevel = 0;
     variableNode.MinimumSamplingInterval = 0.0;
+    variableNode.Value.BuiltInTypeId = SOPC_Null_Id;
+    variableNode.ValueRank = -1;
+    variableNode.Value.ArrayType = SOPC_VariantArrayType_SingleValue;
 
     // Node Id
     status = SOPC_NodeId_InitializeFromCString(
@@ -240,7 +243,6 @@ CCommonVarNode(const CVarInfo& varInfo) {
     ref->TargetId.NodeId = NodeId_BaseDataVariableType;
     ref->TargetId.NamespaceUri = String_NULL;
     ref->TargetId.ServerIndex = serverIndex;
-#warning "TODO : add reverse references?"
 }
 
 /**************************************************************************/
@@ -269,17 +271,19 @@ Server_AddrSpace(const std::string& json):
 
         for (const Value& protocol : protocols) {
             try {
+                static const string pivotDescr("Pivot Id#");
                 const ExchangedDataC data(protocol);
-                const std::string browseName;
-                const std::string displayName;
-                const std::string description;
-                const std::string parent;
-                const bool readOnly(true);
-                const uint32_t value(45);
+                const std::string browseName(data.address);
+                const std::string displayName(data.address);
+                const std::string description(pivotDescr + pivot_id);
+                const SOPC_NodeId& parent(NodeId_Root_Objects);
+                const SOPC_BuiltinId sopcTypeId(SOPC_tools::toBuiltinId(data.typeId));
+                const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivot_type));
+                const char* readOnlyStr(readOnly ? "RO" : "RW");
                 CVarInfo cVarInfo(data.address, browseName, displayName, description, parent, readOnly);
-                CVarNode* pNode(new CVarNode(cVarInfo, value));
-                WARNING("Adding node data '%s' of type '%s'",
-                        LOGGABLE(data.address), data.typeId.c_str());
+                CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));
+                DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
+                        LOGGABLE(data.address), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
                 pNode->insertAndCompleteReferences(&nodes);
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
@@ -287,10 +291,7 @@ Server_AddrSpace(const std::string& json):
             }
         }
     }
-
-#warning "TODO : Add possibility to setup nano/mbedded ns0"
-
-#warning "TODO : display, 'description', 'parent', 'value', 'type'"
+#warning "TODO : Correct ns0!"
 }
 
 /**************************************************************************/

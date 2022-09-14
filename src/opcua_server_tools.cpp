@@ -38,7 +38,7 @@ const string loggableString(const string& log) {
     // overwritten by any further call.
     string str(log);
     // Remmove chars from 0 ..31 and 128..255 (As char is signed, this is simplified in < ' ')
-    str.erase(std::remove_if(str.begin(), str.end(), [](const char& c) {return c < ' ' && c != '<';}), str.end());
+    str.erase(std::remove_if(str.begin(), str.end(), [](const char& c) {return c < ' ';}), str.end());
     return str;
 }
 
@@ -172,6 +172,14 @@ SOPC_BuiltinId toBuiltinId(const string& name) {
     }
     ERROR("Invalid builtin type '%s'", LOGGABLE(name));
     throw std::exception();
+}
+
+/**************************************************************************/
+bool pivotTypeToReadOnly(const std::string& pivotType) {
+    return ((pivotType != "DpcTyp") &&
+            (pivotType != "SpcTyp") &&
+            (pivotType != "IncTyp") &&
+            (pivotType != "ApcTyp"));
 }
 
 /**************************************************************************/

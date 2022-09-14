@@ -107,6 +107,7 @@ std::string toString(const SOPC_NodeId& nodeid);
 
 SOPC_Log_Level toSOPC_Log_Level(const std::string & str);
 SOPC_BuiltinId toBuiltinId(const std::string& name);
+bool pivotTypeToReadOnly(const std::string& pivotType);
 SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy);
 SOPC_SecurityModeMask toSecurityMode(const std::string& mode);
 const OpcUa_UserTokenPolicy* toUserToken(const std::string& token);
