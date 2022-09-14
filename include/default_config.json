@@ -26,9 +26,9 @@
                               'localeId' : 'en-US', \
                               'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ], \
                               'policies' : [ \
-                                { 'securityPolicy' : 'None', 'securityMode' : 'None', 'userPolicies' : [ 'anonymous' ] },\
-                                { 'securityPolicy' : 'Sign', 'securityMode' : 'Basic256', 'userPolicies' : [ 'anonymous', 'username' ] }, \
-                                { 'securityPolicy' : 'SignAndEncrypt', 'securityMode' : 'Basic256Sha256', 'userPolicies' : \
+                                { 'securityMode' : 'None', 'securityPolicy' : 'None', 'userPolicies' : [ 'anonymous' ] },\
+                                { 'securityMode' : 'Sign', 'securityPolicy' : 'Basic256', 'userPolicies' : [ 'anonymous', 'username' ] }, \
+                                { 'securityMode' : 'SignAndEncrypt', 'securityPolicy' : 'Basic256Sha256', 'userPolicies' : \
                                   [ 'anonymous', 'anonymous', 'username_Basic256Sha256', 'username_None' ] } ], \
                               'users' : {'user' : 'password', 'user2' : 'xGt4sdE3Z+' }, \
                               'certificates' : { \
