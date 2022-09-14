@@ -72,7 +72,7 @@ rm -f CMakeCache.txt ; mkdir -p build ; cd build; cmake .. && make -j4 && sudo m
 cd ${DEV_ROOT}/S2OPC
 git apply ${DEV_ROOT}/fledge-north-s2opcua/patches/S2OPC.patch
 
-WITH_USER_ASSERT=ON USE_STATIC_EXT_LIBS=ON BUILD_SHARED_LIBS=OFF CMAKE_INSTALL_PREFIX=/usr/local ./build.sh; echo; echo "BUILD done, INSTALLING..."; echo; sudo make install -C build
+WITH_USER_ASSERT=ON S2OPC_CLIENTSERVER_ONLY=ON WITH_NANO_EXTENDED=ON USE_STATIC_EXT_LIBS=ON BUILD_SHARED_LIBS=OFF CMAKE_INSTALL_PREFIX=/usr/local ./build.sh; echo; echo "BUILD done, INSTALLING..."; echo; sudo make install -C build
 ```
 
 ### Build plugin
