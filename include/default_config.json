@@ -52,17 +52,81 @@
         "displayName" : "Exchanged data list",
         "order" : "3",
         "default" : " { 'exchanged_data' : {\
-            'name' : 'SAMPLE',\
+            'name' : 'FESSE_6_FESS5.1_DFAIL.DJ',\
             'version' : '1.0',\
             'datapoints' : [\
-                {'label':'TS1','pivot_id':'ID114562','pivot_type':'SpsTyp', \
-                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C301_yyy', 'typeid':'UInt32', 'default': '1'}, \
-                                  { 'name' : 'iec104', 'address':'45-6672', 'typeid':'M_SP_TB_1', 'gi_groups':'station'}]\
-                }, \
-                {'label':'TM1','pivot_id':'ID114563','pivot_type':'DpsTyp', \
-                    'protocols':[ { 'name' : 'opcua', 'address':'ns=1;s=/APR_xxx/C302_yyy', 'typeid':'UInt32'}, \
-                                  { 'name' : 'iec104', 'address':'45-984', 'typeid':'M_ME_NA_1'}]\
-                } \
+                {\
+                   'label':'FESSE_6_FESS5.1_DFAIL.DJ',\
+                   'pivot_id':'S114562128',\
+                   'pivot_type':'SpsTyp',\
+                   'protocols':[\
+                      {\
+                         'name':'iec104',\
+                         'address':'18325-6468171',\
+                         'typeid':'M_SP_TB_1',\
+                         'gi_groups':'station'\
+                      },\
+                      {\
+                         'name':'opcua',\
+                         'address':'ns=1;s=/FESSE_6_FESS5.1_DFAIL.DJ/S_1145_6_21_28',\
+                         'typeid':'Boolean_Id'\
+                      }\
+                   ]\
+                }\
+                ,\
+                {\
+                   'label':'FESSE_6_FESS5.1_AMU',\
+                   'pivot_id':'S11456217',\
+                   'pivot_type':'DpsTyp',\
+                   'protocols':[\
+                      {\
+                         'name':'iec104',\
+                         'address':'18325-6467687',\
+                         'typeid':'M_DP_TB_1'\
+                      },\
+                      {\
+                         'name':'opcua',\
+                         'address':'ns=1;s=/FESSE_6_FESS5.1_AMU/S_1145_6_21_7',\
+                         'typeid':'Byte_Id'\
+                      }\
+                   ] \
+                }\
+                ,\
+                {\
+                   'label':'FESSE_6_6CHAL7.1_P',\
+                   'pivot_id':'M11456183',\
+                   'pivot_type':'MvTyp',\
+                   'protocols':[\
+                      {\
+                         'name':'iec104',\
+                         'address':'18325-6441925',\
+                         'typeid':'M_ME_NA_1'\
+                      },\
+                      {\
+                         'name':'opcua',\
+                         'address':'ns=1;s=/FESSE_6_6CHAL7.1_P/M_1145_6_18_3',\
+                         'typeid':'Float_Id'\
+                      }\
+                   ] \
+                }\
+                ,\
+                {\
+                   'label':'FESSE_6_6CHAL7.1_SA.1',\
+                   'pivot_id':'C11456181',\
+                   'pivot_type':'DpcTyp',\
+                   'protocols':[\
+                      {\
+                         'name':'iec104',\
+                         'address':'18325-6441925',\
+                         'typeid':'C_DC_TA_1'\
+                      },\
+                      {\
+                         'name':'opcua',\
+                         'address':'ns=1;s=/FESSE_6_6CHAL7.1_SA.1/C_1145_6_18_1',\
+                         'typeid':'Byte_Id'\
+                      }\
+                   ] \
+                }\
              ]}}"
     },
     "logging" : {

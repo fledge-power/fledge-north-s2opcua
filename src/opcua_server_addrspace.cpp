@@ -283,13 +283,12 @@ Server_AddrSpace(const std::string& json):
                 pNode->insertAndCompleteReferences(&nodes);
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
-                // Just ignore other protcols
+                // Just ignore other protocols
             }
         }
     }
 
 #warning "TODO : Add possibility to setup nano/mbedded ns0"
-#warning "TODO : fill address space!"
 
 #warning "TODO : display, 'description', 'parent', 'value', 'type'"
 }
