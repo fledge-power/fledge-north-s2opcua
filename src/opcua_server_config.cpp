@@ -43,12 +43,14 @@ extern "C" {
 #include "s2opc/clientserver/sopc_user_app_itf.h"
 }
 
+using std::exception;
 using SOPC_tools::getArray;
 using SOPC_tools::getString;
 using SOPC_tools::getObject;
 using SOPC_tools::checkObject;
 using SOPC_tools::StringVect_t;
 using SOPC_tools::StringMap_t;
+using SOPC_tools::toUpperString;
 using SOPC_tools::loggableString;
 namespace {
 
@@ -64,99 +66,6 @@ static const std::string certDirUntrusted(::certDir + "untrusted/");
 static const std::string certDirIssued(::certDir + "issued/");
 static const std::string certDirRevoked(::certDir + "revoked/");
 
-/**************************************************************************/
-/** \brief return an uppercase version of str */
-static std::string toUpperString(const std::string & str) {
-    std::string copy(str);
-    for (char& c : copy) {
-        c = ::toupper(c);
-    }
-    return copy;
-}
-
-/**************************************************************************/
-static SOPC_Log_Level toSOPC_Log_Level(const std::string & str) {
-    const std::string sUpper(::toUpperString(str));
-    typedef std::pair<std::string, SOPC_Log_Level> Pair;
-    typedef std::map<std::string, SOPC_Log_Level> LevelMap;
-    // Note:  static_cast is only used to help editor parser.
-    static const LevelMap map {
-        {"DEBUG", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_DEBUG)},
-        {"INFO", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_INFO)},
-        {"WARNING", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_WARNING)},
-        {"ERROR", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_ERROR)}
-    };
-    LevelMap::const_iterator it(map.find(sUpper));
-
-    if (it != map.end()) {
-        return (*it).second;
-    }
-    // Default value
-    return SOPC_LOG_LEVEL_INFO;
-}
-
-/**************************************************************************/
-static SOPC_SecurityPolicy_URI toSecurityPolicy(const std::string& policy) {
-    typedef std::pair<std::string, SOPC_SecurityPolicy_URI> Pair;
-    typedef std::map<std::string, SOPC_SecurityPolicy_URI> PolicyMap;
-    static const PolicyMap map {
-        {"None", SOPC_SecurityPolicy_None},
-        {"Basic256", SOPC_SecurityPolicy_Basic256},
-        {"Basic256Sha256", SOPC_SecurityPolicy_Basic256Sha256},
-        {"Aes128Sha256RsaOaep", SOPC_SecurityPolicy_Aes128Sha256RsaOaep},
-        {"Aes128Sha256RsaPss", SOPC_SecurityPolicy_Aes256Sha256RsaPss}
-    };
-    DEBUG("Converting value '%s' to security policy", LOGGABLE(policy));
-    PolicyMap::const_iterator it(map.find(policy));
-
-    if (it != map.end()) {
-        return (*it).second;
-    }
-    ERROR("Invalid security policy '%s'" , policy.c_str());
-    throw exception();
-}
-
-/**************************************************************************/
-static SOPC_SecurityModeMask toSecurityMode(const std::string& mode) {
-    const std::string sUpper(::toUpperString(mode));
-    typedef std::pair<std::string, SOPC_SecurityModeMask> Pair;
-    typedef std::map<std::string, SOPC_SecurityModeMask> ModeMap;
-    static const ModeMap map {
-        {"NONE", SOPC_SecurityModeMask_None},
-        {"SIGN", SOPC_SecurityModeMask_Sign},
-        {"SIGNANDENCRYPT", SOPC_SecurityModeMask_SignAndEncrypt}
-    };
-    DEBUG("Converting value '%s' to security mode", LOGGABLE(mode));
-    ModeMap::const_iterator it(map.find(sUpper));
-
-    if (it != map.end()) {
-        return (*it).second;
-    }
-
-    ERROR("Invalid security mode: '%s'" , LOGGABLE(mode));
-    throw exception();
-}
-
-/**************************************************************************/
-/**
- * @param token the token amongst [Anonymous|UserName_None|UserName|UserName_Basic256Sha256]
- */
-static const OpcUa_UserTokenPolicy* toUserToken(const std::string& token) {
-    DEBUG("Converting value '%s' to user token Id", LOGGABLE(token));
-    if (token == SOPC_UserTokenPolicy_Anonymous_ID) {
-        return &SOPC_UserTokenPolicy_Anonymous;
-    }
-    if (token == SOPC_UserTokenPolicy_UserNameNone_ID) {
-        return &SOPC_UserTokenPolicy_UserName_NoneSecurityPolicy;
-    }
-    if (token == SOPC_UserTokenPolicy_UserName_ID) {
-        return &SOPC_UserTokenPolicy_UserName_DefaultSecurityPolicy;
-    }
-    if (token == SOPC_UserTokenPolicy_UserNameBasic256Sha256_ID) {
-        return &SOPC_UserTokenPolicy_UserName_Basic256Sha256SecurityPolicy;
-    }
-    return NULL;
-}
 
 /**************************************************************************/
 /** \brief reads a value from configuration, or raise an error if not found*/
@@ -208,58 +117,6 @@ static StringMap_t extractUsersPasswords(const rapidjson::Value& config) {
 
 
 /**************************************************************************/
-/**************************************************************************/
-namespace SOPC_tools {
-
-/**************************************************************************/
-const std::string loggableString(const std::string& log) {
-    // Using a static variable allows to return a reference to content, but this will be
-    // overwritten by any further call.
-    string str(log);
-    // Remmove chars from 0 ..31 and 128..255 (As char is signed, this is simplified in < ' ')
-    str.erase(std::remove_if(str.begin(), str.end(), [](const char& c) {return c < ' ';}), str.end());
-    return str;
-}
-
-/**************************************************************************/
-CStringVect::
-CStringVect(const StringVect_t& ref):
-size(ref.size()),
-vect(new char*[size + 1]),
-cVect((const char**)(vect)) {
-    for (size_t i=0 ; i < size; i++) {
-        cppVect.push_back(ref[i]);
-        vect[i] = strdup(cppVect.back().c_str());
-    }
-    vect[size] = NULL;
-}
-
-/**************************************************************************/
-CStringVect::
-CStringVect(const rapidjson::Value& ref, const std::string& context):
-size(ref.GetArray().Size()),
-vect(new char*[size + 1]),
-cVect((const char**)(vect)) {
-    size_t i(0);
-    for (const rapidjson::Value& value : ref.GetArray()) {
-        ASSERT(value.IsString(), "Expecting a String in array '%s'", LOGGABLE(context));
-        cppVect.push_back(value.GetString());
-        vect[i] = strdup(cppVect.back().c_str());
-        i++;
-    }
-    vect[size] = NULL;
-}
-
-/**************************************************************************/
-CStringVect::
-~CStringVect(void) {
-    for (size_t i =0 ; i < size ; i++) {
-        delete vect[i];
-    }
-    delete vect;
-}
-}   // namespace SOPC_tools
-
 /**************************************************************************/
 namespace s2opc_north {
 using SOPC_tools::statusCodeToCString;
@@ -367,12 +224,12 @@ PolicyS(const std::string& modeStr, const std::string& policyStr,
 name(modeStr + "/" + policyStr) {
     using rapidjson::Value;
 
-    mode = (::toSecurityMode(modeStr));
-    policy = (::toSecurityPolicy(policyStr));
+    mode = (SOPC_tools::toSecurityMode(modeStr));
+    policy = (SOPC_tools::toSecurityPolicy(policyStr));
     for (const Value& policy : userPolicies) {
         const string userPolicyStr(getString(policy, "userPolicies"));
         DEBUG("Identify user token policy: '%s'", LOGGABLE(userPolicyStr));
-        const SOPC_UserTokenPolicy* userPolicy(::toUserToken(userPolicyStr));
+        const SOPC_UserTokenPolicy* userPolicy(SOPC_tools::toUserToken(userPolicyStr));
         ASSERT(NULL != userPolicy,
                 "Unknown/invalid user policy : '%s'", LOGGABLE(userPolicyStr));
         userTokens.push_back(userPolicy);
@@ -392,7 +249,6 @@ PoliciesVect(const rapidjson::Value& transport) {
 
         this->push_back(PolicyS(secuModeStr, secuPolicyStr, userPolicies));
     }
-    ASSERT(false, "OK!");
 }
 
 /**************************************************************************/
@@ -420,8 +276,8 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
 /**************************************************************************/
 OpcUa_Server_Config::
 OpcUa_Server_Config(const ConfigCategory& configData):
-        withLogs(::toUpperString(extractString(configData, "logging")) != "NONE"),
-        logLevel(toSOPC_Log_Level(extractString(configData, "logging"))),
+        withLogs(SOPC_tools::toUpperString(extractString(configData, "logging")) != "NONE"),
+        logLevel(SOPC_tools::toSOPC_Log_Level(extractString(configData, "logging"))),
         logPath(::logDir),
         addrSpace(extractString(configData, "exchanged_data")) {
     INFO("OpcUa_Server_Config() OK.");

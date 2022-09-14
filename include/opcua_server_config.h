@@ -33,79 +33,11 @@ extern "C" {
 };
 
 /// Project includes
+#include "opcua_server_tools.h"
 #include "opcua_server_addrspace.h"
 
 
-#define JSON_EXCHANGED_DATA "exchanged_data"
-#define JSON_DATAPOINTS "datapoints"
-#define JSON_PROTOCOLS "protocols"
-#define JSON_LABEL "label"
-#define JSON_PIVOT_ID "pivot_id"
-#define JSON_PIVOT_TYPE "pivot_type"
-
-#define PROTOCOL_S2OPC "opcua"
-#define JSON_PROT_NAME "name"
-#define JSON_PROT_ADDR "address"
-#define JSON_PROT_TYPEID "typeid"
-
-
 namespace SOPC_tools {
-/** \brief this function ensures there are no non-ASCII chars sent to logger because
- * this can makes FLEDGE logger crash, and results in no log at all
- */
-const std::string loggableString(const std::string& log);
-
-// Note: it is possible (for performance reasons) to remove the logging compliancy by simply
-// using:
-// #define LOGGABLE(s) (s).c_str()
-#define LOGGABLE(s) SOPC_tools::loggableString(s).c_str()
-
-/**
- * @param status a S2OPC status code
- * @return a human-readable representation of a status code
- */
-extern const char* statusCodeToCString(const int status);
-
-/* Basic JSON parsers with related asserts */
-string getString(const rapidjson::Value& value,
-        const char* section, const std::string& context);
-string getString(const rapidjson::Value& value, const std::string& context);
-const rapidjson::Value& getObject(const rapidjson::Value& value,
-        const char* section, const std::string& context);
-void checkObject(const rapidjson::Value& value, const std::string& context);
-const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
-        const char* section, const std::string& context);
-std::string toString(const SOPC_NodeId& nodeid);
-
-/** Vector of string */
-typedef std::vector<std::string> StringVect_t;
-
-/**
- * CStringVect intends at making a String vector useable by C S2OPC layer.
- * @field vect Contains a C-representation of the array, including a
- *  NULL terminating string
- * @field size The number of non-NULL elements in vect
- */
-struct CStringVect {
-    /**
-     * Build a C vector using  C+ STL vector
-     */
-    explicit CStringVect(const StringVect_t& ref);
-    explicit CStringVect(const rapidjson::Value& ref, const std::string& context);
-    /** Frees vect */
-    virtual ~CStringVect(void);
-    /**
-     * \brief Checks (using ASSERT) that all elements in vector are R-O accessible files
-     */
-    void checkAllFilesExist(void)const;
-    size_t size;
-    char** vect;
-    const char** cVect;
-    StringVect_t cppVect;
-};
-
-typedef std::pair<std::string, std::string> StringPair_t;
-typedef std::vector<StringPair_t> StringMap_t;
 
 }   // namespace SOPC_tools
 

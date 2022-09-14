@@ -27,21 +27,6 @@ extern "C" {
 #include "logger.h"
 #include "rapidjson/document.h"
 
-/* HELPER MACROS*/
-#define DEBUG Logger::getLogger()->debug
-#define INFO Logger::getLogger()->info
-#define WARNING Logger::getLogger()->warn
-#define ERROR Logger::getLogger()->error
-#define FATAL Logger::getLogger()->fatal
-
-// Improve SOPC_ASSERT to allow run-time elaborated messages
-#define ASSERT(c,  ...) do { \
-    if (!(c)) {\
-        FATAL("ASSERT FAILED:" __VA_ARGS__);\
-        SOPC_ASSERT(false);\
-    }\
-} while (0)
-
 extern "C" {
 // Nano NS0 namespace
 extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;
@@ -121,8 +106,20 @@ class Server_AddrSpace{
  public:
     /**
      * \brief Builds up an address space from a json configuration string
-     * \param json A string providing the Address space content, with following format:
-     *  "[ { "TODO" : "TODO", } ]
+     * \param json A string containing the "exchanged_data" JSON section
+     *  it is expected to contain a JSON with following format:
+     *  {
+     *      'datapoints' : [
+                {'label':'..','pivot_id':'..','pivot_type':'..',
+                 'protocols':
+                 [ { 'name' : 'opcua',
+                     'address':'<nodeId>',
+                     'typeid':'UInt32',
+                     'default': '1'}
+                 ]
+                }
+            ]
+        }
      */
     explicit Server_AddrSpace(const std::string& json);
     /**

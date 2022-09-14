@@ -181,78 +181,7 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 using SOPC_tools::loggableString;
 namespace SOPC_tools {
-/**************************************************************************/
-const char* statusCodeToCString(const int code) {
-#define HANDLE_CODE(x) case x: return #x
-    switch (code) {
-    HANDLE_CODE(SOPC_STATUS_OK);
-    HANDLE_CODE(SOPC_STATUS_NOK);
-    HANDLE_CODE(SOPC_STATUS_INVALID_PARAMETERS);
-    HANDLE_CODE(SOPC_STATUS_INVALID_STATE);
-    HANDLE_CODE(SOPC_STATUS_ENCODING_ERROR);
-    HANDLE_CODE(SOPC_STATUS_WOULD_BLOCK);
-    HANDLE_CODE(SOPC_STATUS_TIMEOUT);
-    HANDLE_CODE(SOPC_STATUS_OUT_OF_MEMORY);
-    HANDLE_CODE(SOPC_STATUS_CLOSED);
-    HANDLE_CODE(SOPC_STATUS_NOT_SUPPORTED);
-        default:
-            return ("Invalid code");
-    }
-}
 
-/**************************************************************************/
-string getString(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing STRING '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsString(), "Error :'%s' in '%s' must be an STRING",
-            section, context.c_str());
-    return object.GetString();
-}
-
-/**************************************************************************/
-string getString(const rapidjson::Value& value, const std::string& context) {
-    ASSERT(value.IsString(), "Error : '%s' must be an STRING",
-            context.c_str());
-    return value.GetString();
-}
-
-/**************************************************************************/
-const rapidjson::Value& getObject(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing OBJECT '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsObject(), "Error :'%s' in '%s' must be an OBJECT",
-            section, context.c_str());
-    return object;
-}
-
-/**************************************************************************/
-void checkObject(const rapidjson::Value& value, const std::string& context) {
-    ASSERT(value.IsObject(), "Error :'%s' must be an OBJECT",
-            context.c_str());
-}
-
-/**************************************************************************/
-const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
-        const char* section, const std::string& context) {
-    ASSERT(value.HasMember(section), "Missing ARRAY '%s' in '%s'",
-            section, context.c_str());
-    const rapidjson::Value& object(value[section]);
-    ASSERT(object.IsArray(), "Error :'%s' in '%s' must be an ARRAY",
-            section, context.c_str());
-    return object.GetArray();
-}
-
-/**************************************************************************/
-std::string toString(const SOPC_NodeId& nodeid) {
-    char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
-    string result(nodeIdStr);
-    delete nodeIdStr;
-    return result;
-}
 /**************************************************************************/
 void
 CStringVect::
@@ -502,7 +431,7 @@ init_sopc_lib_and_logs(void) {
     /* Configure the server logger: */
     SOPC_Log_Configuration logConfig = SOPC_Common_GetDefaultLogConfiguration();
     if (mConfig.withLogs) {
-        logConfig.logLevel = SOPC_LOG_LEVEL_DEBUG;
+        logConfig.logLevel = mConfig.logLevel;
         logConfig.logSystem = SOPC_LOG_SYSTEM_USER;
         logConfig.logSysConfig.userSystemLogConfig.doLog = &sopcDoLog;
     } else {
