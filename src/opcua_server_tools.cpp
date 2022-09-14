@@ -125,6 +125,12 @@ string toString(const SOPC_NodeId& nodeid) {
     delete nodeIdStr;
     return result;
 }
+
+/**************************************************************************/
+SOPC_NodeId* createNodeId(const std::string& nodeid) {
+    return SOPC_NodeId_FromCString(nodeid.c_str(), nodeid.length());
+}
+
 /**************************************************************************/
 SOPC_Log_Level toSOPC_Log_Level(const string & str) {
     const string sUpper(toUpperString(str));

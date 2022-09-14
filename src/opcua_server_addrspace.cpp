@@ -279,8 +279,10 @@ Server_AddrSpace(const std::string& json):
 
         for (const Value& protocol : protocols) {
             try {
+                static const string ns1("ns=1;s=");
                 static const string pivotDescr("Pivot Id#");
                 const ExchangedDataC data(protocol);
+                const std::string nodeIdName(ns1 + "/" + label + "/" + data.address);
                 const std::string browseName(data.address);
                 const std::string displayName(data.address);
                 const std::string description(pivotDescr + pivot_id);
@@ -288,11 +290,22 @@ Server_AddrSpace(const std::string& json):
                 const SOPC_BuiltinId sopcTypeId(SOPC_tools::toBuiltinId(data.typeId));
                 const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivot_type));
                 const char* readOnlyStr(readOnly ? "RO" : "RW");
-                CVarInfo cVarInfo(data.address, browseName, displayName, description, parent, readOnly);
+                CVarInfo cVarInfo(nodeIdName, browseName, displayName, description, parent, readOnly);
                 CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));
                 DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
-                        LOGGABLE(data.address), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
+                        LOGGABLE(nodeIdName), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
                 pNode->insertAndCompleteReferences(&nodes);
+
+                if (readOnly == false) {
+                    // in case of "writeable" nodes, the plugin shall generate a "_reply" string variable
+                    static const string replyAddr(nodeIdName + "_reply");
+                    static const string replyDescr("Status of command '" + data.address +"'");
+                    CVarInfo cVarInfoReply(replyAddr, replyAddr, replyAddr, replyDescr, parent, true);
+                    CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));
+                    DEBUG("Adding node data '%s' of type '%s-%d' (RO)",
+                            LOGGABLE(replyAddr), "SOPC_String_Id", SOPC_String_Id);
+                    pNode->insertAndCompleteReferences(&nodes);
+                }
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
                 // Just ignore other protocols

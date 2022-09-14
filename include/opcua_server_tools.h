@@ -65,6 +65,8 @@ extern "C" {
     }\
 } while (0)
 
+#define ASSERT_NOT_NULL(c) ASSERT((c) != NULL, "NULL pointer:'" #c "'")
+
 // Note: it is possible (for performance reasons) to remove the logging robustness by simply
 // using:
 // #define LOGGABLE(s) (s).c_str()
@@ -104,6 +106,7 @@ const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
 /**************************************************************************/
 /** Get a string representation of a NodeId*/
 std::string toString(const SOPC_NodeId& nodeid);
+SOPC_NodeId* createNodeId(const std::string& nodeid);
 
 SOPC_Log_Level toSOPC_Log_Level(const std::string & str);
 SOPC_BuiltinId toBuiltinId(const std::string& name);

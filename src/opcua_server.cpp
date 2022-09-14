@@ -20,6 +20,9 @@
 #include <chrono>
 #include <thread>
 
+// Fledge headers
+#include "datapoint.h"
+
 extern "C" {
 // S2OPC Headers
 #include "s2opc/common/sopc_assert.h"
@@ -28,6 +31,7 @@ extern "C" {
 #include "s2opc/common/sopc_macros.h"
 #include "s2opc/common/sopc_builtintypes.h"
 #include "s2opc/common/sopc_encodeabletype.h"
+#include "s2opc/common/opcua_statuscodes.h"
 #include "s2opc/common/sopc_log_manager.h"
 #include "s2opc/common/sopc_pki.h"
 #include "s2opc/common/sopc_pki_stack.h"
@@ -38,6 +42,7 @@ extern "C" {
 #include "s2opc/clientserver/frontend/libs2opc_server.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config.h"
 #include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
+#include "s2opc/clientserver/frontend/libs2opc_request_builder.h"
 #include "s2opc/clientserver/sopc_toolkit_config.h"
 #include "s2opc/clientserver/sopc_user_manager.h"
 #include "s2opc/clientserver/embedded/sopc_addspace_loader.h"
@@ -59,6 +64,17 @@ extern "C" {
 // Reminder: all callbacks/events called from s2opc must be enclosed in
 // extern "C" context!
 extern "C" {
+
+static void SOPC_LocalServiceAsyncRespCallback(SOPC_EncodeableType* encType, void* response, uintptr_t appContext) {
+    if (appContext == 0) return;
+
+    s2opc_north::OPCUA_Server& srv(*reinterpret_cast<s2opc_north::OPCUA_Server*>(appContext));
+    if (encType == &OpcUa_WriteResponse_EncodeableType) {
+        OpcUa_WriteResponse* writeResp = reinterpret_cast<OpcUa_WriteResponse*>(response);
+        srv.asynchWriteResponse(writeResp);
+    }
+}
+
 /**
  * This function is called to check for user credentials.
  * @param authn The manager context (which contains reference to the server)
@@ -93,6 +109,11 @@ static SOPC_ReturnStatus authentication_check(SOPC_UserAuthentication_Manager* a
                     *authenticated = SOPC_USER_AUTHENTICATION_OK;
                 }
             }
+        }
+        if (*authenticated == SOPC_USER_AUTHENTICATION_OK) {
+            INFO("User '%s' is connecting with correct password", LOGGABLE(username));
+        } else {
+            WARNING("Failed authentication for user '%s'", LOGGABLE(username));
         }
     }
 
@@ -178,6 +199,115 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 }   // extern C
 
+namespace {
+
+/**************************************************************************/
+static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_BuiltinId typeId) {
+    ASSERT_NOT_NULL(variant);
+    ASSERT_NOT_NULL(dv);
+
+    const DatapointValue::dataTagType dvType(dv->getType());
+
+    SOPC_Variant_Initialize(variant);
+    variant->ArrayType = SOPC_VariantArrayType_SingleValue;
+    variant->BuiltInTypeId = typeId;
+    variant->DoNotClear = false;
+    const bool dvIsStr(dvType == DatapointValue::T_STRING);
+    const bool dvIsFloat(dvType == DatapointValue::T_FLOAT);
+
+    bool valid = false;
+    switch (typeId) {
+    case SOPC_Boolean_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Boolean = static_cast<bool>(dv->toInt());
+        }
+        break;
+    case SOPC_SByte_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Sbyte = static_cast<SOPC_SByte>(dv->toInt());
+        }
+        break;
+    case SOPC_Byte_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Sbyte = static_cast<SOPC_Byte>(dv->toInt());
+        }
+        break;
+    case SOPC_Int16_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Int16 = static_cast<int16_t>(dv->toInt());
+        }
+        break;
+    case SOPC_UInt16_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Uint16 = static_cast<uint16_t>(dv->toInt());
+        }
+        break;
+    case SOPC_Int32_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Int32 = static_cast<int32_t>(dv->toInt());
+        }
+        break;
+    case SOPC_UInt32_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Uint32 = static_cast<uint32_t>(dv->toInt());
+        }
+        break;
+    case SOPC_Int64_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Int64 = static_cast<int64_t>(dv->toInt());
+        }
+        break;
+    case SOPC_UInt64_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            valid = true;
+            variant->Value.Uint64 = static_cast<uint64_t>(dv->toInt());
+        }
+        break;
+    case SOPC_Float_Id:
+        if (dvType == DatapointValue::T_FLOAT) {
+            valid = true;
+            variant->Value.Floatv = static_cast<float>(dv->toDouble());
+        }
+        break;
+    case SOPC_Double_Id:
+        if (dvType == DatapointValue::T_FLOAT) {
+            valid = true;
+            variant->Value.Floatv = static_cast<double>(dv->toDouble());
+        }
+        break;
+    case SOPC_ByteString_Id:
+        if (dvType == DatapointValue::T_STRING) {
+            valid = true;
+            SOPC_String_InitializeFromCString(&variant->Value.Bstring, dv->toStringValue().c_str());
+        }
+        break;
+    case SOPC_String_Id:
+        if (dvType == DatapointValue::T_STRING) {
+            valid = true;
+            SOPC_String_InitializeFromCString(&variant->Value.String, dv->toStringValue().c_str());
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (!valid) {
+        SOPC_Variant_Clear(variant);
+        ERROR("Impossible to convert datapoint value (%s) to SOPC type (%d)",
+                dv->getTypeStr().c_str() , typeId);
+    }
+}   // setupVariant()
+
+}   // namespace
+
 using SOPC_tools::loggableString;
 namespace SOPC_tools {
 
@@ -254,7 +384,7 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // Create endpoints configuration
     mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mProtocol.url.c_str(), true);
-    SOPC_ASSERT(mEpConfig != NULL);
+    ASSERT_NOT_NULL(mEpConfig);
 
     INFO("Setting up security...");
     mProtocol.setupServerSecurity(mEpConfig);
@@ -303,7 +433,7 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // Setup AddressSpace
     SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(true);
-    SOPC_ASSERT(addSpace != NULL);
+    ASSERT_NOT_NULL(addSpace);
 
     const NodeVect_t& nodes(mConfig.addrSpace.nodes);
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
@@ -340,6 +470,13 @@ OPCUA_Server(const ConfigCategory& configData):
             statusCodeToCString(status), status);
 
     //////////////////////////////////
+    // Set the asynchronous event callback
+    status = SOPC_HelperConfigServer_SetLocalServiceAsyncResponse(SOPC_LocalServiceAsyncRespCallback);
+    ASSERT(status == SOPC_STATUS_OK,
+            "SetLocalServiceAsyncResponse() returned code %s(%d)",
+            statusCodeToCString(status), status);
+
+    //////////////////////////////////
     // Start the server
     status = SOPC_ServerHelper_StartServer(&serverStopped_Fct);
     ASSERT(status == SOPC_STATUS_OK,
@@ -351,6 +488,7 @@ OPCUA_Server(const ConfigCategory& configData):
     ASSERT(!mStopped, "Server failed to start.");
 
     INFO("Started OPC UA server on endpoint %s", LOGGABLE(mProtocol.url));
+    mServerOnline = true;
 }
 
 /**************************************************************************/
@@ -368,11 +506,30 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         OpcUa_WriteValue* writeValue) {
     using SOPC_tools::toString;
     const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
+    const string nodeName(toString(writeValue->NodeId));
     if (NULL != pUser) {
         const std::string username(toString(pUser));
-        INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(toString(writeValue->NodeId)));
+        INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
     }
 #warning "TODO : manage write events"
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
+    if (writeResp == NULL) return;
+
+    SOPC_StatusCode status;
+
+    DEBUG("asynchWriteResponse : %u updates", writeResp->NoOfResults);
+    for (int32_t i = 0 ; i < writeResp->NoOfResults; i++) {
+        status = writeResp->Results[i];
+        if (status != 0) {
+            WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
+        }
+    }
+#warning "TODO : do we need to manage failures ?"
 }
 
 /**************************************************************************/
@@ -444,14 +601,96 @@ init_sopc_lib_and_logs(void) {
 }
 
 /**************************************************************************/
+void
+OPCUA_Server::
+updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
+        const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const {
+    SOPC_ReturnStatus status;
+    const uintptr_t thisParam(reinterpret_cast<uintptr_t>(this));
+
+    OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(1));
+    ASSERT_NOT_NULL(request);
+
+    SOPC_DataValue opcDv;
+    SOPC_DataValue_Initialize(&opcDv);
+    opcDv.Status = quality;
+    opcDv.SourceTimestamp = timestamp;
+    setupVariant(&opcDv.Value, dv, typeId);
+
+    status = SOPC_WriteRequest_SetWriteValue(request, 0, nodeId, SOPC_AttributeId_Value,
+            NULL, &opcDv);
+    if (status != SOPC_STATUS_OK) {
+        WARNING("SetWriteValue failed with code  %s(%d)",
+            statusCodeToCString(status), status);
+        delete request;
+    }
+
+    status = SOPC_ServerHelper_LocalServiceAsync(request, thisParam);
+    if (status != SOPC_STATUS_OK) {
+        WARNING("LocalServiceAsync failed with code  %s(%d)",
+            statusCodeToCString(status), status);
+        delete request;
+    }
+}
+
+/**************************************************************************/
 uint32_t
 OPCUA_Server::
 send(const Readings& readings) {
     DEBUG("OPCUA_Server::send(%ld elements)", readings.size());
     WARNING("OPCUA_Server::send() : NOT IMPLEMENTED YET");
 
+    uint32_t nbSent(0);
+    if (!mServerOnline) {
+        ERROR("Server not connected, cannot send %u readings", readings.size());
+        return 0;
+    }
+
+    for (Reading* reading : readings) {
+        if (NULL == reading) {continue;}
+        vector<Datapoint*>& dataPoints = reading->getReadingData();
+        const string assetName = reading->getAssetName();
+
+        for (Datapoint* dp : dataPoints) {
+            if (dp->getName() != "data_object") {continue;}
+
+            DatapointValue dpv = dp->getData();
+            vector<Datapoint*>* sdp = dpv.getDpVec();
+
+            SOPC_BuiltinId typeId = SOPC_Null_Id;
+            DatapointValue* value = nullptr;
+            SOPC_NodeId* nodeId = nullptr;
+            SOPC_StatusCode quality = OpcUa_BadWaitingForInitialData;
+            uint64_t ts = 0;
+
+            for (Datapoint* objDp : *sdp) {
+                const string dpName(objDp->getName());
+                const DatapointValue& attrVal = objDp->getData();
+
+                if (dpName == "do_type") {
+                    typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
+                } else if (dpName == "do_nodeid" && nodeId == NULL) {
+                    nodeId = SOPC_tools::createNodeId(attrVal.toStringValue());
+                } else if (dpName == "do_value" && value == NULL) {
+                    value = new DatapointValue(attrVal);
+                } else if (dpName == "do_quality") {
+                    quality = static_cast<SOPC_StatusCode>(attrVal.toInt());
+                } else if (dpName == "do_ts") {
+                    ts = attrVal.toInt();
+                }
+#warning 'TODO : Manage TC with "co_type" ...'
+            }
+
+            if (value != NULL && nodeId != NULL) {
+                updateAddressSpace(nodeId, typeId, value, quality, ts);
+                nbSent++;
+            }
+            delete value;
+            delete nodeId;
+        }
+    }
 #warning "TODO : OPCUA_Server::send"
-    return 0;
+    return nbSent;
 }
 
 /**************************************************************************/

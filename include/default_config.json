@@ -24,7 +24,7 @@
                               'productUri' : 'urn:S2OPC:localhost', \
                               'appDescription': 'Application description', \
                               'localeId' : 'en-US', \
-                              'namespaces' : [ 'urn:S2OPC:localhost', 'urn:S2OPC:localhost_2' ], \
+                              'namespaces' : [ 'urn:S2OPC:localhost' ], \
                               'policies' : [ \
                                 { 'securityMode' : 'None', 'securityPolicy' : 'None', 'userPolicies' : [ 'anonymous' ] },\
                                 { 'securityMode' : 'Sign', 'securityPolicy' : 'Basic256', 'userPolicies' : [ 'anonymous', 'username' ] }, \
@@ -68,7 +68,7 @@
                       },\
                       {\
                          'name':'opcua',\
-                         'address':'ns=1;s=/FESSE_6_FESS5.1_DFAIL.DJ/S_1145_6_21_28',\
+                         'address':'S_1145_6_21_28',\
                          'typeid':'Boolean_Id'\
                       }\
                    ]\
@@ -86,7 +86,7 @@
                       },\
                       {\
                          'name':'opcua',\
-                         'address':'ns=1;s=/FESSE_6_FESS5.1_AMU/S_1145_6_21_7',\
+                         'address':'S_1145_6_21_7',\
                          'typeid':'Byte_Id'\
                       }\
                    ] \
@@ -104,7 +104,7 @@
                       },\
                       {\
                          'name':'opcua',\
-                         'address':'ns=1;s=/FESSE_6_6CHAL7.1_P/M_1145_6_18_3',\
+                         'address':'M_1145_6_18_3',\
                          'typeid':'Float_Id'\
                       }\
                    ] \
@@ -122,7 +122,7 @@
                       },\
                       {\
                          'name':'opcua',\
-                         'address':'ns=1;s=/FESSE_6_6CHAL7.1_SA.1/C_1145_6_18_1',\
+                         'address':'C_1145_6_18_1',\
                          'typeid':'Byte_Id'\
                       }\
                    ] \
