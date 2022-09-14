@@ -1,0 +1,9 @@
+#!/bin/sh
+XML=$1
+INC=$2
+( [ -z ${XML} ] || [ -z ${INC} ] ) && echo "Invalid parameters to mkaddrspace" && exit 1
+( [ -z ${FLEDGE_ROOT} ] ) && echo "FLEDGE_ROOT variable is not set" && exit 1
+( ! [ -e ${FLEDGE_ROOT}/../S2OPC ] ) && echo "S2OPC not installed as expected in ${FLEDGE_ROOT}/.." && exit 1
+
+echo "python3 ${FLEDGE_ROOT}/../S2OPC/scripts/generate-s2opc-address-space.py ${XML} ${INC}"
+python3 ${FLEDGE_ROOT}/../S2OPC/scripts/generate-s2opc-address-space.py ${XML} ${INC} || exit $?

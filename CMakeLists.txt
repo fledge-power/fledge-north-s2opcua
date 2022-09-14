@@ -24,6 +24,16 @@ add_custom_command(
   VERBATIM
 )
 
+# Generation of AddressSpace NS0 file
+set_source_files_properties(base_addrspace.c PROPERTIES GENERATED TRUE)
+add_custom_command(
+  OUTPUT base_addrspace.c
+  DEPENDS ${CMAKE_SOURCE_DIR}/include/s2opc_base_nodeset_origin.xml ${CMAKE_SOURCE_DIR}/mkaddrspace
+  COMMAND ${CMAKE_SOURCE_DIR}/mkaddrspace ${CMAKE_SOURCE_DIR}/include/s2opc_base_nodeset_origin.xml base_addrspace.c 
+  COMMENT "Generating NS0 AddressSpace initialization file"
+  VERBATIM
+)
+
 # Generation version header file
 set_source_files_properties(version.h PROPERTIES GENERATED TRUE)
 add_custom_command(
@@ -71,7 +81,7 @@ link_directories(${FLEDGE_LIB_DIRS})
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -Wl,--no-as-needed")
 
 # Create shared library
-add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h default_config.inc)
+add_library(${PROJECT_NAME} SHARED ${SOURCES} version.h default_config.inc base_addrspace.c)
 
 # Add Fledge library names
 target_link_libraries(${PROJECT_NAME} PRIVATE ${NEEDED_FLEDGE_LIBS})

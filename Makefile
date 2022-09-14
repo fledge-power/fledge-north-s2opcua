@@ -38,6 +38,6 @@ del_plugin:
 	$(Q)(curl -sX DELETE http://localhost:8081/fledge/scheduled/task/s2opcua_srv | grep -o '"[ A-Za-z0-9_-]*deleted successfully."') || true
 	
 cpplint:
-	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/s2opc_addrspace_nano.c src/* include/*
+	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/base_addrspace.c src/* include/*
 		
 .PHONY: all clean build check del_plugin install_plugin insert_plugin cpplint

@@ -366,13 +366,11 @@ void
 OPCUA_Server::
 writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         OpcUa_WriteValue* writeValue) {
+    using SOPC_tools::toString;
     const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
     if (NULL != pUser) {
         const std::string username(toString(pUser));
-        const char* nodeId(SOPC_NodeId_ToCString(&writeValue->NodeId));
-        INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeId));
-
-        delete nodeId;
+        INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(toString(writeValue->NodeId)));
     }
 #warning "TODO : manage write events"
 }

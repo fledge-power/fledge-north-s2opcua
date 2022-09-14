@@ -37,6 +37,13 @@ using SOPC_tools::getArray;
 using SOPC_tools::getString;
 using SOPC_tools::getObject;
 
+extern "C" {
+    extern const bool sopc_embedded_is_const_addspace;
+
+    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];
+    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;
+}
+
 namespace {
 using std::string;
 
@@ -44,8 +51,9 @@ using std::string;
 s2opc_north::NodeVect_t getNS0(void) {
     s2opc_north::NodeVect_t result;
 
-    const uint32_t nbNodes(SOPC_Embedded_AddressSpace_nNodes_nano);
-    SOPC_AddressSpace_Node* nodes(SOPC_Embedded_AddressSpace_Nodes_nano);
+    ASSERT(sopc_embedded_is_const_addspace == false, "Cannot use CONST address space!");
+    const uint32_t nbNodes(SOPC_Embedded_AddressSpace_nNodes);
+    SOPC_AddressSpace_Node* nodes(SOPC_Embedded_AddressSpace_Nodes);
 
     for (uint32_t i = 0 ; i < nbNodes; i++) {
         SOPC_AddressSpace_Node* node(nodes + i);
@@ -291,7 +299,6 @@ Server_AddrSpace(const std::string& json):
             }
         }
     }
-#warning "TODO : Correct ns0!"
 }
 
 /**************************************************************************/

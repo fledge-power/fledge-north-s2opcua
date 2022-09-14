@@ -1,14 +1,8 @@
 This list is based on content of equivalent SOUTH plugin (fledge-south-s2opcua)
 
 == TODO
-- include
-- Package
-- S2OPC.patch
-- cleanup               
-- CONTRIBUTING.md
+- cleanup -TODO - JCH
 - docs
-- opcua.cpp
-- plugin.cpp
 - tests
 
 == WIP
@@ -24,3 +18,12 @@ This list is based on content of equivalent SOUTH plugin (fledge-south-s2opcua)
 - Description
 - mkversion
 - LICENSE
+
+
+    /**
+     * Note: possible statuses:
+     * GoodStatus
+     * OpcUa_UncertainLastUsableValue
+     * OpcUa_BadWaitingForInitialData
+     * OpcUa_GoodLocalOverride
+     */
