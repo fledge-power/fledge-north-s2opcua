@@ -12,7 +12,7 @@ project(s2opcua)
 # If no -D options are given and FLEDGE_ROOT environment variable is set
 # then Fledge libraries and header files are pulled from FLEDGE_ROOT path.
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -O3")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # Generation of JSON default file
 set_source_files_properties(default_config.inc PROPERTIES GENERATED TRUE)
@@ -101,4 +101,10 @@ set(FLEDGE_INSTALL "" CACHE INTERNAL "")
 if (FLEDGE_INSTALL)
 	message(STATUS "Installing ${PROJECT_NAME} in ${FLEDGE_INSTALL}/plugins/${PLUGIN_TYPE}/${PROJECT_NAME}")
 	install(TARGETS ${PROJECT_NAME} DESTINATION ${FLEDGE_INSTALL}/plugins/${PLUGIN_TYPE}/${PROJECT_NAME})
+endif()
+
+if (${CMAKE_BUILD_TYPE} STREQUAL Coverage OR ${CMAKE_BUILD_TYPE} STREQUAL Debug)
+  add_subdirectory(tests)
+else()
+  set(CMAKE_CXX_FLAGS "-std=c++11 -O3")
 endif()

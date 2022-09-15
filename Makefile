@@ -8,6 +8,11 @@ build:
 	$(Q)mkdir -p build
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
+unit_tests: 
+	$(Q)mkdir -p build
+	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
+	$(Q)make -C build -j4
+	$(Q)cd build/tests && ./RunTests
 clean:
 	$(Q)rm -fr build
 log:
