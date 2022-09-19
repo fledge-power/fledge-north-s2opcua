@@ -53,7 +53,7 @@ extern const char* plugin_default_config;
 typedef bool (*north_write_event_t)
         (char *name, char *value, ControlDestination destination, ...);
 typedef int (*north_operation_event_t)
-        (char *operation, int paramCount, char *parameters[], ControlDestination destination, ...);
+        (char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...);
 typedef std::vector<Reading*> Readings;
 
 /**
