@@ -232,7 +232,7 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
     case SOPC_Byte_Id:
         if (dvType == DatapointValue::T_INTEGER) {
             valid = true;
-            variant->Value.Sbyte = static_cast<SOPC_Byte>(dv->toInt());
+            variant->Value.Byte = static_cast<SOPC_Byte>(dv->toInt());
         }
         break;
     case SOPC_Int16_Id:
