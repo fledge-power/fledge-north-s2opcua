@@ -306,6 +306,58 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
     }
 }   // setupVariant()
 
+/**
+ * Allocates and return a char* representing the value of a variant.
+ */
+static string variantToString(const SOPC_Variant& variant) {
+    string result;
+    switch (variant.BuiltInTypeId) {
+    case SOPC_Boolean_Id:
+        result = to_string(variant.Value.Boolean);
+        break;
+    case SOPC_SByte_Id:
+        result = to_string(variant.Value.Sbyte);
+        break;
+    case SOPC_Byte_Id:
+        result = to_string(variant.Value.Byte);
+        break;
+    case SOPC_Int16_Id:
+        result = to_string(variant.Value.Int16);
+        break;
+    case SOPC_UInt16_Id:
+        result = to_string(variant.Value.Uint16);
+        break;
+    case SOPC_Int32_Id:
+        result = to_string(variant.Value.Int32);
+        break;
+    case SOPC_UInt32_Id:
+        result = to_string(variant.Value.Uint32);
+        break;
+    case SOPC_Int64_Id:
+        result = to_string(variant.Value.Int64);
+        break;
+    case SOPC_UInt64_Id:
+        result = to_string(variant.Value.Uint64);
+        break;
+    case SOPC_Float_Id:
+        result = to_string(variant.Value.Floatv);
+        break;
+    case SOPC_Double_Id:
+        result = to_string(variant.Value.Doublev);
+        break;
+    case SOPC_ByteString_Id:
+        result = SOPC_String_GetRawCString(&variant.Value.Bstring);
+        break;
+    case SOPC_String_Id:
+        result = SOPC_String_GetRawCString(&variant.Value.String);
+        break;
+    default:
+        WARNING("Could not convert data type %d (Unsupported OPCUA type)", variant.BuiltInTypeId);
+        result = "???";
+        break;
+    }
+    return strdup(result.c_str());
+}
 }   // namespace
 
 using SOPC_tools::loggableString;
@@ -346,7 +398,8 @@ OPCUA_Server(const ConfigCategory& configData):
     mConfig(configData),
     mBuildInfo(SOPC_CommonHelper_GetBuildInfo()),
     mServerOnline(false),
-    mStopped(false) {
+    mStopped(false),
+    m_oper(nullptr) {
     SOPC_ReturnStatus status;
 
     ASSERT(mInstance == NULL, "OPCUA_Server may not be instanced twice within the same plugin");
@@ -432,7 +485,7 @@ OPCUA_Server(const ConfigCategory& configData):
 
     //////////////////////////////////
     // Setup AddressSpace
-    SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(true);
+    SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
     ASSERT_NOT_NULL(addSpace);
 
     const NodeVect_t& nodes(mConfig.addrSpace.nodes);
@@ -504,6 +557,7 @@ void
 OPCUA_Server::
 writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         OpcUa_WriteValue* writeValue) {
+    ASSERT_NOT_NULL(writeValue);
     using SOPC_tools::toString;
     const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
     const string nodeName(toString(writeValue->NodeId));
@@ -511,7 +565,42 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         const std::string username(toString(pUser));
         INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
     }
-#warning "TODO : manage write events"
+
+    if (m_oper != NULL) {
+        /*
+         * params contains:
+         * - OPCUA TypeId
+         * - NodeId
+         * - Quality
+         * - AttributeId
+         * - Timestamp
+         * - Value
+         */
+        SOPC_tools::CStringVect names({"typeid", "nodeid", "quality", "attribute", "timestamp", "value"});
+        vector<string> params;
+        params.push_back(std::to_string(writeValue->Value.Value.BuiltInTypeId));
+        params.push_back(nodeName);
+        params.push_back(std::to_string(writeValue->Value.Status));
+        params.push_back(std::to_string(writeValue->AttributeId));
+        params.push_back(std::to_string(writeValue->Value.SourceTimestamp));
+        params.push_back(::variantToString(writeValue->Value.Value));
+
+        SOPC_tools::CStringVect cParams(params);
+        char* operName(strdup("opcua_operation"));
+        WARNING("TODO JCH Sending OPERATION(\"%s\", {\"%s\": \"%s\", \"%s\": \"%s\", ...}",
+                operName,
+                names.vect[0], cParams.vect[0],
+                names.vect[5], cParams.vect[5]);
+        DEBUG("Sending OPERATION(\"%s\", {\"%s\": \"%s\", \"%s\": \"%s\", ...}",
+                operName,
+                names.vect[0], cParams.vect[0],
+                names.vect[5], cParams.vect[5]);
+        m_oper(operName, names.size, names.vect, cParams.vect, DestinationBroadcast);
+
+        delete operName;
+    } else {
+        WARNING("Cannot send operation because oper callback was not set");
+    }
 }
 
 /**************************************************************************/
@@ -696,10 +785,8 @@ send(const Readings& readings) {
 /**************************************************************************/
 void
 OPCUA_Server::
-setpointCallbacks(north_write_event_t write, north_operation_event_t operation) {
-    DEBUG("OPCUA_Server::setpointCallbacks(.., ..)");
-    WARNING("OPCUA_Server::setpointCallbacks() : NOT IMPLEMENTED YET");
-#warning "TODO : OPCUA_Server::setpointCallbacks"
+setpointCallbacks(north_operation_event_t operation) {
+    m_oper = operation;
     return;
 }
 

@@ -78,9 +78,11 @@ class OPCUA_Server {
      */
     uint32_t send(const Readings& readings);
     /**
-     * TODO
+     * Register the "operation" callback.
+     * This function can be called when a command is received from controller side (opc client)
+     * and needs to be sent back to any south plugin.
      */
-    void setpointCallbacks(north_write_event_t write, north_operation_event_t operation);
+    void setpointCallbacks(north_operation_event_t operation);
 
     /**
      * Process a write event on the server
@@ -117,6 +119,7 @@ class OPCUA_Server {
     std::atomic<bool> mStopped;
     int32_t mServerOnline;
     SOPC_Endpoint_Config* mEpConfig;
+    north_operation_event_t m_oper;
 };
 
 inline void

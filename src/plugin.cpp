@@ -45,7 +45,7 @@ extern "C" {
 namespace {
 #define PLUGIN_NAME  "s2opcua"
 #define INTERFACE_VERSION  "1.0.0"
-#define PLUGIN_FLAGS 0  // Supported NORTH flags are: SP_PERSIST_DATA, SP_BUILTIN
+#define PLUGIN_FLAGS SP_CONTROL
 
 /**************************************************************************/
 static s2opc_north::OPCUA_Server* handleToPlugin(void* handle) {
@@ -120,7 +120,8 @@ uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings) {
 void plugin_register(PLUGIN_HANDLE handle,
         s2opc_north::north_write_event_t write,
         s2opc_north::north_operation_event_t operation) {
-    handleToPlugin(handle)->setpointCallbacks(write, operation);
+    INFO("plugin_register (%p)...", reinterpret_cast<void*>(operation));
+    handleToPlugin(handle)->setpointCallbacks(operation);
 }
 
 }
