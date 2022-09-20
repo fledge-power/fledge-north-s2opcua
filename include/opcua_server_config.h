@@ -57,7 +57,6 @@ class ExchangedDataC {
           "name":"s2opcua",
           "address":"<nodeid>",
           "typeid":"<Boolean|SByte|...>",  // See SOPC_BuiltinId
-          "gi_groups":"station|1|2"   // TODO Ignored ?
        }
      */
     explicit ExchangedDataC(const rapidjson::Value& json);

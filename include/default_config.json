@@ -19,7 +19,7 @@
         "default" : "{'protocol_stack' : { 'name' : 's2opcserver',\
                           'version':'1.0', \
                           'transport_layer':{ \
-                              'url' : 'opc.tcp://localhost:4841/OPCUA/s2opc', \
+                              'url' : 'opc.tcp://localhost:4841', \
                               'appUri' : 'urn:S2OPC:localhost', \
                               'productUri' : 'urn:S2OPC:localhost', \
                               'appDescription': 'Application description', \

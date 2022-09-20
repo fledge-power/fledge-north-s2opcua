@@ -7,9 +7,7 @@ It supports both anonymous access and authentication using username and password
 
 ## Configuration
 
-This configuration of this plugin requires following parameters to be set:
-
-TODO
+See an example in `include/default_config.json`
 
 ## Building
 
@@ -87,9 +85,17 @@ make
 
 ### Test plugin
 
-Plugin can be tested locally using the command line:
+Plugin can be tested locally using the command line. A `Makefile` is provided in the root project to execute basic commands:
 
-``` sh
-curl -sX POST http://localhost:8081/fledge/scheduled/task -d '{"name": "s2opcua","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 30,"schedule_enabled": true}' ; echo
-```
+- `make build` : compile (Debug)
+- `make unit_tests` : Execute unit tests
+- `make clean` : Clean the project
+- `make log` : Show logs from FLEDGE for the plugin
+- `make check` : Check the plugin interface using FLEDGE `get_plugin_info` tool
+- `make install_plugin` : Install the North plugin into FLEDGE (requires `FLEDGE_INSTALL` to be set)
+- `make insert_task` : Start the plugin as a FLEDGE task
+- `make insert_service` : Start the plugin as a FLEDGE service
+- `make del_plugin` : Stop the plugin (Either service or task)
+- `make cpplint` : Launch coding rules checker
+
 

@@ -807,6 +807,9 @@ send(const Readings& readings) {
             if (value != NULL && nodeId != NULL) {
                 updateAddressSpace(nodeId, typeId, value, quality, ts);
             }
+            else {
+                INFO("Skipped sending data because 'do_nodeid' or 'do_value' were not provided");
+            }
             delete value;
             delete nodeId;
         }
