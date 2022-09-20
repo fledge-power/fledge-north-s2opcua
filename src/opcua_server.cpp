@@ -202,6 +202,25 @@ static void sopcDoLog(const char* category, const char* const line) {
 namespace {
 
 /**************************************************************************/
+static uint64_t toInteger(const DatapointValue& value) {
+    if (value.getType() == DatapointValue::T_INTEGER) {
+        return static_cast<uint64_t>(value.toInt());
+    } else if (value.getType() == DatapointValue::T_STRING) {
+        try {
+            return stoll(value.toStringValue(), NULL, 0);
+        }
+        catch(const exception &) {
+            WARNING("Could not convert STRING %s to an INTEGER value. Using '0'",
+                    value.toString().c_str());
+        }
+        return 0;
+    } else {
+        WARNING("do_quality ignored because not of type 'T_STRING' or 'T_INTEGER'");
+        return 0;
+    }
+}
+
+/**************************************************************************/
 static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_BuiltinId typeId) {
     ASSERT_NOT_NULL(variant);
     ASSERT_NOT_NULL(dv);
@@ -587,10 +606,6 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
 
         SOPC_tools::CStringVect cParams(params);
         char* operName(strdup("opcua_operation"));
-        WARNING("TODO JCH Sending OPERATION(\"%s\", {\"%s\": \"%s\", \"%s\": \"%s\", ...}",
-                operName,
-                names.vect[0], cParams.vect[0],
-                names.vect[5], cParams.vect[5]);
         DEBUG("Sending OPERATION(\"%s\", {\"%s\": \"%s\", \"%s\": \"%s\", ...}",
                 operName,
                 names.vect[0], cParams.vect[0],
@@ -727,95 +742,73 @@ uint32_t
 OPCUA_Server::
 send(const Readings& readings) {
     DEBUG("OPCUA_Server::send(%ld elements)", readings.size());
-    WARNING("OPCUA_Server::send() : NOT IMPLEMENTED YET");
 
     if (!mServerOnline) {
         ERROR("Server not connected, cannot send %u readings", readings.size());
         return 0;
     }
 
+    // Loop over all readings
     for (Reading* reading : readings) {
         if (NULL == reading) {continue;}
         vector<Datapoint*>& dataPoints = reading->getReadingData();
         const string assetName = reading->getAssetName();
 
-        try {
-            for (Datapoint* dp : dataPoints) {
-                WARNING("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
-                        assetName.c_str(),  assetName.length(), dp->getName().c_str());
-                if (dp->getName() != "data_object") {continue;}
+        for (Datapoint* dp : dataPoints) {
+            // Only process dataPoints which name match "data_object"
+            if (dp->getName() != "data_object") {continue;}
+            DEBUG("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
+                    assetName.c_str(),  assetName.length(), dp->getName().c_str());
 
-                DatapointValue dpv = dp->getData();
-                vector<Datapoint*>* sdp = dpv.getDpVec();
+            DatapointValue dpv = dp->getData();
+            vector<Datapoint*>* sdp = dpv.getDpVec();
 
-                SOPC_BuiltinId typeId = SOPC_Null_Id;
-                DatapointValue* value = nullptr;
-                SOPC_NodeId* nodeId = nullptr;
-                SOPC_StatusCode quality = OpcUa_BadWaitingForInitialData;
-                uint64_t ts = 0;
+            // Parameters to be read from Datapoint
+            SOPC_BuiltinId typeId = SOPC_Null_Id;
+            DatapointValue* value = nullptr;
+            SOPC_NodeId* nodeId = nullptr;
+            SOPC_StatusCode quality = OpcUa_BadWaitingForInitialData;
+            uint64_t ts = 0;
 
-                for (Datapoint* objDp : *sdp) {
-                    const string dpName(objDp->getName());
-                    const DatapointValue& attrVal = objDp->getData();
+            // Read parameters
+            for (Datapoint* objDp : *sdp) {
+                const string dpName(objDp->getName());
+                const DatapointValue& attrVal = objDp->getData();
 
-                    if (dpName == "do_type") {
-                        if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                            typeId = static_cast<SOPC_BuiltinId>(attrVal.toInt());
-                        }
-                        if (attrVal.getType() == DatapointValue::T_STRING) {
-                            typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
-                        }
-                    } else if (dpName == "do_nodeid" && nodeId == NULL) {
-                        if (attrVal.getType() == DatapointValue::T_STRING) {
-                            nodeId = SOPC_tools::createNodeId(attrVal.toStringValue());
-                        } else if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                            long iNode(attrVal.toInt());
-                            nodeId = SOPC_tools::createNodeId(string("i=") + std::to_string(iNode));
-                        } else {
-                            WARNING("do_nodeid ignored because not of type 'T_STRING' or 'T_INTEGER'");
-                        }
-                        WARNING("OPCUA_Server::send(nodeId=%s) :", SOPC_tools::toString(*nodeId).c_str());
-                    } else if (dpName == "do_value" && value == NULL) {
-                        value = new DatapointValue(attrVal);
-                    } else if (dpName == "do_quality") {
-                        if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                            quality = static_cast<SOPC_StatusCode>(attrVal.toInt());
-                        } else if (attrVal.getType() == DatapointValue::T_STRING) {
-                            long long ll(0);
-                            try {
-                                ll = stoll(attrVal.toStringValue(), NULL, 0);
-                            }
-                            catch(const exception &) {
-                                WARNING("Could not convert Quality %s to an integer value. Using '0'",
-                                        attrVal.toString().c_str());
-                            }
-                            quality = static_cast<SOPC_StatusCode>(ll);
-                        } else {
-                            WARNING("do_quality ignored because not of type 'T_STRING' or 'T_INTEGER'");
-                        }
-                    } else if (dpName == "do_ts") {
-                        if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                            ts = attrVal.toInt();
-                        } else {
-                            WARNING("do_ts ignored because not of type 'T_INTEGER'");
-                        }
-
+                // Read relevant attributes
+                if (dpName == "do_type") {
+                    if (attrVal.getType() == DatapointValue::T_INTEGER) {
+                        typeId = static_cast<SOPC_BuiltinId>(attrVal.toInt());
                     }
-#warning 'TODO : Manage TC with "co_type" ...'
+                    if (attrVal.getType() == DatapointValue::T_STRING) {
+                        typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
+                    }
+                } else if (dpName == "do_nodeid" && nodeId == NULL) {
+                    // A node Id is either a string or a integer (NS0)
+                    if (attrVal.getType() == DatapointValue::T_STRING) {
+                        nodeId = SOPC_tools::createNodeId(attrVal.toStringValue());
+                    } else if (attrVal.getType() == DatapointValue::T_INTEGER) {
+                        uint64_t iNode(attrVal.toInt());
+                        nodeId = SOPC_tools::createNodeId(string("i=") + std::to_string(iNode));
+                    } else {
+                        WARNING("do_nodeid ignored because not of type 'T_STRING' or 'T_INTEGER'");
+                    }
+                } else if (dpName == "do_value" && value == NULL) {
+                    value = new DatapointValue(attrVal);
+                } else if (dpName == "do_quality") {
+                    quality = static_cast<SOPC_StatusCode>(::toInteger(attrVal));
+                } else if (dpName == "do_ts") {
+                    ts = ::toInteger(attrVal);
                 }
-
-                if (value != NULL && nodeId != NULL) {
-                    updateAddressSpace(nodeId, typeId, value, quality, ts);
-                }
-                delete value;
-                delete nodeId;
             }
-        }
-        catch(const exception &e) {
-            ERROR("Failed to sent asset %s : %s", assetName.c_str(), e.what());
+
+            if (value != NULL && nodeId != NULL) {
+                updateAddressSpace(nodeId, typeId, value, quality, ts);
+            }
+            delete value;
+            delete nodeId;
         }
     }
-#warning "TODO : OPCUA_Server::send"
     return readings.size();
 }
 
