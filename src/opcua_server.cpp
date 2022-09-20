@@ -25,7 +25,6 @@
 
 extern "C" {
 // S2OPC Headers
-#warning "remove relative path"
 #include "sopc_assert.h"
 #include "sopc_atomic.h"
 #include "sopc_common.h"
@@ -553,6 +552,7 @@ OPCUA_Server(const ConfigCategory& configData):
 
     //////////////////////////////////
     // Start the server
+    SOPC_HelperConfigServer_SetShutdownCountdown(0);
     status = SOPC_ServerHelper_StartServer(&serverStopped_Fct);
     ASSERT(status == SOPC_STATUS_OK,
             "StartServer() returned code %s(%d)",
