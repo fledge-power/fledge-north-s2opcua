@@ -76,9 +76,12 @@ extern "C" {
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 static void plugin_Assert_UserCallback(const char* context) {
     FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
-    throw std::exception();
+    // leave some time to flush logs.
+    usleep(100 * 1000);
+    // Throwing an exception may not be enough in case the ASSERT was raised in a separate thread.
+    // Calling exit will ensure the full process is stopped.
+    std::exit(1);
 }
-
 
 /**************************************************************************/
 PLUGIN_INFORMATION* plugin_info(void) {

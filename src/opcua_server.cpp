@@ -150,11 +150,10 @@ static void serverStopped_Fct(SOPC_ReturnStatus status) {
     if (srv != NULL) {
         WARNING("Server stopped!");
         srv->setStopped();
-    } else {
-        ASSERT(false, "Server stopped with return code %s(%d).",
-                SOPC_tools::statusCodeToCString(status), status);
+        usleep(100 * 1000);
     }
-#warning "TODO : how can the plugin be stopped properly?"
+    ASSERT(false, "Server stopped with return code %s(%d).",
+            SOPC_tools::statusCodeToCString(status), status);
 }
 
 /**************************************************************************/
