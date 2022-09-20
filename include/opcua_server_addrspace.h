@@ -18,9 +18,10 @@
 
 extern "C" {
 // S2OPC headers
-#include "s2opc/common/sopc_assert.h"
-#include "s2opc/common/sopc_builtintypes.h"
-#include "s2opc/clientserver/sopc_address_space.h"
+#include "sopc_assert.h"
+#include "sopc_builtintypes.h"
+// From S2OPC "clientserver"
+#include "sopc_address_space.h"
 };
 
 // Fledge headers

@@ -22,9 +22,10 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_assert.h"
-#include "s2opc/common/sopc_types.h"
-#include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
+#include "sopc_assert.h"
+#include "sopc_types.h"
+// From S2OPC "clientserver/frontend"
+#include "libs2opc_server_config_custom.h"
 }
 
 /**************************************************************************/

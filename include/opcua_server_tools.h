@@ -24,9 +24,10 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_builtintypes.h"
-#include "s2opc/common/sopc_log_manager.h"
-#include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
+#include "sopc_builtintypes.h"
+#include "sopc_log_manager.h"
+// From S2OPC "clientserver/frontend"
+#include "libs2opc_server_config_custom.h"
 };
 
 /// Project includes

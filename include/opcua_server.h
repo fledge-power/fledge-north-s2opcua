@@ -29,11 +29,11 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_types.h"
-#include "s2opc/common/sopc_builtintypes.h"
-#include "s2opc/common/sopc_logger.h"
-#include "s2opc/clientserver/sopc_user_app_itf.h"
-#include "s2opc/clientserver/sopc_toolkit_config.h"
+#include "sopc_types.h"
+#include "sopc_builtintypes.h"
+#include "sopc_logger.h"
+#include "sopc_user_app_itf.h"
+#include "sopc_toolkit_config.h"
 };
 
 // Plugin headers

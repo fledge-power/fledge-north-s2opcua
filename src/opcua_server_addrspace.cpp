@@ -16,13 +16,14 @@
 
 extern "C" {
 // S2OPC headers
-#include "s2opc/common/sopc_macros.h"
-#include "s2opc/common/sopc_common.h"
-#include "s2opc/common/sopc_enums.h"
-#include "s2opc/common/sopc_builtintypes.h"
-#include "s2opc/common/opcua_statuscodes.h"
-#include "s2opc/common/sopc_types.h"
-#include "s2opc/clientserver/sopc_address_space.h"
+#include "sopc_macros.h"
+#include "sopc_common.h"
+#include "sopc_enums.h"
+#include "sopc_builtintypes.h"
+#include "opcua_statuscodes.h"
+#include "sopc_types.h"
+// From S2OPC "clientserver"
+#include "sopc_address_space.h"
 }
 
 // Fledge headers

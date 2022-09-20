@@ -25,11 +25,13 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_log_manager.h"
-#include "s2opc/clientserver/sopc_user_app_itf.h"
-#include "s2opc/clientserver/sopc_toolkit_config.h"
-#include "s2opc/clientserver/frontend/libs2opc_server_config.h"
-#include "s2opc/clientserver/frontend/libs2opc_server_config_custom.h"
+#include "sopc_log_manager.h"
+// From S2OPC "clientserver"
+#include "sopc_user_app_itf.h"
+#include "sopc_toolkit_config.h"
+// From S2OPC "clientserver/frontend"
+#include "libs2opc_server_config.h"
+#include "libs2opc_server_config_custom.h"
 };
 
 /// Project includes

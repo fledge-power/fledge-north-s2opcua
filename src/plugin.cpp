@@ -26,7 +26,7 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_assert.h"
+#include "sopc_assert.h"
 }
 
 /* This file implements a north OPCUA bridge for Fledge.
