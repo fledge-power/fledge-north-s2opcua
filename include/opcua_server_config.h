@@ -38,11 +38,6 @@ extern "C" {
 #include "opcua_server_tools.h"
 #include "opcua_server_addrspace.h"
 
-
-namespace SOPC_tools {
-
-}   // namespace SOPC_tools
-
 namespace s2opc_north {
 
 /**************************************************************************/

@@ -137,6 +137,7 @@ namespace s2opc_north {
 /**************************************************************************/
 CNode::
 CNode(SOPC_StatusCode defaultStatusCode) {
+    memset(&mNode, 0, sizeof(mNode));
     mNode.node_class = OpcUa_NodeClass_Unspecified;     // Filled by child classes
     mNode.value_status = defaultStatusCode;
     mNode.value_source_ts = {0, 0};
@@ -150,10 +151,10 @@ insertAndCompleteReferences(NodeVect_t* nodes) {
     // Find references and invert them
     const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
     const uint32_t nbRef(mNode.data.variable.NoOfReferences);
-    const OpcUa_ReferenceNode* ref(mNode.data.variable.References);
     for (uint32_t i = 0 ; i < nbRef; i++) {
-        if (ref[i].TargetId.ServerIndex == serverIndex) {
-            const SOPC_NodeId& refTargetId(ref[i].TargetId.NodeId);
+        const OpcUa_ReferenceNode& ref(mNode.data.variable.References[i]);
+        if (ref.TargetId.ServerIndex == serverIndex) {
+            const SOPC_NodeId& refTargetId(ref.TargetId.NodeId);
             // create a reverse reference
 
             // Find matching node in 'nodes'
@@ -172,8 +173,8 @@ insertAndCompleteReferences(NodeVect_t* nodes) {
 
                     // Fill new reference with inverted reference
                     OpcUa_ReferenceNode& reverse(pNode->data.variable.References[oldSize]);
-                    reverse.IsInverse = !ref->IsInverse;
-                    reverse.ReferenceTypeId = ref->ReferenceTypeId;
+                    reverse.IsInverse = !ref.IsInverse;
+                    reverse.ReferenceTypeId = ref.ReferenceTypeId;
                     reverse.TargetId.NodeId = nodeId;
                     reverse.TargetId.ServerIndex = serverIndex;
                     reverse.TargetId.NamespaceUri = String_NULL;
@@ -266,7 +267,7 @@ Server_AddrSpace(const std::string& json):
     rapidjson::Document doc;
     doc.Parse(json.c_str());
     ASSERT(!doc.HasParseError() && doc.HasMember(JSON_EXCHANGED_DATA),
-            "Malformed JSON (section '%s')", JSON_EXCHANGED_DATA);
+            "Malformed JSON (section '%s', index = %u)", JSON_EXCHANGED_DATA, doc.GetErrorOffset());
 
     const Value& exData(::getObject(doc, JSON_EXCHANGED_DATA, JSON_EXCHANGED_DATA));
     const Value::ConstArray datapoints(getArray(exData, JSON_DATAPOINTS, JSON_EXCHANGED_DATA));

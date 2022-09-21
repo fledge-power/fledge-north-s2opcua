@@ -58,11 +58,14 @@ extern "C" {
 #define ERROR Logger::getLogger()->error
 #define FATAL Logger::getLogger()->fatal
 
+extern "C" {
+extern void plugin_Assert_UserCallback(const char* context);
+}
 // Improve SOPC_ASSERT to allow run-time elaborated messages
 #define ASSERT(c,  ...) do { \
     if (!(c)) {\
         FATAL("ASSERT FAILED:" __VA_ARGS__);\
-        SOPC_ASSERT(false);\
+        throw std::exception();\
     }\
 } while (0)
 

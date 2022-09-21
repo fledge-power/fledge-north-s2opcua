@@ -74,7 +74,7 @@ extern "C" {
 
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
-static void plugin_Assert_UserCallback(const char* context) {
+void plugin_Assert_UserCallback(const char* context) {
     FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
     // leave some time to flush logs.
     usleep(100 * 1000);

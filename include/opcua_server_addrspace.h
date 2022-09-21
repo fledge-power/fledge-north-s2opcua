@@ -46,7 +46,6 @@ typedef std::vector<SOPC_AddressSpace_Node*> NodeVect_t;
 
 /**************************************************************************/
 struct CVarInfo {
-    explicit CVarInfo(const string& json);
     CVarInfo(const string& nodeId,
             const string& browseName,
             const string& displayName,

@@ -16,16 +16,9 @@ extern "C" {
 using namespace std;
 using namespace rapidjson;
 
+
 extern "C" {
 	PLUGIN_INFORMATION *plugin_info();
-
-	static void override_Assert_UserCallback(const char* context) {
-	    FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
-	    std::cerr << "ASSERT failed. Context = " <<
-	            (context ? LOGGABLE(context) : "[NULL]") << std::endl << std::endl;
-	    throw std::exception();
-	}
-
 };
 
 TEST(S2OPCUA, PluginInfo) {
@@ -48,7 +41,8 @@ TEST(S2OPCUA, PluginInfoConfigParse) {
 TEST(S2OPCUA, ServerToolsHelpers) {
     using namespace SOPC_tools;
 
-    SOPC_Assert_Set_UserCallback(&override_Assert_UserCallback);
+    ASSERT_ANY_THROW(ASSERT(false));
+    ASSERT_NO_THROW(ASSERT(10 + 10 < 25));
 
     // loggableString
     const std::string strOK1("No problem/+'9? ");
@@ -110,6 +104,9 @@ TEST(S2OPCUA, ServerToolsHelpers) {
     ASSERT_ANY_THROW(toSecurityMode("Basic256"));
 
     ASSERT_EQ(toUserToken("anonymous"), &SOPC_UserTokenPolicy_Anonymous);
+    ASSERT_EQ(toUserToken("username_None"), &SOPC_UserTokenPolicy_UserName_NoneSecurityPolicy);
+    ASSERT_EQ(toUserToken("username"), &SOPC_UserTokenPolicy_UserName_DefaultSecurityPolicy);
+    ASSERT_EQ(toUserToken("username_Basic256Sha256"), &SOPC_UserTokenPolicy_UserName_Basic256Sha256SecurityPolicy);
     ASSERT_EQ(toUserToken("BadToken"), nullptr);
 }
 
