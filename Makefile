@@ -11,9 +11,9 @@ build:
 	$(Q)make -C build -j4
 unit_tests: 
 	$(Q)mkdir -p build
-	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
+	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
-	$(Q)cd build/tests && ./RunTests
+	$(Q)cd build/tests && make RunTests_coverage_html -j 5
 clean:
 	$(Q)rm -fr build
 log:

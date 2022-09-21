@@ -15,19 +15,21 @@ project(RunTests)
   enable_testing()
   include(CodeCoverage)
   append_coverage_compiler_flags()
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O0")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+
+# Using -O1 (at least) is mandatory to avoid false reports of GCOV on vector initializers
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O1")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1")
   setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
                                       EXECUTABLE RunTests
                                       DEPENDENCIES RunTests
-                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/../src"
                                       EXCLUDE "tests/*"
   )    
 
   setup_target_for_coverage_gcovr_html(NAME "${PROJECT_NAME}_coverage_html"
                                        EXECUTABLE RunTests
                                        DEPENDENCIES RunTests
-                                       BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                                       BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/../src"
                                        EXCLUDE "tests/*"
   )
 
@@ -44,7 +46,7 @@ add_custom_command(
   OUTPUT version.h
   DEPENDS ${GEN_SRC_DIR}/VERSION
   COMMAND ${GEN_SRC_DIR}/mkversion ${GEN_SRC_DIR}
-  COMMENT "Generating version header"
+  COMMENT "Generating tests version header"
   VERBATIM
 )
 	
@@ -54,7 +56,7 @@ add_custom_command(
   OUTPUT base_addrspace.c
   DEPENDS ${GEN_SRC_DIR}/include/s2opc_base_nodeset_origin.xml ${GEN_SRC_DIR}/mkaddrspace
   COMMAND ${GEN_SRC_DIR}/mkaddrspace ${GEN_SRC_DIR}/include/s2opc_base_nodeset_origin.xml base_addrspace.c 
-  COMMENT "Generating NS0 AddressSpace initialization file"
+  COMMENT "Generating tests NS0 AddressSpace initialization file"
   VERBATIM
 )
 	
@@ -67,13 +69,8 @@ set(PLUGIN_TYPE "north")
 # Add here all needed Fledge libraries as list
 set(NEEDED_FLEDGE_LIBS common-lib services-common-lib)
 
-#set(BOOST_COMPONENTS system thread)
-
-#find_package(Boost 1.53.0 COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
-#include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-
 # Find source files
-file(GLOB SOURCES ../src/*.cpp)
+#file(GLOB SOURCES ../src/*.cpp)
 file(GLOB unittests "*.cpp")
 
 # Find Fledge includes and libs, by including FindFledge.cmak file
