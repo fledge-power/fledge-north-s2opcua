@@ -6,7 +6,7 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_assert.h"
+#include "sopc_assert.h"
 #include "sopc_log_manager.h"
 }
 
@@ -41,7 +41,7 @@ TEST(S2OPCUA, PluginInfoConfigParse) {
 TEST(S2OPCUA, ServerToolsHelpers) {
     using namespace SOPC_tools;
 
-    ASSERT_ANY_THROW(ASSERT(false));
+    ASSERT_ANY_THROW(ASSERT(false, "Test that assert throws"));
     ASSERT_NO_THROW(ASSERT(10 + 10 < 25));
 
     // loggableString

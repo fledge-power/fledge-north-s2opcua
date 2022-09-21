@@ -141,15 +141,15 @@ ExchangedDataC::
 bool
 ExchangedDataC::internalChecks(const rapidjson::Value& json) {
     ASSERT(json.IsObject(), "datapoint protocol description must be JSON");
-    ASSERT(json.HasMember(JSON_PROT_NAME) || json[JSON_PROT_NAME].IsString()
+    ASSERT(json.HasMember(JSON_PROT_NAME) && json[JSON_PROT_NAME].IsString()
             , "datapoint protocol description must have a 'name' key defining a STRING");
     const std::string protocolName(json[JSON_PROT_NAME].GetString());
     if (protocolName != PROTOCOL_S2OPC) {
         throw NotAnS2opcInstance();
     }
-    ASSERT(json.HasMember(JSON_PROT_ADDR) || json[JSON_PROT_ADDR].IsString()
+    ASSERT(json.HasMember(JSON_PROT_ADDR) && json[JSON_PROT_ADDR].IsString()
             , "datapoint protocol description must have a '" JSON_PROT_ADDR "' key defining a STRING");
-    ASSERT(json.HasMember(JSON_PROT_TYPEID) || json[JSON_PROT_TYPEID].IsString()
+    ASSERT(json.HasMember(JSON_PROT_TYPEID) && json[JSON_PROT_TYPEID].IsString()
             , "datapoint protocol description must have a '" JSON_PROT_TYPEID "' key defining a STRING");
     return true;
 }
@@ -161,14 +161,14 @@ OpcUa_Protocol(const std::string& protocol):
 mDoc(initDoc(protocol)),
 mProtocol(mDoc["protocol_stack"]),
 mTransport(mProtocol["transport_layer"]),
-url(mTransport["url"].GetString()),
-appUri(mTransport["appUri"].GetString()),
-productUri(mTransport["productUri"].GetString()),
-localeId(mTransport["localeId"].GetString()),
-serverDescription(mTransport["appDescription"].GetString()),
+url(getString(mTransport, "url", "transport_layer")),
+appUri(getString(mTransport, "appUri", "transport_layer")),
+productUri(getString(mTransport, "productUri", "transport_layer")),
+localeId(getString(mTransport, "localeId", "transport_layer")),
+serverDescription(getString(mTransport, "appDescription", "transport_layer")),
 certificates(mTransport["certificates"]),
-serverCertPath(::certDirServer + certificates["serverCertPath"].GetString()),
-serverKeyPath(::certDirServer + certificates["serverKeyPath"].GetString()),
+serverCertPath(::certDirServer + getString(certificates, "serverCertPath", "certificates")),
+serverKeyPath(::certDirServer + getString(certificates, "serverKeyPath", "certificates")),
 trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
 trustedIntermCert(extractCStrArray(certificates, "trusted_intermediate", ::certDirTrusted)),
 untrustedRootCert(extractCStrArray(certificates, "untrusted_root", ::certDirUntrusted)),

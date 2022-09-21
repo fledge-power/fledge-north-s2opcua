@@ -136,7 +136,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
                 }\
             ]\
     }});
-    Logger::getLogger()->warn("Parsing '%s'", aSpaceJson.c_str());
+    Logger::getLogger()->debug("Parsing '%s'", aSpaceJson.c_str());
     Server_AddrSpace aSpace(aSpaceJson);
     NodeVect_t::const_iterator it;
     const SOPC_AddressSpace_Node* pNode = nullptr;
@@ -193,7 +193,6 @@ TEST(S2OPCUA, Server_AddrSpace) {
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
         const std::string iName(SOPC_tools::toString(ref.TargetId.NodeId));
-        Logger::getLogger()->debug("found ref 63'%s'", iName.c_str());
         if (iName == "ns=1;s=/FESSE_6_FESS5.1_DFAIL.DJ/S_1145_6_21_28" && ref.IsInverse)
             foundInvHasDefintion = true;
 

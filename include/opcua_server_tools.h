@@ -61,10 +61,12 @@ extern "C" {
 extern "C" {
 extern void plugin_Assert_UserCallback(const char* context);
 }
+
 // Improve SOPC_ASSERT to allow run-time elaborated messages
+#define ASSERT_CONTEXT __FILE__ ":" SOPC_PP_STR(__LINE__) ":"
 #define ASSERT(c,  ...) do { \
     if (!(c)) {\
-        FATAL("ASSERT FAILED:" __VA_ARGS__);\
+        FATAL("ASSERT FAILED in " ASSERT_CONTEXT __VA_ARGS__);\
         throw std::exception();\
     }\
 } while (0)
