@@ -13,7 +13,8 @@ unit_tests:
 	$(Q)mkdir -p build
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
-	$(Q)cd build/tests && make RunTests_coverage_html -j 5
+	$(Q)cd build/tests && make RunTests_coverage_html
+	@echo "See unit tests coverage result in build/tests/RunTests_coverage_html/index.html"
 clean:
 	$(Q)rm -fr build
 log:
