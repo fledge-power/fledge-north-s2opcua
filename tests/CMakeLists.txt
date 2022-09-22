@@ -41,6 +41,11 @@ else()
   set(GEN_SRC_DIR "${CMAKE_SOURCE_DIR}/..")
 endif()
 
+# Patch the ASSERT and logging features to avoid branch false detection.
+if (${CMAKE_BUILD_TYPE} STREQUAL Coverage)
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DUNIT_TESTING")
+endif()
+
 set_source_files_properties(version.h PROPERTIES GENERATED TRUE)
 add_custom_command(
   OUTPUT version.h

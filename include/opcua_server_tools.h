@@ -52,18 +52,28 @@ extern "C" {
 /**************************************************************************/
 
 /* HELPER MACROS*/
-#define DEBUG Logger::getLogger()->debug
-#define INFO Logger::getLogger()->info
-#define WARNING Logger::getLogger()->warn
-#define ERROR Logger::getLogger()->error
-#define FATAL Logger::getLogger()->fatal
+static Logger* logger(Logger::getLogger());
+#define DEBUG logger->debug
+#define INFO logger->info
+#define WARNING logger->warn
+#define ERROR logger->error
+#define FATAL logger->fatal
 
 extern "C" {
 extern void plugin_Assert_UserCallback(const char* context);
 }
 
-// Improve SOPC_ASSERT to allow run-time elaborated messages
 #define ASSERT_CONTEXT __FILE__ ":" SOPC_PP_STR(__LINE__) ":"
+
+#ifdef UNIT_TESTING
+// For unit tests, simplify macro to avoid multiple branches created by C++
+#define ASSERT(c,  ...) do {if (!(c)) throw std::exception();}while(0)
+#define ASSERT_NOT_NULL(c)  do {if (nullptr == (c)) throw std::exception();}while(0)
+static inline const char* LOGGABLE(const std::string &s){return s.c_str();}
+static inline const char* LOGGABLE(const char* s){return s;}
+
+#else  // UNIT_TESTING not defined
+// Improve SOPC_ASSERT to allow run-time elaborated messages
 #define ASSERT(c,  ...) do { \
     if (!(c)) {\
         FATAL("ASSERT FAILED in " ASSERT_CONTEXT __VA_ARGS__);\
@@ -77,6 +87,7 @@ extern void plugin_Assert_UserCallback(const char* context);
 // using:
 // #define LOGGABLE(s) (s).c_str()
 #define LOGGABLE(s) SOPC_tools::loggableString(s).c_str()
+#endif
 
 /**************************************************************************/
 /*                     FUNCTIONS                                          */

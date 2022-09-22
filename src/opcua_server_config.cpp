@@ -178,21 +178,21 @@ revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
 policies(PoliciesVect(mTransport)),
 namespacesUri(SOPC_tools::CStringVect(mTransport["namespaces"], "namespaces")),
 users(extractUsersPasswords(mTransport["users"])) {
-    DEBUG("Conf : url = %s", url.c_str());
-    DEBUG("Conf : appUri = %s", appUri.c_str());
-    DEBUG("Conf : productUri = %s", productUri.c_str());
-    DEBUG("Conf : serverDescription = %s", serverDescription.c_str());
-    DEBUG("Conf : serverCertPath = %s", serverCertPath.c_str());
-    DEBUG("Conf : serverKeyPath = %s", serverKeyPath.c_str());
+    DEBUG("Conf : url = %s", LOGGABLE(url));
+    DEBUG("Conf : appUri = %s", LOGGABLE(appUri));
+    DEBUG("Conf : productUri = %s", LOGGABLE(productUri));
+    DEBUG("Conf : serverDescription = %s", LOGGABLE(serverDescription));
+    DEBUG("Conf : serverCertPath = %s", LOGGABLE(serverCertPath));
+    DEBUG("Conf : serverKeyPath = %s", LOGGABLE(serverKeyPath));
     ASSERT(!serverCertPath.empty(), "serverCertPath is missing");
     ASSERT(!serverKeyPath.empty(), "serverKeyPath is missing");
     ASSERT(appUri.length() > 0, "Application URI cannot be empty");
     ASSERT(productUri.length() > 0, "Product URI cannot be empty");
     ASSERT(serverDescription.length() > 0, "Application description cannot be empty");
     ASSERT(0 == access(serverCertPath.c_str(), R_OK), "Missing Server certificate file: %s" ,
-            serverCertPath.c_str());
+            LOGGABLE(serverCertPath));
     ASSERT(0 == access(serverKeyPath.c_str(), R_OK), "Missing Server key file: %s" ,
-            serverKeyPath.c_str());
+            LOGGABLE(serverKeyPath));
 }
 
 /**************************************************************************/
@@ -283,7 +283,7 @@ OpcUa_Server_Config(const ConfigCategory& configData):
         logPath(::logDir),
         addrSpace(extractString(configData, "exchanged_data")) {
     INFO("OpcUa_Server_Config() OK.");
-    INFO("Conf : logPath = %s", logPath.c_str());
+    INFO("Conf : logPath = %s", LOGGABLE(logPath));
     DEBUG("Conf : logLevel = %d", logLevel);
     DEBUG("Conf : withLogs = %d", withLogs);
 }
