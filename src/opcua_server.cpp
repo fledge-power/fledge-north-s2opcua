@@ -804,10 +804,10 @@ send(const Readings& readings) {
                 }
             }
 
-            if (value != NULL && nodeId != NULL) {
+            if (value != NULL && nodeId != NULL && typeId != SOPC_Null_Id) {
                 updateAddressSpace(nodeId, typeId, value, quality, ts);
             } else {
-                INFO("Skipped sending data because 'do_nodeid' or 'do_value' were not provided");
+                WARNING("Skipped sending data because all fields were not provided or valid");
             }
             delete value;
             delete nodeId;

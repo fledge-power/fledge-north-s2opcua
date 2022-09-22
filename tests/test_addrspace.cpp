@@ -112,7 +112,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
                       {\
                          "name":"opcua",\
                          "address":"S_1145_6_21_28",\
-                         "typeid":"Boolean_Id"\
+                         "typeid":"opcua_sps"\
                       }\
                    ]\
                 }\
@@ -130,7 +130,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
                       {\
                          "name":"opcua",\
                          "address":"C_1145_6_18_1",\
-                         "typeid":"Byte_Id"\
+                         "typeid":"opcua_dpc"\
                       }\
                    ] \
                 }\

@@ -91,8 +91,9 @@ TEST(S2OPCUA, ServerToolsHelpers) {
     ASSERT_EQ(toSOPC_Log_Level("DeBug"), SOPC_LOG_LEVEL_DEBUG);
     ASSERT_EQ(toSOPC_Log_Level("What"), SOPC_LOG_LEVEL_INFO);
 
-    ASSERT_EQ(toBuiltinId("Boolean_Id"), SOPC_Boolean_Id);
-    ASSERT_ANY_THROW(toBuiltinId("BadId"));
+    ASSERT_EQ(toBuiltinId("opcua_sps"), SOPC_Boolean_Id);
+    ASSERT_EQ(toBuiltinId("opcua_spc"), SOPC_Boolean_Id);
+    ASSERT_EQ(toBuiltinId("BadId"), SOPC_Null_Id);
 
     ASSERT_EQ(pivotTypeToReadOnly("SpcTyp"), false);
     ASSERT_EQ(pivotTypeToReadOnly("SpsTyp"), true);

@@ -158,19 +158,13 @@ SOPC_BuiltinId toBuiltinId(const string& name) {
     typedef std::pair<string, SOPC_BuiltinId> Pair;
     typedef std::map<string, SOPC_BuiltinId> TypeMap;
     static const TypeMap map {
-        {"Boolean_Id", SOPC_Boolean_Id},
-        {"SByte_Id", SOPC_SByte_Id},
-        {"Byte_Id", SOPC_Byte_Id},
-        {"Int16_Id", SOPC_Int16_Id},
-        {"UInt16_Id", SOPC_UInt16_Id},
-        {"Int32_Id", SOPC_Int32_Id},
-        {"UInt32_Id", SOPC_UInt32_Id},
-        {"Int64_Id", SOPC_Int64_Id},
-        {"UInt64_Id", SOPC_UInt64_Id},
-        {"Float_Id", SOPC_Float_Id},
-        {"Double_Id", SOPC_Double_Id},
-        {"String_Id", SOPC_String_Id},
-        {"ByteString_Id", SOPC_ByteString_Id}
+        {"opcua_sps", SOPC_Boolean_Id},
+        {"opcua_spc", SOPC_Boolean_Id},
+        {"opcua_dps", SOPC_Byte_Id},
+        {"opcua_dpc", SOPC_Byte_Id},
+        {"opcua_mva", SOPC_Int32_Id},
+        {"opcua_mvf", SOPC_Float_Id},
+        {"opcua_spcr", SOPC_String_Id}
     };
     TypeMap::const_iterator it(map.find(name));
 
@@ -178,7 +172,7 @@ SOPC_BuiltinId toBuiltinId(const string& name) {
         return (*it).second;
     }
     ERROR("Invalid builtin type '%s'", LOGGABLE(name));
-    throw std::exception();
+    return SOPC_Null_Id;
 }
 
 /**************************************************************************/
