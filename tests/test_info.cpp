@@ -13,6 +13,9 @@ extern "C" {
 // Tested files
 #include "opcua_server_tools.h"
 
+// Fledge / tools  includes
+#include "main_test_configs.h"
+
 using namespace std;
 using namespace rapidjson;
 
@@ -22,12 +25,16 @@ extern "C" {
 };
 
 TEST(S2OPCUA, PluginInfo) {
+    CATCH_C_ASSERTS;
+
 	PLUGIN_INFORMATION *info = plugin_info();
 	ASSERT_STREQ(info->name, "s2opcua");
 	ASSERT_STREQ(info->type, PLUGIN_TYPE_NORTH);
 }
 
 TEST(S2OPCUA, PluginInfoConfigParse) {
+    CATCH_C_ASSERTS;
+
 	PLUGIN_INFORMATION *info = plugin_info();
 	Document doc;
 	doc.Parse(info->config);
@@ -39,6 +46,8 @@ TEST(S2OPCUA, PluginInfoConfigParse) {
 }
 
 TEST(S2OPCUA, ServerToolsHelpers) {
+    CATCH_C_ASSERTS;
+
     using namespace SOPC_tools;
 
     ASSERT_ANY_THROW(ASSERT(false, "Test that assert throws"));
@@ -112,6 +121,7 @@ TEST(S2OPCUA, ServerToolsHelpers) {
 }
 
 TEST(S2OPCUA, CStringVect) {
+    CATCH_C_ASSERTS;
     using namespace SOPC_tools;
 
     {

@@ -150,10 +150,8 @@ static void serverStopped_Fct(SOPC_ReturnStatus status) {
     if (srv != NULL) {
         WARNING("Server stopped!");
         srv->setStopped();
-        usleep(100 * 1000);
     }
-    ASSERT(false, "Server stopped with return code %s(%d).",
-            SOPC_tools::statusCodeToCString(status), status);
+#warning "TODO : shall this be monitored?"
 }
 
 /**************************************************************************/
@@ -569,8 +567,19 @@ OPCUA_Server(const ConfigCategory& configData):
 OPCUA_Server::
 ~OPCUA_Server() {
     SOPC_ServerHelper_StopServer();
+    int maxWaitMs(1000 * 2);
+    const int loopMs(10);
+    do {
+        this_thread::sleep_for(chrono::milliseconds(loopMs));
+        maxWaitMs -= loopMs;
+    } while(!mStopped && maxWaitMs > 0);
+    if (maxWaitMs > 0) {
+        ERROR("Could not stop OPC UA services!");
+    }
+
     SOPC_HelperConfigServer_Clear();
     SOPC_CommonHelper_Clear();
+    mInstance = nullptr;
 }
 
 /**************************************************************************/
@@ -713,9 +722,10 @@ updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
         const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const {
     SOPC_ReturnStatus status;
     const uintptr_t thisParam(reinterpret_cast<uintptr_t>(this));
-
     OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(1));
     ASSERT_NOT_NULL(request);
+    ASSERT_NOT_NULL(nodeId);
+    DEBUG("updateAddressSpace(%s)", LOGGABLE(SOPC_tools::toString(*nodeId)));
 
     SOPC_DataValue opcDv;
     SOPC_DataValue_Initialize(&opcDv);

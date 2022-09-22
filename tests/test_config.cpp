@@ -1,4 +1,6 @@
 #include <plugin_api.h>
+#include <signal.h>
+#include <setjmp.h>
 #include <string.h>
 #include <string>
 #include <rapidjson/document.h>
@@ -15,6 +17,9 @@ extern "C" {
 #include "opcua_server_tools.h"
 #include "opcua_server_config.h"
 
+#include "main_test_configs.h"
+
+#define ASSERT_SOPC_STREQ(a,b) ASSERT_STREQ((const char*)a.Data, b);
 using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
@@ -35,6 +40,8 @@ static const string exDataJson =
 
 
 TEST(S2OPCUA, ExchangedDataC) {
+    CATCH_C_ASSERTS;
+
     ExchangedDataC* pdata = nullptr;
     rapidjson::Document doc;
     Logger::getLogger()->debug("Parsing ExchangedDataC '%s'", exDataJson.c_str());
@@ -63,33 +70,6 @@ TEST(S2OPCUA, ExchangedDataC) {
     ASSERT_THROW(SOPC_tools::getObject(doc, "ko", "not an object object"), exception);
 }
 
-static const string protocolJson1 =
-        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
-                "version":"1.0", \
-                "transport_layer":{ \
-                    "url" : "opc.tcp://localhost:4841", \
-                    "appUri" : "urn:S2OPC:localhost", \
-                    "productUri" : "urn:S2OPC:localhost", \
-                    "appDescription": "Application description", \
-                    "localeId" : "en-US", \
-                    "namespaces" : [ "urn:S2OPC:localhost" ], \
-                    "policies" : [ \
-                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] },\
-                      { "securityMode" : "Sign", "securityPolicy" : "Basic256", "userPolicies" : [ "anonymous", "username" ] }, \
-                      { "securityMode" : "SignAndEncrypt", "securityPolicy" : "Basic256Sha256", "userPolicies" : \
-                        [ "anonymous", "anonymous", "username_Basic256Sha256", "username_None" ] } ], \
-                    "users" : {"user" : "password", "user2" : "xGt4sdE3Z+" }, \
-                    "certificates" : { \
-                        "serverCertPath" : "server_2k_cert.der", \
-                        "serverKeyPath" : "server_2k_key.pem", \
-                        "trusted_root" : [ "cacert.der" ],  \
-                        "trusted_intermediate" : [ ], \
-                        "revoked" : [ "cacrl.der" ], \
-                        "untrusted_root" : [ ], \
-                        "untrusted_intermediate" : [ ], \
-                        "issued" : [  ] } \
-                  } \
-              } });
 static const string protocolJson2 =
         QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
                 "version":"1.0", \
@@ -141,7 +121,7 @@ static const string protocolJson4 = // Invalid issued certificate
         QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
                 "version":"1.0", \
                 "transport_layer":{ \
-                    "url" : "opc.tcp://localhost:4841", \
+                    "url" : "opc.tcp://localhost:4840", \
                     "appUri" : "appUri", \
                     "productUri" : "productUri", \
                     "appDescription": "appDescription", \
@@ -161,14 +141,131 @@ static const string protocolJson4 = // Invalid issued certificate
                         "issued" : "" } \
                   } \
               } });
+static const string protocolJson5 = // Invalid policies
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4840", \
+                    "appUri" : "appUri", \
+                    "productUri" : "productUri", \
+                    "appDescription": "appDescription", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "Unknown", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "", \
+                        "serverKeyPath" : "", \
+                        "trusted_root" : [ ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : "" } \
+                  } \
+              } });
 
 TEST(S2OPCUA, OpcUa_Protocol) {
+    CATCH_C_ASSERTS;
+
+    int abortReceived = setjmp(abort_jump_env);
+    ASSERT_EQ(abortReceived, 0);
+
     OpcUa_Protocol* proto = NULL;
-    ASSERT_NO_THROW(proto = new OpcUa_Protocol(protocolJson1));
+    SOPC_Endpoint_Config ep;
+    memset(&ep, 0, sizeof(ep));
+
+    ep.endpointURL = strdup("opc.tcp://localhost:4841");
+
+    ep.hasDiscoveryEndpoint = false;
+    ep.serverConfigPtr = new SOPC_Server_Config;
+    memset(ep.serverConfigPtr, 0, sizeof(SOPC_Server_Config));
+
+
+    // Check correct configuration
+    ASSERT_NO_THROW(proto = new OpcUa_Protocol(protocolJsonOK));
+    proto->setupServerSecurity(&ep);
+    ASSERT_EQ(ep.serverConfigPtr->nbEndpoints, 0);
+    ASSERT_EQ(ep.nbSecuConfigs, 3);
+
+    /////////////////
+    // Check policies
+    const SOPC_SecurityPolicy* secPol(ep.secuConfigurations);
+    /* Reminder:
+             "policies" : [ \
+          { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] },\
+          { "securityMode" : "Sign", "securityPolicy" : "Basic256", "userPolicies" : [ "anonymous", "username" ] }, \
+          { "securityMode" : "SignAndEncrypt", "securityPolicy" : "Basic256Sha256", "userPolicies" : \
+            [ "anonymous", "anonymous", "username_Basic256Sha256", "username_None" ] } ], \
+        "users" : {"user" : "password", "user2" : "xGt4sdE3Z+" }, \
+     */
+    ASSERT_EQ(secPol->nbOfUserTokenPolicies, 1);
+    ASSERT_SOPC_STREQ(secPol->userTokenPolicies[0].PolicyId, "anonymous");
+    ASSERT_EQ(secPol->securityModes, SOPC_SECURITY_MODE_NONE_MASK);
+    ASSERT_SOPC_STREQ(secPol->securityPolicy, SOPC_SecurityPolicy_None_URI);
+
+    secPol++;
+    ASSERT_EQ(secPol->nbOfUserTokenPolicies, 2);
+    ASSERT_SOPC_STREQ(secPol->userTokenPolicies[1].PolicyId, "username");
+    ASSERT_EQ(secPol->securityModes, SOPC_SECURITY_MODE_SIGN_MASK);
+    ASSERT_SOPC_STREQ(secPol->securityPolicy, SOPC_SecurityPolicy_Basic256_URI);
+
+    secPol++;
+    ASSERT_EQ(secPol->nbOfUserTokenPolicies, 4);
+    ASSERT_SOPC_STREQ(secPol->userTokenPolicies[3].PolicyId, "username_None");
+    ASSERT_EQ(secPol->securityModes, SOPC_SECURITY_MODE_SIGNANDENCRYPT_MASK);
+    ASSERT_SOPC_STREQ(secPol->securityPolicy, SOPC_SecurityPolicy_Basic256Sha256_URI);
     ASSERT_NO_THROW(delete proto);
+
     ASSERT_NO_THROW(proto = new OpcUa_Protocol(protocolJson2));
     ASSERT_NO_THROW(delete proto);
+
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson3), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson4), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson5), exception);
+}
+
+
+namespace {
+struct nodeVarFinder {
+    nodeVarFinder(const std::string& name):m_name(name){}
+    bool operator()(const SOPC_AddressSpace_Node* node){
+        return node != NULL &&
+                node->node_class == OpcUa_NodeClass_Variable &&
+                SOPC_tools::toString(node->data.variable.NodeId) == m_name;
+    }
+    const std::string m_name;
+};
+}
+
+TEST(S2OPCUA, OpcUa_Server_Config) {
+    CATCH_C_ASSERTS;
+
+    int abortReceived = setjmp(abort_jump_env);
+    ASSERT_EQ(abortReceived, 0);
+
+    ConfigCategory testConf;
+    testConf.addItem("logging", "Configure S2OPC logging level", "Info",
+            "Info", {"None", "Error", "Warning", "Info", "Debug"});
+    testConf.addItem("exchanged_data", "exchanged_data", config_exData,
+            config_exData, {"None", "Error", "Warning", "Info", "Debug"});
+    OpcUa_Server_Config config(testConf);
+
+    ASSERT_TRUE(config.withLogs);
+    ASSERT_EQ(config.logLevel, SOPC_LOG_LEVEL_INFO);
+    NodeVect_t::const_iterator it;
+
+    // Check that the nodes provided in configuration are in address space
+    const SOPC_AddressSpace_Node* pNode = nullptr;
+
+    it = std::find_if(config.addrSpace.nodes.begin(), config.addrSpace.nodes.end(),
+            nodeVarFinder("ns=1;s=/label1/addr1"));
+    GTEST_ASSERT_NE(it, config.addrSpace.nodes.end());
+    pNode = (*it);
+    GTEST_ASSERT_NE(pNode, nullptr);
+
+    ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
+    ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=/label1/addr1");
 
 }
