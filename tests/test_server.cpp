@@ -1,5 +1,6 @@
 #include <string.h>
 #include <string>
+#include <thread>
 #include <rapidjson/document.h>
 
 extern "C" {
@@ -7,6 +8,8 @@ extern "C" {
 #include "s2opc/common/sopc_assert.h"
 #include "sopc_log_manager.h"
 #include "libs2opc_common_config.h"
+#include "libs2opc_request_builder.h"
+#include "libs2opc_server.h"
 }
 
 // Tested files
@@ -23,9 +26,101 @@ using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
 
+#define WAIT_UNTIL(c, mtimeoutMs) do {\
+        int maxwaitMs(mtimeoutMs);\
+        do {\
+            this_thread::sleep_for(chrono::milliseconds(10));\
+            maxwaitMs -= 10;\
+        } while (!(c) && maxwaitMs > 0);\
+    } while(0)
+
+extern "C" {
+static int north_operation_event_nbCall = 0;
+static int north_operation_event (
+        char *operation,
+        int paramCount,
+        char *names[],
+        char *parameters[],
+        ControlDestination destination,
+        ...) {
+
+    WARNING("Received operation '%s', paramCount=%d", operation, paramCount);
+    north_operation_event_nbCall++;
+    return paramCount;
+}
+}
+
+static inline Datapoint* createStringDatapointValue(const std::string& name,
+        const string& value) {
+    DatapointValue dpv(value);
+    return new Datapoint(name, dpv);
+}
+
+static inline Datapoint* createIntDatapointValue(const std::string& name,
+        const long value) {
+    DatapointValue dpv(value);
+    return new Datapoint(name, dpv);
+}
+
+// Complete OPCUA_Server class to test Server updates
+class OPCUA_Server_Test : public OPCUA_Server {
+public:
+    explicit OPCUA_Server_Test(const ConfigCategory& configData):
+        OPCUA_Server(configData),
+        nbResponses(0),
+        nbBadResponses(0) {}
+
+    size_t nbResponses;
+    size_t nbBadResponses;
+    virtual void asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
+        OPCUA_Server::asynchWriteResponse(writeResp);
+        if (writeResp == NULL) return;
+
+        SOPC_StatusCode status;
+
+        DEBUG("asynchWriteResponse : %u updates", writeResp->NoOfResults);
+        for (int32_t i = 0 ; i < writeResp->NoOfResults; i++) {
+            status = writeResp->Results[i];
+            if (status != 0) {
+                WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
+                nbBadResponses++;
+            }
+            nbResponses++;
+        }
+    }
+
+    std::vector<string> readResults;
+    virtual void asynchReadResponse(const OpcUa_ReadResponse* readResp) {
+        OPCUA_Server::asynchReadResponse(readResp);
+
+        SOPC_StatusCode status;
+        if (readResp == NULL) return;
+        for (int32_t i = 0 ; i < readResp->NoOfResults; i++) {
+            const SOPC_DataValue& result(readResp->Results[i]);
+            char quality[4 + 8 + 4 +1];
+            sprintf(quality, "Q=0x%08X,V=", result.Status);
+            DEBUG("asynchReadResponse : type %d, status 0x%08X ", result.Value.BuiltInTypeId,
+                    result.Status);
+            string value("?");
+            if (result.Value.BuiltInTypeId == SOPC_String_Id) {
+                value = SOPC_String_GetRawCString(&result.Value.Value.String);
+            } else  if (result.Value.BuiltInTypeId == SOPC_Byte_Id) {
+                value = std::to_string(result.Value.Value.Byte);
+            } else  if (result.Value.BuiltInTypeId == SOPC_Boolean_Id) {
+                value =std::to_string(result.Value.Value.Boolean);
+            } else {
+                value =string("Unsupported type: typeId=") +
+                        std::to_string(result.Value.BuiltInTypeId);
+            }
+
+            readResults.push_back(string(quality) + value);
+        }
+    }
+};
 
 TEST(S2OPCUA, OPCUA_Server) {
     CATCH_C_ASSERTS;
+    north_operation_event_nbCall = 0;
 
     const SOPC_Toolkit_Build_Info buildInfo(SOPC_CommonHelper_GetBuildInfo());
     Logger::getLogger()->info("Common build date: %s", LOGGABLE(buildInfo.commonBuildInfo.buildBuildDate));
@@ -45,5 +140,62 @@ TEST(S2OPCUA, OPCUA_Server) {
             config_exData);
     testConf.addItem("protocol_stack", "protocol_stack", "JSON", protocolJsonOK,
             protocolJsonOK);
-    OPCUA_Server server(testConf);
+    OPCUA_Server_Test server(testConf);
+
+    Readings readings;
+    // Create READING 1
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+        dp_vect->push_back(createIntDatapointValue("do_value", 17));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading1", new Datapoint("data_object", do_1)));
+    }
+
+    // Create READING 2
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_sps"));
+        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label2/addr2"));
+        dp_vect->push_back(createIntDatapointValue("do_value", 0));
+        dp_vect->push_back(createStringDatapointValue("do_quality", "0x1234"));
+        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading2", new Datapoint("data_object", do_1)));
+    }
+    // Send READINGs
+    server.send(readings);
+    this_thread::sleep_for(chrono::milliseconds(10));
+
+    // Read back values from server
+    ASSERT_EQ(server.nbBadResponses, 0);
+    ASSERT_EQ(server.nbResponses, 2);
+
+    {
+        SOPC_ReturnStatus status;
+        OpcUa_ReadRequest* req(SOPC_ReadRequest_Create(2, OpcUa_TimestampsToReturn_Both));
+        ASSERT_NE(nullptr, req);
+
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 0, "ns=1;s=/label2/addr2", SOPC_AttributeId_Value, NULL);
+        ASSERT_EQ(status, SOPC_STATUS_OK);
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 1, "ns=1;s=/label1/addr1", SOPC_AttributeId_Value, NULL);
+        ASSERT_EQ(status, SOPC_STATUS_OK);
+
+        server.readResults.clear();
+        server.sendAsynchRequest(req);
+        ASSERT_EQ(status, SOPC_STATUS_OK);
+
+        WAIT_UNTIL(server.readResults.size() >= 2, 1000);
+        ASSERT_EQ(server.readResults.size(), 2);
+        ASSERT_EQ(server.readResults[0], "Q=0x00001234,V=0");
+        ASSERT_EQ(server.readResults[1], "Q=0x80000000,V=17");
+    }
+
+    // Check "operation" event
+    server.setpointCallbacks(north_operation_event);
+    ASSERT_EQ(north_operation_event_nbCall, 0);
+
 }

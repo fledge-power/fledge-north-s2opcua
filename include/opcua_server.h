@@ -37,6 +37,7 @@ extern "C" {
 };
 
 // Plugin headers
+#include "opcua_server_tools.h"
 #include "opcua_server_config.h"
 
 namespace s2opc_north {
@@ -92,7 +93,16 @@ class OPCUA_Server {
     void writeNotificationCallback(
             const SOPC_CallContext* callContextPtr,
             OpcUa_WriteValue* writeValue);
-    void asynchWriteResponse(const OpcUa_WriteResponse* writeResp);
+
+    /**
+     * Send an asynchronous request to the server.
+     * @param request An object created by SOPC_ReadRequest_Create or
+     *      SOPC_WriteRequest_Create. It shall not be freed by caller
+     */
+    void sendAsynchRequest(void* request)const;
+
+    virtual void asynchWriteResponse(const OpcUa_WriteResponse* writeResp);
+    virtual void asynchReadResponse(const OpcUa_ReadResponse* readResp);
     void setStopped(void);
 
  private:

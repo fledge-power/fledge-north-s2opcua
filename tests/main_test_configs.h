@@ -124,7 +124,7 @@ static const std::string config_exData = QUOTE(
                              {\
                                  "name":"opcua",\
                                  "address":"addr1",\
-                                 "typeid":"opcua_dpc"\
+                                 "typeid":"opcua_dps"\
                              }\
                              ]\
                             },

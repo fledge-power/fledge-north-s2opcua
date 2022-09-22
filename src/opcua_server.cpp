@@ -74,6 +74,11 @@ static void SOPC_LocalServiceAsyncRespCallback(SOPC_EncodeableType* encType, voi
     if (encType == &OpcUa_WriteResponse_EncodeableType) {
         OpcUa_WriteResponse* writeResp = reinterpret_cast<OpcUa_WriteResponse*>(response);
         srv.asynchWriteResponse(writeResp);
+    } else if (encType == &OpcUa_ReadResponse_EncodeableType) {
+        OpcUa_ReadResponse* readResp = reinterpret_cast<OpcUa_ReadResponse*>(response);
+        srv.asynchReadResponse(readResp);
+    } else {
+        WARNING("Unknown response from server 0x%p", encType);
     }
 }
 
@@ -572,7 +577,7 @@ OPCUA_Server::
     do {
         this_thread::sleep_for(chrono::milliseconds(loopMs));
         maxWaitMs -= loopMs;
-    } while(!mStopped && maxWaitMs > 0);
+    } while (!mStopped && maxWaitMs > 0);
     if (maxWaitMs > 0) {
         ERROR("Could not stop OPC UA services!");
     }
@@ -650,6 +655,27 @@ asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
 /**************************************************************************/
 void
 OPCUA_Server::
+sendAsynchRequest(void* request)const {
+    if (nullptr != request) {
+        SOPC_ReturnStatus status;
+        const uintptr_t thisParam(reinterpret_cast<uintptr_t>(this));
+        status = SOPC_ServerHelper_LocalServiceAsync(request, thisParam);
+        if (status != SOPC_STATUS_OK) {
+            WARNING("LocalServiceAsync failed with code  %s(%d)",
+                    statusCodeToCString(status), status);
+            delete request;
+        }
+    }
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+asynchReadResponse(const OpcUa_ReadResponse* readResp) {}
+
+/**************************************************************************/
+void
+OPCUA_Server::
 Server_Event(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr_t appContext) {
     (void) idOrStatus;
     if (NULL == mInstance) {
@@ -721,7 +747,7 @@ OPCUA_Server::
 updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
         const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const {
     SOPC_ReturnStatus status;
-    const uintptr_t thisParam(reinterpret_cast<uintptr_t>(this));
+
     OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(1));
     ASSERT_NOT_NULL(request);
     ASSERT_NOT_NULL(nodeId);
@@ -741,12 +767,7 @@ updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
         delete request;
     }
 
-    status = SOPC_ServerHelper_LocalServiceAsync(request, thisParam);
-    if (status != SOPC_STATUS_OK) {
-        WARNING("LocalServiceAsync failed with code  %s(%d)",
-            statusCodeToCString(status), status);
-        delete request;
-    }
+    sendAsynchRequest(request);
 }
 
 /**************************************************************************/
