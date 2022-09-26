@@ -65,7 +65,12 @@ add_custom_command(
   VERBATIM
 )
 	
-
+file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_write
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_read
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/samples/cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+     
 include_directories(${CMAKE_BINARY_DIR})
 
 # Set plugin type (south, north, filter)

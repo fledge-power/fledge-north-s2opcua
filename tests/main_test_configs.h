@@ -111,36 +111,84 @@ static const std::string config_exData = QUOTE(
             "name" : "data1",
             "version" : "1.0",
             "datapoints" : [
-                            {\
-                "label" : "label1",
-                "pivot_id" : "pivot1",
-                "pivot_type": "type1",
-                "protocols":[\
-                             {\
-                    "name":"iec104",\
-                    "address":"18325-6441925",\
-                    "typeid":"C_DC_TA_1"\
-                             },\
-                             {\
-                                 "name":"opcua",\
-                                 "address":"addr1",\
-                                 "typeid":"opcua_dps"\
-                             }\
-                             ]\
-                            },
-                            {\
-                                    "label" : "label2",
-                                    "pivot_id" : "pivot2",
-                                    "pivot_type": "type2",
-                                    "protocols":[\
-                                                 {\
-                                        "name":"opcua",\
-                                        "address":"addr2",\
-                                        "typeid":"opcua_sps"\
-                                                 }\
-                                                 ]\
-                            }\
-                            ]
+            {\
+               "label" : "label1",
+               "pivot_id" : "pivot1",
+               "pivot_type": "type1",
+               "protocols":[\
+                  {\
+                   "name":"iec104",\
+                   "address":"18325-6441925",\
+                   "typeid":"C_DC_TA_1"\
+                  },\
+                  {\
+                    "name":"opcua",\
+                    "address":"addr1",\
+                    "typeid":"opcua_dps"\
+                   }\
+                 ]\
+               },\
+               {\
+                  "label" : "labelMVF",
+                  "pivot_id" : "pivotMVF",
+                  "pivot_type": "typeMVF",
+                  "protocols":[\
+                     {\
+                       "name":"opcua",\
+                       "address":"mvf",\
+                       "typeid":"opcua_mvf"\
+                      }\
+                    ]\
+                }, \
+                {\
+                   "label" : "labelMVA",
+                   "pivot_id" : "pivotMVA",
+                   "pivot_type": "typeMVA",
+                   "protocols":[\
+                      {\
+                        "name":"opcua",\
+                        "address":"mva",\
+                        "typeid":"opcua_mva"\
+                       }\
+                     ]\
+                   },
+                {\
+                 "label" : "label2",
+                 "pivot_id" : "pivot2",
+                 "pivot_type": "type2",
+                 "protocols":[\
+                   {\
+                     "name":"opcua",\
+                     "address":"addr2",\
+                     "typeid":"opcua_sps"\
+                    }\
+                   ]\
+                 },
+                 {\
+                  "label" : "labelSPC",
+                  "pivot_id" : "pivotSPC",
+                  "pivot_type": "typeSPC",
+                  "protocols":[\
+                    {\
+                      "name":"opcua",\
+                      "address":"spc",\
+                      "typeid":"opcua_spc"\
+                     }\
+                    ]\
+                  },
+                  {\
+                   "label" : "labelDPC",
+                   "pivot_id" : "pivotDPC",
+                   "pivot_type": "typeDPC",
+                   "protocols":[\
+                     {\
+                       "name":"opcua",\
+                       "address":"dpc",\
+                       "typeid":"opcua_dpc"\
+                      }\
+                     ]\
+                   }
+             ]
         }});
 
 #endif /* INCLUDE_FLEDGE_NORTH_S2OPCUA_TESTS_MAIN_CONFIGS_H_ */

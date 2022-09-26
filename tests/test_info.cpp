@@ -104,8 +104,10 @@ TEST(S2OPCUA, ServerToolsHelpers) {
     ASSERT_EQ(toBuiltinId("opcua_spc"), SOPC_Boolean_Id);
     ASSERT_EQ(toBuiltinId("BadId"), SOPC_Null_Id);
 
-    ASSERT_EQ(pivotTypeToReadOnly("SpcTyp"), false);
-    ASSERT_EQ(pivotTypeToReadOnly("SpsTyp"), true);
+    ASSERT_EQ(pivotTypeToReadOnly("opcua_spc"), false);
+    ASSERT_EQ(pivotTypeToReadOnly("opcua_dpc"), false);
+    ASSERT_EQ(pivotTypeToReadOnly("opcua_sps"), true);
+    ASSERT_EQ(pivotTypeToReadOnly("opcua_dps"), true);
 
     ASSERT_EQ(toSecurityPolicy("Basic256"), SOPC_SecurityPolicy_Basic256);
     ASSERT_ANY_THROW(toSecurityPolicy("Basic266"));

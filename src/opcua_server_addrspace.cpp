@@ -290,7 +290,7 @@ Server_AddrSpace(const std::string& json):
                 const std::string description(pivotDescr + pivot_id);
                 const SOPC_NodeId& parent(NodeId_Root_Objects);
                 const SOPC_BuiltinId sopcTypeId(SOPC_tools::toBuiltinId(data.typeId));
-                const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivot_type));
+                const bool readOnly(SOPC_tools::pivotTypeToReadOnly(data.typeId));
                 const char* readOnlyStr(readOnly ? "RO" : "RW");
                 CVarInfo cVarInfo(nodeIdName, browseName, displayName, description, parent, readOnly);
                 CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));

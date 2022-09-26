@@ -1,6 +1,10 @@
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <string>
 #include <thread>
+#include <fstream>
 #include <rapidjson/document.h>
 
 extern "C" {
@@ -24,6 +28,11 @@ extern "C" {
 using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
+
+///////////////////////
+// helpful test macros
+#define ASSERT_STR_CONTAINS(s1,s2) ASSERT_NE(s1.find(s2), string::npos);
+#define ASSERT_STR_NOT_CONTAINS(s1,s2) ASSERT_EQ(s1.find(s2), string::npos);
 
 #define WAIT_UNTIL(c, mtimeoutMs) do {\
         int maxwaitMs(mtimeoutMs);\
@@ -59,6 +68,74 @@ static inline Datapoint* createIntDatapointValue(const std::string& name,
         const long value) {
     DatapointValue dpv(value);
     return new Datapoint(name, dpv);
+}
+
+///////////////////////
+// This function starts a process and return the standard output result
+static string launch_and_check(SOPC_tools::CStringVect& command) {
+    sigset_t mask;
+    sigset_t orig_mask;
+    struct timespec timeout;
+    pid_t pid;
+
+    static const char* filename("./fork.log");
+    sigemptyset (&mask);
+    sigaddset (&mask, SIGCHLD);
+
+    if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) {
+        return "sigprocmask";
+    }
+    timeout.tv_sec = 2;
+    timeout.tv_nsec = 0;
+
+    pid = fork();
+    if (pid < 0) return "fork";
+
+    if (pid == 0) {
+        int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        dup2(fd, 1);  // redirect stdout
+        char **args = command.vect;
+        execv(args[0], args);
+        throw exception(); // not reachable
+    }
+
+    do {
+        if (sigtimedwait(&mask, NULL, &timeout) < 0) {
+            if (errno == EINTR) {
+                /* Interrupted by a signal other than SIGCHLD. */
+                continue;
+            }
+            else if (errno == EAGAIN) {
+                printf ("Timeout, killing child\n");
+                kill (pid, SIGKILL);
+            }
+            else {
+                return "sigtimedwait";
+            }
+        }
+
+        break;
+    } while (1);
+
+    int result = -1;
+    waitpid(pid, &result, 0);
+
+    std::ifstream ifs(filename);
+    std::string content( (std::istreambuf_iterator<char>(ifs) ),
+                           (std::istreambuf_iterator<char>()    ) );
+
+    if (WIFEXITED(result) == 0 || WEXITSTATUS(result) != 0) {
+        std::cerr << "While executing command:" << std::endl;
+        for (const std::string& sRef : command.cppVect) {
+            std::cout << "'" << sRef << "' ";
+        }
+        cerr << endl;
+        cerr << "Log was:<<<" << content << ">>>" << endl;
+        return command.cppVect[0] + " has terminated with code " +
+                std::to_string(WEXITSTATUS(result));
+    }
+
+    return content;
 }
 
 // Complete OPCUA_Server class to test Server updates
@@ -143,6 +220,7 @@ TEST(S2OPCUA, OPCUA_Server) {
             config_exData);
     testConf.addItem("protocol_stack", "protocol_stack", "JSON", protocolJsonOK,
             protocolJsonOK);
+    WARNING("***************JCH WIP");
     OPCUA_Server_Test server(testConf);
 
     Readings readings;
@@ -304,7 +382,6 @@ TEST(S2OPCUA, OPCUA_Server) {
     readings.clear();
     // Create READING 1
     {
-        WARNING("***************JCH WIP");
         vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
         dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
         // ** HERE ** INVALID "do_nodeid"
@@ -333,6 +410,7 @@ TEST(S2OPCUA, OPCUA_Server) {
     SOPC_Logger_TraceWarning(SOPC_LOG_MODULE_CLIENTSERVER, "Demo WARNING Log");
     SOPC_Logger_TraceInfo(SOPC_LOG_MODULE_CLIENTSERVER, "Demo INFO Log");
     SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "Demo DEBUG Log");
+    SOPC_Logger_SetTraceLogLevel(SOPC_LOG_LEVEL_INFO);
 
     // Check "operation" event
     server.setpointCallbacks(north_operation_event);
@@ -340,4 +418,158 @@ TEST(S2OPCUA, OPCUA_Server) {
 
     ///////////////////////////////////////////
     // Use an external client to make requests
+    {
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--encrypt",
+            "-n", "i=84",
+            "--username=user", "--password=password",
+            "--user_policy_id=username_Basic256Sha256",
+            "--client_cert=cert/client_public/client_2k_cert.der",
+            "--client_key=cert/client_private/client_2k_key.pem",
+            "--server_cert=cert/server_public/server_2k_cert.der",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-a", "3"});
+
+        string execLog(launch_and_check(read_cmd));
+
+        // cout << "EXECLOG=<" <<execLog << ">" << endl;
+        ASSERT_STR_CONTAINS(execLog, "QualifiedName = 0:Root");
+        ASSERT_STR_NOT_CONTAINS(execLog, "Failed session activation");
+    }
+
+    // Invalid password
+    {
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--encrypt",
+            "-n", "i=84",
+            "--username=user", "--password=password2",
+            "--user_policy_id=username_Basic256Sha256",
+            "--client_cert=cert/client_public/client_2k_cert.der",
+            "--client_key=cert/client_private/client_2k_key.pem",
+            "--server_cert=cert/server_public/server_2k_cert.der",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-a", "3"});
+
+        string execLog(launch_and_check(read_cmd));
+
+        // cout << "EXECLOG=<" <<execLog << ">" << endl;
+        ASSERT_STR_NOT_CONTAINS(execLog, "QualifiedName = 0:Root");
+        ASSERT_STR_CONTAINS(execLog, "Failed session activation");
+    }
+
+    // Invalid user
+    {
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--encrypt",
+            "-n", "i=84",
+            "--username=User", "--password=password",
+            "--user_policy_id=username_Basic256Sha256",
+            "--client_cert=cert/client_public/client_2k_cert.der",
+            "--client_key=cert/client_private/client_2k_key.pem",
+            "--server_cert=cert/server_public/server_2k_cert.der",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-a", "3"});
+
+        string execLog(launch_and_check(read_cmd));
+
+        // cout << "EXECLOG=<" <<execLog << ">" << endl;
+        ASSERT_STR_NOT_CONTAINS(execLog, "QualifiedName = 0:Root");
+        ASSERT_STR_CONTAINS(execLog, "Failed session activation");
+    }
+
+    // Write request to server
+    // Check type SPC (BOOL)
+    {
+        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelSPC/spc",
+            "-t", "1",
+            "1"});
+
+        string writeLog(launch_and_check(write_cmd));
+        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
+
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelSPC/spc\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
+
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelSPC/spc",
+            "-a", "13"});
+
+        string readLog(launch_and_check(read_cmd));
+        // cout << "READLOG=<" <<readLog << ">" << endl;
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
+    }
+
+
+    // Write request to server
+    // Check type DPC (Byte)
+    {
+        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelDPC/dpc",
+            "-t", "3",
+            "17"});
+
+        string writeLog(launch_and_check(write_cmd));
+        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
+
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelDPC/dpc\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
+
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelDPC/dpc",
+            "-a", "13"});
+
+        string readLog(launch_and_check(read_cmd));
+        // cout << "READLOG=<" <<readLog << ">" << endl;
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(readLog, "Value: 17"); // Written value
+    }
+
+    // Write request to server
+    // Check type MVF (float / Read only)
+    {
+        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelMVF/mvf",
+            "-t", "10",
+            "3.14"});
+
+        string writeLog(launch_and_check(write_cmd));
+        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
+
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelMVF/mvf\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x803B0000"); // NOde not writeable
+    }
+
+    // Check (uninitialized) Analog value
+    {
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelMVA/mva",
+            "-a", "13"});
+
+        string readLog(launch_and_check(read_cmd));
+        // cout << "READLOG=<" <<readLog << ">" << endl;
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x80320000"); // OpcUa_BadWaitingForInitialData
+    }
 }
+

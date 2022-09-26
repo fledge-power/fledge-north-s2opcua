@@ -177,10 +177,11 @@ SOPC_BuiltinId toBuiltinId(const string& name) {
 
 /**************************************************************************/
 bool pivotTypeToReadOnly(const std::string& pivotType) {
-    return ((pivotType != "DpcTyp") &&
-            (pivotType != "SpcTyp") &&
-            (pivotType != "IncTyp") &&
-            (pivotType != "ApcTyp"));
+    return ((pivotType != "opcua_spc") &&
+            (pivotType != "opcua_dpc") &&
+            (pivotType != "opcua_inc") &&
+            (pivotType != "opcua_apc") &&
+            (pivotType != "opcua_bsc"));
 }
 
 /**************************************************************************/
