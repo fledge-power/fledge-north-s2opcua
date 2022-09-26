@@ -1,6 +1,7 @@
 #include <plugin_api.h>
 #include <string.h>
 #include <string>
+#include <algorithm>
 #include <rapidjson/document.h>
 #include <gtest/gtest.h>
 

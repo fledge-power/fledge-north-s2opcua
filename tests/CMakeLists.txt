@@ -87,7 +87,6 @@ if (NOT FLEDGE_FOUND)
 		execute_process(COMMAND make clean WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 		file(REMOVE "${CMAKE_BINARY_DIR}/Makefile")
 	endif()
-	# Stop the build process
 	message(FATAL_ERROR "Fledge plugin '${PROJECT_NAME}' build error.")
 endif()
 # On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set 
@@ -99,7 +98,6 @@ include_directories(${GTEST_INCLUDE_DIRS})
 # Add ../include
 include_directories(../include)
 include_directories(${GEN_SRC_DIR})
-message(WARNING "GEN_SRC_DIR=${GEN_SRC_DIR}")
 
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
@@ -117,9 +115,9 @@ if (FLEDGE_INSTALL)
 	install(TARGETS ${PROJECT_NAME} DESTINATION ${FLEDGE_INSTALL}/plugins/${PLUGIN_TYPE}/${PROJECT_NAME})
 endif()
 
-target_link_libraries(${PROJECT_NAME} ${GTEST_LIBRARIES} pthread)
+target_link_libraries(${PROJECT_NAME} ${GTEST_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${NEEDED_FLEDGE_LIBS})
 #target_link_libraries(${PROJECT_NAME}  ${Boost_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} -lpthread -ldl)
+target_link_libraries(${PROJECT_NAME} -ldl)
 add_definitions( -DWITH_USER_ASSERT=1)
-target_link_libraries(${PROJECT_NAME} PRIVATE s2opc_serverwrapper s2opc_common)
+target_link_libraries(${PROJECT_NAME} s2opc_serverwrapper s2opc_common)

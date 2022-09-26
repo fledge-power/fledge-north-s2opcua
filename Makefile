@@ -9,7 +9,7 @@ build:
 	$(Q)mkdir -p build
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
-unit_tests: 
+unit_tests: install_plugin
 	$(Q)rm -rf build/tests/RunTests_coverage_html
 	$(Q)mkdir -p build/tests
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
@@ -32,7 +32,7 @@ install_plugin: check
 	@echo "Install plugin..."
 	$(Q)make -C build install
 	@echo "Install demo certificates..."
-	$(Q)mkdir -p $(FLEDGE_INSTALL)/data/etc/cert/ > /dev/null
+	$(Q)mkdir -p $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/ > /dev/null
 	$(Q)cp -arf ./samples/cert/* $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/
 	
 insert_task: del_plugin
