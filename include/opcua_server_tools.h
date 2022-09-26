@@ -65,15 +65,7 @@ extern void plugin_Assert_UserCallback(const char* context);
 
 #define ASSERT_CONTEXT __FILE__ ":" SOPC_PP_STR(__LINE__) ":"
 
-#ifdef UNIT_TESTING
 // For unit tests, simplify macro to avoid multiple branches created by C++
-#define ASSERT(c,  ...) do {if (!(c)) throw std::exception();} while (0)
-#define ASSERT_NOT_NULL(c)  do {if (nullptr == (c)) throw std::exception();} while (0)
-static inline const char* LOGGABLE(const std::string &s) {return s.c_str();}
-static inline const char* LOGGABLE(const char* s) {return s;}
-
-#else  // UNIT_TESTING not defined
-// Improve SOPC_ASSERT to allow run-time elaborated messages
 #define ASSERT(c,  ...) do { \
     if (!(c)) {\
         FATAL("ASSERT FAILED in " ASSERT_CONTEXT __VA_ARGS__);\
@@ -83,6 +75,11 @@ static inline const char* LOGGABLE(const char* s) {return s;}
 
 #define ASSERT_NOT_NULL(c) ASSERT((c) != NULL, "NULL pointer:'" #c "'")
 
+#ifdef UNIT_TESTING
+static inline const char* LOGGABLE(const std::string &s) {return s.c_str();}
+static inline const char* LOGGABLE(const char* s) {return s;}
+
+#else  // UNIT_TESTING not defined
 // Note: it is possible (for performance reasons) to remove the logging robustness by simply
 // using:
 // #define LOGGABLE(s) (s).c_str()
