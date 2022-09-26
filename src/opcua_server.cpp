@@ -188,9 +188,6 @@ static void sopcDoLog(const char* category, const char* const line) {
         case 'W':
             WARNING("[S2OPC] %s", text.c_str());
             break;
-        case 'I':
-            INFO("[S2OPC] %s", text.c_str());
-            break;
         case 'D':
             DEBUG("[S2OPC] %s", text.c_str());
             break;
@@ -219,7 +216,7 @@ static uint64_t toInteger(const DatapointValue& value) {
         }
         return 0;
     } else {
-        WARNING("do_quality ignored because not of type 'T_STRING' or 'T_INTEGER'");
+        WARNING("Could not convert value (not of type 'T_STRING' or 'T_INTEGER')");
         return 0;
     }
 }
@@ -239,6 +236,7 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
     const bool dvIsFloat(dvType == DatapointValue::T_FLOAT);
 
     bool valid = false;
+    // Note: currently unused types are commented to avoid coverage leaks
     switch (typeId) {
     case SOPC_Boolean_Id:
         if (dvType == DatapointValue::T_INTEGER) {
@@ -246,54 +244,54 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
             variant->Value.Boolean = static_cast<bool>(dv->toInt());
         }
         break;
-    case SOPC_SByte_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Sbyte = static_cast<SOPC_SByte>(dv->toInt());
-        }
-        break;
+//    case SOPC_SByte_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Sbyte = static_cast<SOPC_SByte>(dv->toInt());
+//        }
+//        break;
     case SOPC_Byte_Id:
         if (dvType == DatapointValue::T_INTEGER) {
             valid = true;
             variant->Value.Byte = static_cast<SOPC_Byte>(dv->toInt());
         }
         break;
-    case SOPC_Int16_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Int16 = static_cast<int16_t>(dv->toInt());
-        }
-        break;
-    case SOPC_UInt16_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Uint16 = static_cast<uint16_t>(dv->toInt());
-        }
-        break;
+//    case SOPC_Int16_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Int16 = static_cast<int16_t>(dv->toInt());
+//        }
+//        break;
+//    case SOPC_UInt16_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Uint16 = static_cast<uint16_t>(dv->toInt());
+//        }
+//        break;
     case SOPC_Int32_Id:
         if (dvType == DatapointValue::T_INTEGER) {
             valid = true;
             variant->Value.Int32 = static_cast<int32_t>(dv->toInt());
         }
         break;
-    case SOPC_UInt32_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Uint32 = static_cast<uint32_t>(dv->toInt());
-        }
-        break;
-    case SOPC_Int64_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Int64 = static_cast<int64_t>(dv->toInt());
-        }
-        break;
-    case SOPC_UInt64_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
-            variant->Value.Uint64 = static_cast<uint64_t>(dv->toInt());
-        }
-        break;
+//    case SOPC_UInt32_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Uint32 = static_cast<uint32_t>(dv->toInt());
+//        }
+//        break;
+//    case SOPC_Int64_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Int64 = static_cast<int64_t>(dv->toInt());
+//        }
+//        break;
+//    case SOPC_UInt64_Id:
+//        if (dvType == DatapointValue::T_INTEGER) {
+//            valid = true;
+//            variant->Value.Uint64 = static_cast<uint64_t>(dv->toInt());
+//        }
+//        break;
     case SOPC_Float_Id:
         if (dvType == DatapointValue::T_FLOAT) {
             valid = true;
@@ -306,12 +304,12 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
             variant->Value.Floatv = static_cast<double>(dv->toDouble());
         }
         break;
-    case SOPC_ByteString_Id:
-        if (dvType == DatapointValue::T_STRING) {
-            valid = true;
-            SOPC_String_InitializeFromCString(&variant->Value.Bstring, dv->toStringValue().c_str());
-        }
-        break;
+//    case SOPC_ByteString_Id:
+//        if (dvType == DatapointValue::T_STRING) {
+//            valid = true;
+//            SOPC_String_InitializeFromCString(&variant->Value.Bstring, dv->toStringValue().c_str());
+//        }
+//        break;
     case SOPC_String_Id:
         if (dvType == DatapointValue::T_STRING) {
             valid = true;
@@ -663,7 +661,7 @@ sendAsynchRequest(void* request)const {
         if (status != SOPC_STATUS_OK) {
             WARNING("LocalServiceAsync failed with code  %s(%d)",
                     statusCodeToCString(status), status);
-            delete request;
+            SOPC_Free(request);
         }
     }
 }
@@ -673,51 +671,6 @@ void
 OPCUA_Server::
 asynchReadResponse(const OpcUa_ReadResponse* readResp) {}
 
-/**************************************************************************/
-void
-OPCUA_Server::
-Server_Event(SOPC_App_Com_Event event, uint32_t idOrStatus, void* param, uintptr_t appContext) {
-    (void) idOrStatus;
-    if (NULL == mInstance) {
-        return;
-    }
-
-    SOPC_EncodeableType* message_type = NULL;
-
-    OpcUa_WriteResponse* writeResponse = NULL;
-
-    switch (event) {
-    case SE_CLOSED_ENDPOINT:
-        INFO("# Info: Closed endpoint event.\n");
-        SOPC_Atomic_Int_Set(&mInstance->mServerOnline, 0);
-        return;
-    case SE_LOCAL_SERVICE_RESPONSE:
-        message_type = *(reinterpret_cast<SOPC_EncodeableType**>(param));
-        /* Listen for WriteResponses, which only contain status codes */
-        /*if (message_type == &OpcUa_WriteResponse_EncodeableType) {
-            OpcUa_WriteResponse* write_response = param;
-            bool ok = (write_response->ResponseHeader.ServiceResult == SOPC_GoodGenericStatus);
-        }*/
-        /* Listen for ReadResponses, used in GetSourceVariables
-         * This can be used for example when PubSub is defined and uses address space */
-
-        /*if (message_type == &OpcUa_ReadResponse_EncodeableType && NULL != ctx) {
-            ctx = (SOPC_PubSheduler_GetVariableRequestContext*) appContext;
-            // Then copy content of response to ctx...
-        } */
-        if (message_type == &OpcUa_WriteResponse_EncodeableType) {
-            writeResponse = reinterpret_cast<OpcUa_WriteResponse*>(param);
-            // Service should have succeeded
-            assert(0 == (SOPC_GoodStatusOppositeMask & writeResponse->ResponseHeader.ServiceResult));
-        } else {
-            assert(false);
-        }
-        return;
-    default:
-        ERROR("# Warning: Unexpected endpoint event: %d.\n", event);
-        return;
-    }
-}
 
 /**************************************************************************/
 void
@@ -810,9 +763,6 @@ send(const Readings& readings) {
 
                 // Read relevant attributes
                 if (dpName == "do_type") {
-                    if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                        typeId = static_cast<SOPC_BuiltinId>(attrVal.toInt());
-                    }
                     if (attrVal.getType() == DatapointValue::T_STRING) {
                         typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
                     }

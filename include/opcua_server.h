@@ -107,11 +107,6 @@ class OPCUA_Server {
 
  private:
     void init_sopc_lib_and_logs(void);
-    /**
-     * This function is called when an event is received on the server
-     */
-    static void Server_Event(SOPC_App_Com_Event event,
-            uint32_t idOrStatus, void* param, uintptr_t appContext);
 
     /**
      * This function updates a node Id in the address space given a DatapointValue

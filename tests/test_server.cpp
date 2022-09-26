@@ -5,8 +5,7 @@
 
 extern "C" {
 // S2OPC Headers
-#include "s2opc/common/sopc_assert.h"
-#include "sopc_log_manager.h"
+#include "sopc_assert.h"
 #include "libs2opc_common_config.h"
 #include "libs2opc_request_builder.h"
 #include "libs2opc_server.h"
@@ -70,6 +69,10 @@ public:
         nbResponses(0),
         nbBadResponses(0) {}
 
+    void reset(void) {
+        nbResponses = 0;
+        nbBadResponses = 0;
+    }
     size_t nbResponses;
     size_t nbBadResponses;
     virtual void asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
@@ -166,6 +169,8 @@ TEST(S2OPCUA, OPCUA_Server) {
         DatapointValue do_1(dp_vect, true);
         readings.push_back(new Reading("reading2", new Datapoint("data_object", do_1)));
     }
+
+    server.reset();
     // Send READINGs
     server.send(readings);
     this_thread::sleep_for(chrono::milliseconds(10));
@@ -194,8 +199,145 @@ TEST(S2OPCUA, OPCUA_Server) {
         ASSERT_EQ(server.readResults[1], "Q=0x80000000,V=17");
     }
 
+    // Invalid reading
+    readings.clear();
+    // Create READING 1
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+        // ** HERE ** INVALID "do_value"
+        std::vector<double> doubleVect;
+        DatapointValue dpv(doubleVect);
+        dp_vect->push_back(new Datapoint("do_value", dpv));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+
+        server.reset();
+        // Send READINGs
+        server.send(readings);
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server
+        ASSERT_EQ(server.nbResponses, 1);
+        ASSERT_EQ(server.nbBadResponses, 0);
+    }
+
+    // Invalid reading
+    readings.clear();
+    // Create READING 1
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        // ** HERE ** INVALID "do_value"
+        dp_vect->push_back(createStringDatapointValue("do_value", "NoValue"));
+        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+
+        server.reset();
+        // Send READINGs
+        server.send(readings);
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server
+        ASSERT_EQ(server.nbResponses, 1);
+        ASSERT_EQ(server.nbBadResponses, 0);
+    }
+
+    // Invalid reading
+    readings.clear();
+    // Create READING 1
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        dp_vect->push_back(createIntDatapointValue("do_value", 1));
+        // ** HERE ** INVALID "do_ts"
+        dp_vect->push_back(createStringDatapointValue("do_ts", "hello world!"));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+
+        server.reset();
+        // Send READINGs
+        server.send(readings);
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server
+        ASSERT_EQ(server.nbResponses, 1);
+        ASSERT_EQ(server.nbBadResponses, 0);
+    }
+
+
+    // Invalid reading
+    readings.clear();
+    // Create READING 1
+    {
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        dp_vect->push_back(createIntDatapointValue("do_nodeid", 84));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        dp_vect->push_back(createIntDatapointValue("do_value", 1));
+        // ** HERE ** INVALID "do_ts"
+        std::vector<double> doubleVect;
+        DatapointValue dpv(doubleVect);
+        dp_vect->push_back(new Datapoint("do_ts", dpv));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+
+        server.reset();
+        // Send READINGs
+        server.send(readings);
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server
+        ASSERT_EQ(server.nbResponses, 1);
+        ASSERT_EQ(server.nbBadResponses, 1);  // cannot update node "i=84"
+    }
+
+    // Invalid reading
+    readings.clear();
+    // Create READING 1
+    {
+        WARNING("***************JCH WIP");
+        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+        // ** HERE ** INVALID "do_nodeid"
+        std::vector<double> doubleVect;
+        DatapointValue dpv(doubleVect);
+        dp_vect->push_back(new Datapoint("do_nodeid", dpv));
+        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
+        dp_vect->push_back(createIntDatapointValue("do_value", 1));
+        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+        DatapointValue do_1(dp_vect, true);
+        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+
+        server.reset();
+        // Send READINGs
+        server.send(readings);
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server (No update done because NodeId is invalid)
+        ASSERT_EQ(server.nbResponses, 0);
+        ASSERT_EQ(server.nbBadResponses, 0);
+    }
+
+    // Cover LOG cases
+    SOPC_Logger_SetTraceLogLevel(SOPC_LOG_LEVEL_DEBUG);
+    SOPC_Logger_TraceError(SOPC_LOG_MODULE_CLIENTSERVER, "Demo ERROR Log");
+    SOPC_Logger_TraceWarning(SOPC_LOG_MODULE_CLIENTSERVER, "Demo WARNING Log");
+    SOPC_Logger_TraceInfo(SOPC_LOG_MODULE_CLIENTSERVER, "Demo INFO Log");
+    SOPC_Logger_TraceDebug(SOPC_LOG_MODULE_CLIENTSERVER, "Demo DEBUG Log");
+
     // Check "operation" event
     server.setpointCallbacks(north_operation_event);
     ASSERT_EQ(north_operation_event_nbCall, 0);
 
+    ///////////////////////////////////////////
+    // Use an external client to make requests
 }
