@@ -11,14 +11,14 @@ See an example in `include/default_config.json`
 
 ## Building
 
-Building this plugin requires that dependancies are available in a specified relative location in the file system. The `DEV_ROOT` variable may be set to any local folder. For example:
+Building this plugin requires that dependencies are available in a specified relative location in the file system. The `DEV_ROOT` variable may be set to any local folder. For example:
 
 ```sh
 export DEV_ROOT=~/dev
 mkdir -p ${DEV_ROOT}
 ```
 
-### Automated dependancies build
+### Automated dependencies build
 
 All commands shown below are automated in the script `requirements.sh`.
 
@@ -27,10 +27,10 @@ cd ${DEV_ROOT}
 ./requirements.sh
 ```
 
-### Manual dependancies build
-As there are some hard dependancies between `fledge-north-s2opc` and other components (patch, inclusion...), it is mandatory to retreive `fledge-north-s2opc` in this specific folder :
+### Manual dependencies build
+As there are some hard dependencies between `fledge-north-s2opc` and other components (patch, inclusion...), it is mandatory to retrieve `fledge-north-s2opc` in this specific folder :
 
-- Download dependancies
+- Download dependencies
 
 ```sh
 cd ${DEV_ROOT}
@@ -74,7 +74,7 @@ WITH_USER_ASSERT=ON S2OPC_CLIENTSERVER_ONLY=ON WITH_NANO_EXTENDED=ON USE_STATIC_
 ```
 
 ### Build plugin
-Now all dependancies are installed, the plugin itself an be built.
+Now all dependencies are installed, the plugin itself can be built.
 
 To build the OPC UA S2OPC South plugin run the commands:
 
