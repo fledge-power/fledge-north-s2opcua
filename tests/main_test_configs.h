@@ -12,11 +12,16 @@
 #define INCLUDE_FLEDGE_NORTH_S2OPCUA_TESTS_MAIN_CONFIGS_H_
 
 // System includes
-#include <string>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <setjmp.h>
+#include <fstream>
+#include <string>
 
 // Fledge / tools  includes
 #include <plugin_api.h>
+#include <datapoint.h>
 #include <gtest/gtest.h>
 
 extern "C" {
@@ -38,6 +43,19 @@ static void test_Assert_UserCallback(const char* context) {
     assert(false);
 }
 }
+
+///////////////////////
+// helpful test macros
+#define ASSERT_STR_CONTAINS(s1,s2) ASSERT_NE(s1.find(s2), string::npos);
+#define ASSERT_STR_NOT_CONTAINS(s1,s2) ASSERT_EQ(s1.find(s2), string::npos);
+
+#define WAIT_UNTIL(c, mtimeoutMs) do {\
+        int maxwaitMs(mtimeoutMs);\
+        do {\
+            this_thread::sleep_for(chrono::milliseconds(10));\
+            maxwaitMs -= 10;\
+        } while (!(c) && maxwaitMs > 0);\
+    } while(0)
 
 // Simply call this macro at each entry point where C may lead to failing assertions
 // Any assert will cause a GTest assert fail instead of ABORT signal
@@ -72,6 +90,97 @@ static void test_Assert_UserCallback(const char* context) {
         ASSERT_FALSE("No exception raised"); \
 } while(0)
 
+//////////////////////////////////////
+// TEST HELPER FUNCTIONS
+
+static inline Datapoint* createStringDatapointValue(const std::string& name,
+        const std::string& value) {
+    DatapointValue dpv(value);
+    return new Datapoint(name, dpv);
+}
+
+static inline Datapoint* createIntDatapointValue(const std::string& name,
+        const long value) {
+    DatapointValue dpv(value);
+    return new Datapoint(name, dpv);
+}
+
+static inline Datapoint* createFloatDatapointValue(const std::string& name,
+        const float value) {
+    DatapointValue dpv(value);
+    return new Datapoint(name, dpv);
+}
+
+///////////////////////
+// This function starts a process and return the standard output result
+static std::string launch_and_check(SOPC_tools::CStringVect& command) {
+    sigset_t mask;
+    sigset_t orig_mask;
+    struct timespec timeout;
+    pid_t pid;
+
+    static const char* filename("./fork.log");
+    sigemptyset (&mask);
+    sigaddset (&mask, SIGCHLD);
+
+    if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) {
+        return "sigprocmask";
+    }
+    timeout.tv_sec = 2;
+    timeout.tv_nsec = 0;
+
+    pid = fork();
+    if (pid < 0) return "fork";
+
+    if (pid == 0) {
+        int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        dup2(fd, 1);  // redirect stdout
+        char **args = command.vect;
+        execv(args[0], args);
+        throw std::exception(); // not reachable
+    }
+
+    do {
+        if (sigtimedwait(&mask, NULL, &timeout) < 0) {
+            if (errno == EINTR) {
+                /* Interrupted by a signal other than SIGCHLD. */
+                continue;
+            }
+            else if (errno == EAGAIN) {
+                printf ("Timeout, killing child\n");
+                kill (pid, SIGKILL);
+            }
+            else {
+                return "sigtimedwait";
+            }
+        }
+
+        break;
+    } while (1);
+
+    int result = -1;
+    waitpid(pid, &result, 0);
+
+    std::ifstream ifs(filename);
+    std::string content( (std::istreambuf_iterator<char>(ifs) ),
+                           (std::istreambuf_iterator<char>()    ) );
+
+    if (WIFEXITED(result) == 0 || WEXITSTATUS(result) != 0) {
+        std::cerr << "While executing command:" << std::endl;
+        for (const std::string& sRef : command.cppVect) {
+            std::cout << "'" << sRef << "' ";
+        }
+        std::cerr << std::endl;
+        std::cerr << "Log was:<<<" << content << ">>>" << std::endl;
+        return command.cppVect[0] + " has terminated with code " +
+                std::to_string(WEXITSTATUS(result));
+    }
+
+    return content;
+}
+
+//////////////////////////////////////
+// TEST CONFIGURATIONS
 static const std::string protocolJsonOK =
         QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
             "version":"1.0", \

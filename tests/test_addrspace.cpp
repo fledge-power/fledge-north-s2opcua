@@ -30,6 +30,7 @@ static const SOPC_NodeId* parentId(SOPC_tools::createNodeId("i=84"));
 static const CVarInfo vInfo(nodeId, browsename, displayName, description, *parentId, true);
 
 TEST(S2OPCUA, CVarInfo) {
+    ERROR("*** TEST S2OPCUA CVarInfo");
     ASSERT_NO_C_ASSERTION;
 
     ASSERT_EQ(vInfo.mNodeId, nodeId);
@@ -42,6 +43,7 @@ TEST(S2OPCUA, CVarInfo) {
 }
 
 TEST(S2OPCUA, CVarNode) {
+    ERROR("*** TEST S2OPCUA CVarNode");
     ASSERT_NO_C_ASSERTION;
 
     CVarNode node(vInfo, SOPC_UInt32_Id);
@@ -100,6 +102,7 @@ struct nodeObjFinder {
 }  // namespace
 
 TEST(S2OPCUA, Server_AddrSpace) {
+    ERROR("*** TEST S2OPCUA Server_AddrSpace");
     ASSERT_NO_C_ASSERTION;
 
     CVarNode node(vInfo, SOPC_UInt32_Id);

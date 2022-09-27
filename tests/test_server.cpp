@@ -1,10 +1,6 @@
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/wait.h>
 #include <string>
 #include <thread>
-#include <fstream>
 #include <rapidjson/document.h>
 
 extern "C" {
@@ -29,19 +25,6 @@ using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
 
-///////////////////////
-// helpful test macros
-#define ASSERT_STR_CONTAINS(s1,s2) ASSERT_NE(s1.find(s2), string::npos);
-#define ASSERT_STR_NOT_CONTAINS(s1,s2) ASSERT_EQ(s1.find(s2), string::npos);
-
-#define WAIT_UNTIL(c, mtimeoutMs) do {\
-        int maxwaitMs(mtimeoutMs);\
-        do {\
-            this_thread::sleep_for(chrono::milliseconds(10));\
-            maxwaitMs -= 10;\
-        } while (!(c) && maxwaitMs > 0);\
-    } while(0)
-
 extern "C" {
 static int north_operation_event_nbCall = 0;
 static int north_operation_event (
@@ -56,92 +39,6 @@ static int north_operation_event (
     north_operation_event_nbCall++;
     return paramCount;
 }
-}
-
-static inline Datapoint* createStringDatapointValue(const std::string& name,
-        const string& value) {
-    DatapointValue dpv(value);
-    return new Datapoint(name, dpv);
-}
-
-static inline Datapoint* createIntDatapointValue(const std::string& name,
-        const long value) {
-    DatapointValue dpv(value);
-    return new Datapoint(name, dpv);
-}
-
-static inline Datapoint* createFloatDatapointValue(const std::string& name,
-        const float value) {
-    DatapointValue dpv(value);
-    return new Datapoint(name, dpv);
-}
-
-///////////////////////
-// This function starts a process and return the standard output result
-static string launch_and_check(SOPC_tools::CStringVect& command) {
-    sigset_t mask;
-    sigset_t orig_mask;
-    struct timespec timeout;
-    pid_t pid;
-
-    static const char* filename("./fork.log");
-    sigemptyset (&mask);
-    sigaddset (&mask, SIGCHLD);
-
-    if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) {
-        return "sigprocmask";
-    }
-    timeout.tv_sec = 2;
-    timeout.tv_nsec = 0;
-
-    pid = fork();
-    if (pid < 0) return "fork";
-
-    if (pid == 0) {
-        int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        dup2(fd, 1);  // redirect stdout
-        char **args = command.vect;
-        execv(args[0], args);
-        throw exception(); // not reachable
-    }
-
-    do {
-        if (sigtimedwait(&mask, NULL, &timeout) < 0) {
-            if (errno == EINTR) {
-                /* Interrupted by a signal other than SIGCHLD. */
-                continue;
-            }
-            else if (errno == EAGAIN) {
-                printf ("Timeout, killing child\n");
-                kill (pid, SIGKILL);
-            }
-            else {
-                return "sigtimedwait";
-            }
-        }
-
-        break;
-    } while (1);
-
-    int result = -1;
-    waitpid(pid, &result, 0);
-
-    std::ifstream ifs(filename);
-    std::string content( (std::istreambuf_iterator<char>(ifs) ),
-                           (std::istreambuf_iterator<char>()    ) );
-
-    if (WIFEXITED(result) == 0 || WEXITSTATUS(result) != 0) {
-        std::cerr << "While executing command:" << std::endl;
-        for (const std::string& sRef : command.cppVect) {
-            std::cout << "'" << sRef << "' ";
-        }
-        cerr << endl;
-        cerr << "Log was:<<<" << content << ">>>" << endl;
-        return command.cppVect[0] + " has terminated with code " +
-                std::to_string(WEXITSTATUS(result));
-    }
-
-    return content;
 }
 
 // Complete OPCUA_Server class to test Server updates
@@ -219,6 +116,7 @@ public:
 };
 
 TEST(S2OPCUA, OPCUA_Server) {
+    ERROR("*** TEST S2OPCUA OPCUA_Server");
     ASSERT_NO_C_ASSERTION;
 
     north_operation_event_nbCall = 0;
@@ -241,6 +139,7 @@ TEST(S2OPCUA, OPCUA_Server) {
             config_exData);
     testConf.addItem("protocol_stack", "protocol_stack", "JSON", protocolJsonOK,
             protocolJsonOK);
+    s2opc_north::OPCUA_Server::uninitialize(); // Ensure no previous server still exists
     OPCUA_Server_Test server(testConf);
 
     Readings readings;
@@ -736,6 +635,7 @@ TEST(S2OPCUA, OPCUA_Server) {
 };
 
 TEST(S2OPCUA, OPCUA_Server_MissingFile) {
+    ERROR("*** TEST S2OPCUA OPCUA_Server_MissingFile");
     //ASSERT_C_RAISES_ASSERTION_START;
 
     ASSERT_C_RAISES_ASSERTION_START;
@@ -747,6 +647,8 @@ TEST(S2OPCUA, OPCUA_Server_MissingFile) {
             config_exData);
     testConf.addItem("protocol_stack", "protocol_stack", "JSON", protocolMissingFile,
             protocolMissingFile);
+
+    s2opc_north::OPCUA_Server::uninitialize(); // Ensure no previous server still exists
     OPCUA_Server_Test server(testConf);
     ASSERT_C_RAISES_ASSERTION_END;
 

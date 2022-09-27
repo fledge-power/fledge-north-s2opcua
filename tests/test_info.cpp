@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <plugin_api.h>
 #include <string.h>
+#include <exception>
 #include <string>
 #include <rapidjson/document.h>
 
@@ -12,8 +13,10 @@ extern "C" {
 
 // Tested files
 #include "opcua_server_tools.h"
+#include "opcua_server.h"
 
 // Fledge / tools  includes
+#include "config_category.h"
 #include "main_test_configs.h"
 
 using namespace std;
@@ -25,6 +28,7 @@ extern "C" {
 };
 
 TEST(S2OPCUA, PluginInfo) {
+    ERROR("*** TEST S2OPCUA PluginInfo");
     ASSERT_NO_C_ASSERTION;
 
 	PLUGIN_INFORMATION *info = plugin_info();
@@ -33,6 +37,7 @@ TEST(S2OPCUA, PluginInfo) {
 }
 
 TEST(S2OPCUA, PluginInfoConfigParse) {
+    ERROR("*** TEST S2OPCUA PluginInfoConfigParse");
     ASSERT_NO_C_ASSERTION;
 
 	PLUGIN_INFORMATION *info = plugin_info();
@@ -46,6 +51,7 @@ TEST(S2OPCUA, PluginInfoConfigParse) {
 }
 
 TEST(S2OPCUA, ServerToolsHelpers) {
+    ERROR("*** TEST S2OPCUA ServerToolsHelpers");
     ASSERT_NO_C_ASSERTION;
 
     using namespace SOPC_tools;
@@ -123,6 +129,7 @@ TEST(S2OPCUA, ServerToolsHelpers) {
 }
 
 TEST(S2OPCUA, CStringVect) {
+    ERROR("*** TEST S2OPCUA CStringVect");
     ASSERT_NO_C_ASSERTION;
     using namespace SOPC_tools;
 
@@ -150,5 +157,126 @@ TEST(S2OPCUA, CStringVect) {
     }
 }
 
+extern "C" {
+extern PLUGIN_HANDLE plugin_init(ConfigCategory *configData);
+extern void plugin_shutdown(PLUGIN_HANDLE handle);
+extern uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings);
+extern void plugin_register(PLUGIN_HANDLE handle,
+        s2opc_north::north_write_event_t write,
+        s2opc_north::north_operation_event_t operation);
+
+////////////////
+// event stubs
+static bool gWriteEventCalled = false;
+bool test_north_write_event
+(char *name, char *value, ControlDestination destination, ...) {
+    gWriteEventCalled = true;
+    return true;
+}
+
+static int gOperEventNbCall = 0;
+static string gOperEventLastOperName;
+static ControlDestination gOperEventLastDestination;
+static SOPC_tools::StringVect_t gOperEventLastNames;
+static SOPC_tools::StringVect_t gOperEventLastParams;
+
+
+int test_north_operation_event
+(char *operation, int paramCount, char *names[], char *parameters[],
+        ControlDestination destination, ...) {
+    gOperEventNbCall++;
+
+    // Copy parameters of last call into global test variables
+    gOperEventLastOperName = operation ? operation : "NULL";
+    gOperEventLastDestination = destination;
+
+    gOperEventLastNames.clear();
+    gOperEventLastParams.clear();
+    for (int i(0); i < paramCount; i++) {
+        gOperEventLastNames.push_back(names[i] ? names[i] : "null");
+        gOperEventLastParams.push_back(parameters[i] ? parameters[i] : "null");
+    }
+    return paramCount;
+}
+
+size_t findNameInOperEvent(const std::string& name) {
+    for (size_t i(0); i < gOperEventLastNames.size(); i++) {
+        std::cout<<"Name="<< gOperEventLastNames[i] << endl;
+        if (name == gOperEventLastNames[i]) return i;
+    }
+    return -1;
+}
+}
+
+TEST(S2OPCUA, PluginInstance) {
+    using s2opc_north::OPCUA_Server;
+    using SOPC_tools::StringVect_t;
+
+    ERROR("*** TEST S2OPCUA PluginInstance");
+    ASSERT_NO_C_ASSERTION;
+
+    // note : plugin_info already tested
+    PLUGIN_HANDLE handle = nullptr;
+    s2opc_north::Readings readings;
+    ConfigCategory config;
+    config.addItem("logging", "Configure S2OPC logging level", "Info",
+            "Info", {"None", "Error", "Warning", "Info", "Debug"});
+    config.addItem("exchanged_data", "exchanged_data", "JSON", config_exData,
+            config_exData);
+    config.addItem("protocol_stack", "protocol_stack", "JSON", protocolJsonOK,
+            protocolJsonOK);
+
+    OPCUA_Server::uninitialize(); // Ensure no previous server still exists
+
+    // Instantiate a server
+    try {
+        handle = plugin_init(&config);
+    }
+    catch (const std::exception& e) {
+        ASSERT_FALSE("plugin_init raised an exception");
+    }
+
+    ASSERT_NE(OPCUA_Server::instance(), nullptr);
+    ASSERT_EQ(OPCUA_Server::instance(), (OPCUA_Server*)handle);
+
+    // Check plugin_register
+    plugin_register(handle, &test_north_write_event, &test_north_operation_event);
+
+    gOperEventNbCall = 0;
+    // Write request to server
+    // Check type DPC (Byte)
+    {
+        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/labelDPC/dpc",
+            "-t", "3",
+            "17"});
+
+        string writeLog(launch_and_check(write_cmd));
+        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
+
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelDPC/dpc\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
+    }
+
+
+    ASSERT_FALSE(gWriteEventCalled);
+    ASSERT_GE(gOperEventNbCall, 1);
+    ASSERT_EQ(gOperEventLastOperName, "opcua_operation");
+    ASSERT_EQ(gOperEventLastDestination, DestinationBroadcast);
+
+    StringVect_t::const_iterator it;
+
+    ASSERT_EQ(gOperEventLastNames.size(), gOperEventLastParams.size());
+    size_t idx(findNameInOperEvent("typeid"));
+    ASSERT_NE(idx, -1);
+    ASSERT_EQ(gOperEventLastParams[idx], "opcua_dpc");
+
+    // destroy server
+    plugin_shutdown(handle);
+    ASSERT_EQ(OPCUA_Server::instance(), nullptr);
+}
 
 

@@ -41,6 +41,7 @@ static const string exDataJson =
 
 
 TEST(S2OPCUA, ExchangedDataC) {
+    ERROR("*** TEST S2OPCUA ExchangedDataC");
     ASSERT_NO_C_ASSERTION;
 
     ExchangedDataC* pdata = nullptr;
@@ -168,6 +169,7 @@ static const string protocolJson5 = // Invalid policies
               } });
 
 TEST(S2OPCUA, OpcUa_Protocol) {
+    ERROR("*** TEST S2OPCUA OpcUa_Protocol");
     ASSERT_NO_C_ASSERTION;
 
     int abortReceived = setjmp(abort_jump_env);
@@ -241,6 +243,7 @@ struct nodeVarFinder {
 }
 
 TEST(S2OPCUA, OpcUa_Server_Config) {
+    ERROR("*** TEST S2OPCUA OpcUa_Server_Config");
     ASSERT_NO_C_ASSERTION;
 
     int abortReceived = setjmp(abort_jump_env);
