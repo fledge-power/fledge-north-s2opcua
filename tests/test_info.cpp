@@ -201,7 +201,7 @@ int test_north_operation_event
 
 size_t findNameInOperEvent(const std::string& name) {
     for (size_t i(0); i < gOperEventLastNames.size(); i++) {
-        std::cout<<"Name="<< gOperEventLastNames[i] << endl;
+        // std::cout<<"Name="<< gOperEventLastNames[i] << endl;
         if (name == gOperEventLastNames[i]) return i;
     }
     return -1;

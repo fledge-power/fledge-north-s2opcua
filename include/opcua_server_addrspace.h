@@ -13,6 +13,7 @@
 // System headers
 #include <stdint.h>
 #include <stdlib.h>
+#include <map>
 #include <vector>
 #include <string>
 
@@ -42,7 +43,8 @@ static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
 /** Vector of nodes */
-typedef std::vector<SOPC_AddressSpace_Node*> NodeVect_t;
+typedef std::pair<SOPC_AddressSpace_Node*, std::string> NodeInfo_t;
+typedef std::vector<NodeInfo_t> NodeVect_t;
 
 /**************************************************************************/
 struct CVarInfo {
@@ -74,7 +76,7 @@ struct CVarInfo {
 class CNode {
  public:
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
-    void insertAndCompleteReferences(NodeVect_t* nodes);
+    void insertAndCompleteReferences(NodeVect_t* nodes, const std::string& typeId);
  protected:
     explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
     SOPC_AddressSpace_Node mNode;

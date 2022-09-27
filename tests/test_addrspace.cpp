@@ -71,36 +71,6 @@ TEST(S2OPCUA, CVarNode) {
     GTEST_ASSERT_EQ(aNode->data.variable.UserAccessLevel, 0);
 }
 
-namespace {
-struct nodeVarFinder {
-    nodeVarFinder(const std::string& name):m_name(name){}
-    bool operator()(const SOPC_AddressSpace_Node* node){
-        return node != NULL &&
-                node->node_class == OpcUa_NodeClass_Variable &&
-                SOPC_tools::toString(node->data.variable.NodeId) == m_name;
-    }
-    const std::string m_name;
-};
-struct nodeVarTypeFinder {
-    nodeVarTypeFinder(const std::string& name):m_name(name){}
-    bool operator()(const SOPC_AddressSpace_Node* node){
-        return node != NULL &&
-                node->node_class == OpcUa_NodeClass_VariableType &&
-                SOPC_tools::toString(node->data.variable_type.NodeId) == m_name;
-    }
-    const std::string m_name;
-};
-struct nodeObjFinder {
-    nodeObjFinder(const std::string& name):m_name(name){}
-    bool operator()(const SOPC_AddressSpace_Node* node){
-        return node != NULL &&
-                node->node_class == OpcUa_NodeClass_Object &&
-                SOPC_tools::toString(node->data.object.NodeId) == m_name;
-    }
-    const std::string m_name;
-};
-}  // namespace
-
 TEST(S2OPCUA, Server_AddrSpace) {
     ERROR("*** TEST S2OPCUA Server_AddrSpace");
     ASSERT_NO_C_ASSERTION;
@@ -114,13 +84,13 @@ TEST(S2OPCUA, Server_AddrSpace) {
     it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(),
             nodeVarFinder("ns=1;s=/FESSE_6_FESS5.1_DFAIL.DJ/S_1145_6_21_28"));
     GTEST_ASSERT_NE(it, aSpace.nodes.end());
-    pNode = (*it);
+    pNode = ((const NodeInfo_t&)(*it)).first;
     GTEST_ASSERT_EQ(pNode->data.variable.Value.BuiltInTypeId, SOPC_Boolean_Id);
 
     it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(),
             nodeVarFinder("ns=1;s=/FESSE_6_6CHAL7.1_SA.1/C_1145_6_18_1"));
     GTEST_ASSERT_NE(it, aSpace.nodes.end());
-    pNode = (*it);
+    pNode = ((const NodeInfo_t&)(*it)).first;
 
     // Check references (Root.Object + HasTypeDefinition)
     GTEST_ASSERT_EQ(pNode->data.variable.Value.BuiltInTypeId, SOPC_Byte_Id);
@@ -148,7 +118,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
     it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(), nodeObjFinder("i=85"));
 
     GTEST_ASSERT_NE(it, aSpace.nodes.end());
-    pNode = (*it);
+    pNode = ((const NodeInfo_t&)(*it)).first;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
         const std::string iName(SOPC_tools::toString(ref.TargetId.NodeId));
@@ -159,7 +129,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
     // Find HasReference
     it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(), nodeVarTypeFinder("i=63"));
     GTEST_ASSERT_NE(it, aSpace.nodes.end());
-    pNode = (*it);
+    pNode = ((const NodeInfo_t&)(*it)).first;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
         const std::string iName(SOPC_tools::toString(ref.TargetId.NodeId));

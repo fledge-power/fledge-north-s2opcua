@@ -58,7 +58,8 @@ s2opc_north::NodeVect_t getNS0(void) {
 
     for (uint32_t i = 0 ; i < nbNodes; i++) {
         SOPC_AddressSpace_Node* node(nodes + i);
-        result.push_back(node);
+        s2opc_north::NodeInfo_t info = {node, string("")};
+        result.push_back(info);
     }
 
     return result;
@@ -146,8 +147,8 @@ CNode(SOPC_StatusCode defaultStatusCode) {
 /**************************************************************************/
 void
 CNode::
-insertAndCompleteReferences(NodeVect_t* nodes) {
-    nodes->push_back(&mNode);
+insertAndCompleteReferences(NodeVect_t* nodes, const std::string& typeId) {
+    nodes->push_back(NodeInfo_t(&mNode, typeId));
     // Find references and invert them
     const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
     const uint32_t nbRef(mNode.data.variable.NoOfReferences);
@@ -159,7 +160,8 @@ insertAndCompleteReferences(NodeVect_t* nodes) {
 
             // Find matching node in 'nodes'
             bool found(false);
-            for (SOPC_AddressSpace_Node* pNode : *nodes) {
+            for (const NodeInfo_t& nodeInfo : *nodes) {
+                SOPC_AddressSpace_Node* pNode(nodeInfo.first);
                 if (NULL != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
                     // Insert space in target references
                     ASSERT(!found, "Several match for the same Node Id");
@@ -296,7 +298,7 @@ Server_AddrSpace(const std::string& json):
                 CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));
                 DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
                         LOGGABLE(nodeIdName), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
-                pNode->insertAndCompleteReferences(&nodes);
+                pNode->insertAndCompleteReferences(&nodes, data.typeId);
 
                 if (readOnly == false) {
                     // in case of "writeable" nodes, the plugin shall generate a "_reply" string variable
@@ -306,7 +308,7 @@ Server_AddrSpace(const std::string& json):
                     CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));
                     DEBUG("Adding node data '%s' of type '%s-%d' (RO)",
                             LOGGABLE(replyAddr), "SOPC_String_Id", SOPC_String_Id);
-                    pNode->insertAndCompleteReferences(&nodes);
+                    pNode->insertAndCompleteReferences(&nodes, data.typeId);
                 }
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {

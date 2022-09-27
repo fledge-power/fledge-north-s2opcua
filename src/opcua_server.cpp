@@ -518,8 +518,8 @@ OPCUA_Server(const ConfigCategory& configData):
 
     const NodeVect_t& nodes(mConfig.addrSpace.nodes);
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
-    for (SOPC_AddressSpace_Node* node : nodes) {
-        status = SOPC_AddressSpace_Append(addSpace, node);
+    for (const NodeInfo_t& nodeInfo : nodes) {
+        status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);
         SOPC_ASSERT(status == SOPC_STATUS_OK);
     }
 
@@ -625,7 +625,21 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         writeEventNotify("");
     }
 
+    string typeName;
     if (m_oper != NULL) {
+#warning "TODO : create a fast-search map rather than a vector"
+        // Find the nodeId
+        for (const NodeInfo_t& nodeInfo : mConfig.addrSpace.nodes) {
+            const SOPC_AddressSpace_Node* asNode(nodeInfo.first);
+            if (asNode != nullptr &&
+                    asNode->node_class == OpcUa_NodeClass_Variable &&
+                    SOPC_NodeId_Equal(&asNode->data.variable.NodeId, &writeValue->NodeId)) {
+                typeName = nodeInfo.second;
+                break;
+            }
+        }
+        // Ignore write events that are unrelated to functional config.
+        if (typeName.empty()) return;
         /*
          * params contains:
          * - OPCUA TypeId
@@ -637,7 +651,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
          */
         SOPC_tools::CStringVect names({"typeid", "nodeid", "quality", "attribute", "timestamp", "value"});
         vector<string> params;
-        params.push_back(std::to_string(writeValue->Value.Value.BuiltInTypeId));
+        params.push_back(typeName);
         params.push_back(nodeName);
         params.push_back(std::to_string(writeValue->Value.Status));
         params.push_back(std::to_string(writeValue->AttributeId));

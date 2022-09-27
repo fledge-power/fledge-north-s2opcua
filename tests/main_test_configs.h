@@ -179,6 +179,38 @@ static std::string launch_and_check(SOPC_tools::CStringVect& command) {
     return content;
 }
 
+struct nodeVarFinder {
+    nodeVarFinder(const std::string& name):m_name(name){}
+    bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
+        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        return node != NULL &&
+                node->node_class == OpcUa_NodeClass_Variable &&
+                SOPC_tools::toString(node->data.variable.NodeId) == m_name;
+    }
+    const std::string m_name;
+};
+
+struct nodeVarTypeFinder {
+    nodeVarTypeFinder(const std::string& name):m_name(name){}
+    bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
+        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        return node != NULL &&
+                node->node_class == OpcUa_NodeClass_VariableType &&
+                SOPC_tools::toString(node->data.variable_type.NodeId) == m_name;
+    }
+    const std::string m_name;
+};
+
+struct nodeObjFinder {
+    nodeObjFinder(const std::string& name):m_name(name){}
+    bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
+        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        return node != NULL &&
+                node->node_class == OpcUa_NodeClass_Object &&
+                SOPC_tools::toString(node->data.object.NodeId) == m_name;
+    }
+    const std::string m_name;
+};
 //////////////////////////////////////
 // TEST CONFIGURATIONS
 static const std::string protocolJsonOK =

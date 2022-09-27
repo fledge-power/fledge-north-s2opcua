@@ -229,19 +229,6 @@ TEST(S2OPCUA, OpcUa_Protocol) {
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson5), exception);
 }
 
-
-namespace {
-struct nodeVarFinder {
-    nodeVarFinder(const std::string& name):m_name(name){}
-    bool operator()(const SOPC_AddressSpace_Node* node){
-        return node != NULL &&
-                node->node_class == OpcUa_NodeClass_Variable &&
-                SOPC_tools::toString(node->data.variable.NodeId) == m_name;
-    }
-    const std::string m_name;
-};
-}
-
 TEST(S2OPCUA, OpcUa_Server_Config) {
     ERROR("*** TEST S2OPCUA OpcUa_Server_Config");
     ASSERT_NO_C_ASSERTION;
@@ -266,10 +253,15 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
     it = std::find_if(config.addrSpace.nodes.begin(), config.addrSpace.nodes.end(),
             nodeVarFinder("ns=1;s=/label1/addr1"));
     GTEST_ASSERT_NE(it, config.addrSpace.nodes.end());
-    pNode = (*it);
-    GTEST_ASSERT_NE(pNode, nullptr);
+
+    const NodeInfo_t& nodeInfo(*it);
+    pNode = nodeInfo.first;
+    GTEST_ASSERT_NE(nodeInfo.first, nullptr);
+
 
     ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
+    ASSERT_EQ(nodeInfo.first->node_class, OpcUa_NodeClass_Variable);
+    ASSERT_EQ(nodeInfo.second, "opcua_dps");
     ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=/label1/addr1");
 
 }
