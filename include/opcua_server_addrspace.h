@@ -13,7 +13,7 @@
 // System headers
 #include <stdint.h>
 #include <stdlib.h>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <string>
 
@@ -42,9 +42,12 @@ static const SOPC_StatusCode GoodStatus = 0x00000000;
 static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
-/** Vector of nodes */
+/** NodeInfo_t = <@spceNode, typeid> */
 typedef std::pair<SOPC_AddressSpace_Node*, std::string> NodeInfo_t;
+/** vector of \a NodeInfo_t */
 typedef std::vector<NodeInfo_t> NodeVect_t;
+/** NodeInfo_t = <NodeId, NodeInfo_t> */
+typedef std::unordered_map<string, NodeInfo_t> NodeMap_t;
 
 /**************************************************************************/
 struct CVarInfo {
@@ -76,7 +79,8 @@ struct CVarInfo {
 class CNode {
  public:
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
-    void insertAndCompleteReferences(NodeVect_t* nodes, const std::string& typeId);
+    void insertAndCompleteReferences(NodeVect_t* nodes,
+            NodeMap_t* nodeMap, const std::string& typeId);
  protected:
     explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
     SOPC_AddressSpace_Node mNode;
@@ -133,6 +137,10 @@ class Server_AddrSpace{
      * The content of the address space.
      */
     NodeVect_t nodes;
+
+    const NodeInfo_t* getByNodeId(const string& nodeId)const;
+ private:
+    NodeMap_t mByNodeId;
 };  // Server_AddrSpace
 
 }   // namespace s2opc_north

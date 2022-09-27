@@ -147,10 +147,13 @@ CNode(SOPC_StatusCode defaultStatusCode) {
 /**************************************************************************/
 void
 CNode::
-insertAndCompleteReferences(NodeVect_t* nodes, const std::string& typeId) {
-    nodes->push_back(NodeInfo_t(&mNode, typeId));
-    // Find references and invert them
+insertAndCompleteReferences(NodeVect_t* nodes,
+        NodeMap_t* nodeMap, const std::string& typeId) {
     const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
+    NodeInfo_t nodeInfo(&mNode, typeId);
+    nodes->push_back(nodeInfo);
+    nodeMap->emplace(toString(nodeId), nodeInfo);
+    // Find references and invert them
     const uint32_t nbRef(mNode.data.variable.NoOfReferences);
     for (uint32_t i = 0 ; i < nbRef; i++) {
         const OpcUa_ReferenceNode& ref(mNode.data.variable.References[i]);
@@ -298,7 +301,7 @@ Server_AddrSpace(const std::string& json):
                 CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));
                 DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
                         LOGGABLE(nodeIdName), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
-                pNode->insertAndCompleteReferences(&nodes, data.typeId);
+                pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);
 
                 if (readOnly == false) {
                     // in case of "writeable" nodes, the plugin shall generate a "_reply" string variable
@@ -308,7 +311,7 @@ Server_AddrSpace(const std::string& json):
                     CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));
                     DEBUG("Adding node data '%s' of type '%s-%d' (RO)",
                             LOGGABLE(replyAddr), "SOPC_String_Id", SOPC_String_Id);
-                    pNode->insertAndCompleteReferences(&nodes, data.typeId);
+                    pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);
                 }
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
@@ -322,6 +325,18 @@ Server_AddrSpace(const std::string& json):
 Server_AddrSpace::
 ~Server_AddrSpace(void) {
     // Note: nodes are freed automatically (See call to ::SOPC_AddressSpace_Create)
+}
+
+
+/**************************************************************************/
+const NodeInfo_t*
+Server_AddrSpace::
+getByNodeId(const string& nodeId)const {
+    NodeMap_t::const_iterator it = mByNodeId.find(nodeId);
+    if (it != mByNodeId.end()) {
+        return &(it->second);
+    }
+    return NULL;
 }
 
 }   // namespace s2opc_north

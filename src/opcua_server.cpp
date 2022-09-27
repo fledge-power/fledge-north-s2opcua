@@ -625,21 +625,13 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         writeEventNotify("");
     }
 
-    string typeName;
     if (m_oper != NULL) {
-#warning "TODO : create a fast-search map rather than a vector"
         // Find the nodeId
-        for (const NodeInfo_t& nodeInfo : mConfig.addrSpace.nodes) {
-            const SOPC_AddressSpace_Node* asNode(nodeInfo.first);
-            if (asNode != nullptr &&
-                    asNode->node_class == OpcUa_NodeClass_Variable &&
-                    SOPC_NodeId_Equal(&asNode->data.variable.NodeId, &writeValue->NodeId)) {
-                typeName = nodeInfo.second;
-                break;
-            }
-        }
+        const NodeInfo_t* nodeInfo = mConfig.addrSpace.getByNodeId(nodeName);
+
         // Ignore write events that are unrelated to functional config.
-        if (typeName.empty()) return;
+        if (nodeInfo == nullptr) return;
+        const string typeName(nodeInfo->second);
         /*
          * params contains:
          * - OPCUA TypeId
