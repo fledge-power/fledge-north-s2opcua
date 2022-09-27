@@ -57,6 +57,7 @@ typedef int (*north_operation_event_t)
         (char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...);
 typedef std::vector<Reading*> Readings;
 
+static const std::string unknownUserName("-UnknownUserName-");
 /**
  * Interface to the S2 OPCUA library for a S2OPC server
  */
@@ -73,11 +74,17 @@ class OPCUA_Server {
     virtual ~OPCUA_Server(void);
 
     /**
+     * Stops the server and waits for its termination
+     */
+    void stop(void);
+
+    /**
      * Sends the readings on the OPC server
      * @param readings The objects to update
      * @return The number of element written
      */
     uint32_t send(const Readings& readings);
+
     /**
      * Register the "operation" callback.
      * This function can be called when a command is received from controller side (opc client)
@@ -105,6 +112,15 @@ class OPCUA_Server {
     virtual void asynchReadResponse(const OpcUa_ReadResponse* readResp);
     void setStopped(void);
 
+    /** Call this method to clean up SOPC libraries in the case
+     * the constructor failed (in that case the destructor will not be called,
+     * so that calling this clean up will be required to re-instanciate plugin
+     */
+    static void uninitialize(void);
+ protected:
+    virtual void writeEventNotify(const std::string& username) {}
+    int m_nbMillisecondShutdown;
+
  private:
     void init_sopc_lib_and_logs(void);
 
@@ -118,9 +134,10 @@ class OPCUA_Server {
     const OpcUa_Protocol mProtocol;
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
-    static OPCUA_Server* mInstance;
+    static OPCUA_Server* instance(void) {return mInstance;}
 
  private:
+    static OPCUA_Server* mInstance;
     std::atomic<bool> mStopped;
     int32_t mServerOnline;
     SOPC_Endpoint_Config* mEpConfig;

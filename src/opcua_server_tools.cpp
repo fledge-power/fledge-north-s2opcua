@@ -163,7 +163,9 @@ SOPC_BuiltinId toBuiltinId(const string& name) {
         {"opcua_dps", SOPC_Byte_Id},
         {"opcua_dpc", SOPC_Byte_Id},
         {"opcua_mva", SOPC_Int32_Id},
+        {"opcua_inc", SOPC_Int32_Id},
         {"opcua_mvf", SOPC_Float_Id},
+        {"opcua_apc", SOPC_Float_Id},
         {"opcua_spcr", SOPC_String_Id}
     };
     TypeMap::const_iterator it(map.find(name));

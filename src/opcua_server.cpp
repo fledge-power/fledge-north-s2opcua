@@ -139,7 +139,7 @@ static const SOPC_UserAuthentication_Functions authentication_functions = {
 static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
         OpcUa_WriteValue* writeValue,
         SOPC_StatusCode writeStatus) {
-    s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::mInstance);
+    s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
     if (srv != NULL) {
         if (SOPC_STATUS_OK == writeStatus) {
             srv->writeNotificationCallback(callCtxPtr, writeValue);
@@ -151,7 +151,7 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
 
 /**************************************************************************/
 static void serverStopped_Fct(SOPC_ReturnStatus status) {
-    s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::mInstance);
+    s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
     if (srv != NULL) {
         WARNING("Server stopped!");
         srv->setStopped();
@@ -167,7 +167,7 @@ static std::string toString(const SOPC_User* pUser) {
             return std::string(SOPC_String_GetRawCString(str));
         }
     }
-    return "No username";
+    return s2opc_north::unknownUserName;
 }
 
 /**************************************************************************/
@@ -293,17 +293,23 @@ static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_B
 //        }
 //        break;
     case SOPC_Float_Id:
-        if (dvType == DatapointValue::T_FLOAT) {
+        if (dvIsFloat) {
             valid = true;
             variant->Value.Floatv = static_cast<float>(dv->toDouble());
-        }
-        break;
-    case SOPC_Double_Id:
-        if (dvType == DatapointValue::T_FLOAT) {
+        } else if (dvType == DatapointValue::T_INTEGER) {
             valid = true;
-            variant->Value.Floatv = static_cast<double>(dv->toDouble());
+            variant->Value.Floatv = static_cast<float>(dv->toInt());
         }
         break;
+//    case SOPC_Double_Id:
+//        if (dvIsFloat) {
+//            valid = true;
+//            variant->Value.Floatv = static_cast<double>(dv->toDouble());
+//        } else if (dvType == DatapointValue::T_INTEGER) {
+//        valid = true;
+//        variant->Value.Floatv = static_cast<double>(dv->toInt());
+//    }
+//        break;
 //    case SOPC_ByteString_Id:
 //        if (dvType == DatapointValue::T_STRING) {
 //            valid = true;
@@ -364,9 +370,9 @@ static string variantToString(const SOPC_Variant& variant) {
     case SOPC_Float_Id:
         result = to_string(variant.Value.Floatv);
         break;
-    case SOPC_Double_Id:
-        result = to_string(variant.Value.Doublev);
-        break;
+//    case SOPC_Double_Id:
+//        result = to_string(variant.Value.Doublev);
+//        break;
 //    case SOPC_ByteString_Id:
 //        result = SOPC_String_GetRawCString(&variant.Value.Bstring);
 //        break;
@@ -421,11 +427,11 @@ OPCUA_Server(const ConfigCategory& configData):
     mBuildInfo(SOPC_CommonHelper_GetBuildInfo()),
     mServerOnline(false),
     mStopped(false),
-    m_oper(nullptr) {
+    m_oper(nullptr),
+    m_nbMillisecondShutdown(2) {
     SOPC_ReturnStatus status;
 
     ASSERT(mInstance == NULL, "OPCUA_Server may not be instanced twice within the same plugin");
-    mInstance = this;
 
     // Configure the server according to mConfig
 
@@ -565,13 +571,31 @@ OPCUA_Server(const ConfigCategory& configData):
 
     INFO("Started OPC UA server on endpoint %s", LOGGABLE(mProtocol.url));
     mServerOnline = true;
+    mInstance = this;
 }
 
 /**************************************************************************/
 OPCUA_Server::
 ~OPCUA_Server() {
+    stop();
+    OPCUA_Server::uninitialize();
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+uninitialize(void) {
+    SOPC_HelperConfigServer_Clear();
+    SOPC_CommonHelper_Clear();
+    mInstance = nullptr;
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+stop(void) {
     SOPC_ServerHelper_StopServer();
-    int maxWaitMs(1000 * 2);
+    int maxWaitMs(m_nbMillisecondShutdown * 2);
     const int loopMs(10);
     do {
         this_thread::sleep_for(chrono::milliseconds(loopMs));
@@ -581,9 +605,6 @@ OPCUA_Server::
         ERROR("Could not stop OPC UA services!");
     }
 
-    SOPC_HelperConfigServer_Clear();
-    SOPC_CommonHelper_Clear();
-    mInstance = nullptr;
 }
 
 /**************************************************************************/
@@ -597,7 +618,11 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     const string nodeName(toString(writeValue->NodeId));
     if (NULL != pUser) {
         const std::string username(toString(pUser));
+        writeEventNotify(username);
         INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
+    }
+    else {
+        writeEventNotify("");
     }
 
     if (m_oper != NULL) {

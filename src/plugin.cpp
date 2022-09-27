@@ -102,6 +102,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
     }
     catch (const std::exception& e) {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
+        s2opc_north::OPCUA_Server::uninitialize(); // Force cleanup
         throw exception();
     }
     WARNING("Created S2OPC server plugin (%p)...", (void*)handle);
@@ -111,7 +112,9 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
 /**************************************************************************/
 void plugin_shutdown(PLUGIN_HANDLE handle) {
     WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
-    delete handleToPlugin(handle);
+    s2opc_north::OPCUA_Server* plugin(handleToPlugin(handle));
+    plugin->stop();
+    delete plugin;
 }
 
 /**************************************************************************/

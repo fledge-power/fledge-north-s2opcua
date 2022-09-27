@@ -41,7 +41,7 @@ static const string exDataJson =
 
 
 TEST(S2OPCUA, ExchangedDataC) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     ExchangedDataC* pdata = nullptr;
     rapidjson::Document doc;
@@ -168,7 +168,7 @@ static const string protocolJson5 = // Invalid policies
               } });
 
 TEST(S2OPCUA, OpcUa_Protocol) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     int abortReceived = setjmp(abort_jump_env);
     ASSERT_EQ(abortReceived, 0);
@@ -241,7 +241,7 @@ struct nodeVarFinder {
 }
 
 TEST(S2OPCUA, OpcUa_Server_Config) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     int abortReceived = setjmp(abort_jump_env);
     ASSERT_EQ(abortReceived, 0);

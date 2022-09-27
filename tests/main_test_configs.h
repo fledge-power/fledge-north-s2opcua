@@ -19,21 +19,58 @@
 #include <plugin_api.h>
 #include <gtest/gtest.h>
 
+extern "C" {
+// S2OPC Headers
+#include "sopc_assert.h"
+}
+
 ///////////////////////////////
-// catch "C" asserts from S2OPC (leading to ABORT signal)
+// catch "C" asserts from S2OPC
+extern "C" {
+
+static bool abort_jump_env_set = false;
 static jmp_buf abort_jump_env;
-static void test_abort_handler(int signo)
-{
-  if (signo == SIGABRT)
-  {
-    printf("received SIGABRT\n");
-    longjmp(abort_jump_env, 1);
-  }
+
+static void test_Assert_UserCallback(const char* context) {
+    FATAL("ASSERT failed. Context = %s", (context ? context : "[NULL]"));
+    if (abort_jump_env_set)
+        longjmp(abort_jump_env, 0xDEAD);
+    assert(false);
+}
 }
 
 // Simply call this macro at each entry point where C may lead to failing assertions
 // Any assert will cause a GTest assert fail instead of ABORT signal
-#define CATCH_C_ASSERTS ASSERT_NE(signal(SIGABRT, test_abort_handler), SIG_ERR)
+#define ASSERT_NO_C_ASSERTION do {\
+        SOPC_Assert_Set_UserCallback(&test_Assert_UserCallback);\
+        int val = setjmp(abort_jump_env); \
+        abort_jump_env_set = true; \
+        ASSERT_EQ(val, 0); \
+} while(0)
+
+/**
+ * Enclose some code with ASSERT_C_RAISES_ASSERTION_xxx to catch and check C failed assertions
+ * e.g.
+ * f(){
+ * ASSERT_C_RAISES_ASSERTION_START;
+ * some_code_that_raises_c_assert();
+ * ASSERT_C_RAISES_ASSERTION_END;
+ * }
+ */
+
+#define ASSERT_C_RAISES_ASSERTION_START do {\
+        SOPC_Assert_Set_UserCallback(&test_Assert_UserCallback);\
+        int valAbortResult = setjmp(abort_jump_env); \
+        abort_jump_env_set = true; \
+        if (valAbortResult != 0) {\
+            ASSERT_EQ(valAbortResult, 0xDEAD);\
+            break;\
+        }\
+        do {} while(0)  // Note: this line just intends at handling the ';' in caller
+
+#define ASSERT_C_RAISES_ASSERTION_END \
+        ASSERT_FALSE("No exception raised"); \
+} while(0)
 
 static const std::string protocolJsonOK =
         QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
@@ -177,18 +214,70 @@ static const std::string config_exData = QUOTE(
                     ]\
                   },
                   {\
-                   "label" : "labelDPC",
-                   "pivot_id" : "pivotDPC",
-                   "pivot_type": "typeDPC",
+                   "label" : "labelAPC",
+                   "pivot_id" : "pivotAPC",
+                   "pivot_type": "typeAPC",
                    "protocols":[\
                      {\
                        "name":"opcua",\
-                       "address":"dpc",\
-                       "typeid":"opcua_dpc"\
+                       "address":"apc",\
+                       "typeid":"opcua_apc"\
                       }\
                      ]\
-                   }
+                   },
+                   {\
+                    "label" : "labelINC",
+                    "pivot_id" : "pivotINC",
+                    "pivot_type": "typeINC",
+                    "protocols":[\
+                      {\
+                        "name":"opcua",\
+                        "address":"inc",\
+                        "typeid":"opcua_inc"\
+                       }\
+                      ]\
+                    },
+                   {\
+                    "label" : "labelDPC",
+                    "pivot_id" : "pivotDPC",
+                    "pivot_type": "typeDPC",
+                    "protocols":[\
+                      {\
+                        "name":"opcua",\
+                        "address":"dpc",\
+                        "typeid":"opcua_dpc"\
+                       }\
+                      ]\
+                    }
              ]
         }});
+
+static const std::string protocolMissingFile =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+            "version":"1.0", \
+            "transport_layer":{ \
+            "url" : "opc.tcp://localhost:55345", \
+            "appUri" : "urn:S2OPC:localhost", \
+            "productUri" : "urn:S2OPC:localhost", \
+            "appDescription": "Application description", \
+            "localeId" : "en-US", \
+            "namespaces" : [ "urn:S2OPC:localhost" ], \
+            "policies" : [ \
+                           { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] },\
+                           { "securityMode" : "Sign", "securityPolicy" : "Basic256", "userPolicies" : [ "anonymous", "username" ] }, \
+                           { "securityMode" : "SignAndEncrypt", "securityPolicy" : "Basic256Sha256", "userPolicies" : \
+                               [ "anonymous", "anonymous", "username_Basic256Sha256", "username_None" ] } ], \
+                               "users" : {"user" : "password", "user2" : "xGt4sdE3Z+" }, \
+                               "certificates" : { \
+                                   "serverCertPath" : "server_2k_cert.der", \
+                                   "serverKeyPath" : "server_2k_key.pem", \
+                                   "trusted_root" : [ "cacert.der" ],  \
+                                   "trusted_intermediate" : [ ], \
+                                   "revoked" : [ "cacrl.der", "missingfile.der" ], \
+                                   "untrusted_root" : [ ], \
+                                   "untrusted_intermediate" : [ ], \
+                                   "issued" : [  ] } \
+        } \
+        } });
 
 #endif /* INCLUDE_FLEDGE_NORTH_S2OPCUA_TESTS_MAIN_CONFIGS_H_ */

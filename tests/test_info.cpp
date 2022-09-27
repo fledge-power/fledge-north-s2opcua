@@ -25,7 +25,7 @@ extern "C" {
 };
 
 TEST(S2OPCUA, PluginInfo) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
 	PLUGIN_INFORMATION *info = plugin_info();
 	ASSERT_STREQ(info->name, "s2opcua");
@@ -33,7 +33,7 @@ TEST(S2OPCUA, PluginInfo) {
 }
 
 TEST(S2OPCUA, PluginInfoConfigParse) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
 	PLUGIN_INFORMATION *info = plugin_info();
 	Document doc;
@@ -46,7 +46,7 @@ TEST(S2OPCUA, PluginInfoConfigParse) {
 }
 
 TEST(S2OPCUA, ServerToolsHelpers) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     using namespace SOPC_tools;
 
@@ -123,7 +123,7 @@ TEST(S2OPCUA, ServerToolsHelpers) {
 }
 
 TEST(S2OPCUA, CStringVect) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
     using namespace SOPC_tools;
 
     {

@@ -30,7 +30,7 @@ static const SOPC_NodeId* parentId(SOPC_tools::createNodeId("i=84"));
 static const CVarInfo vInfo(nodeId, browsename, displayName, description, *parentId, true);
 
 TEST(S2OPCUA, CVarInfo) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     ASSERT_EQ(vInfo.mNodeId, nodeId);
     ASSERT_EQ(vInfo.mBrowseName, browsename);
@@ -42,7 +42,7 @@ TEST(S2OPCUA, CVarInfo) {
 }
 
 TEST(S2OPCUA, CVarNode) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     CVarNode node(vInfo, SOPC_UInt32_Id);
     SOPC_AddressSpace_Node* aNode(node.get());
@@ -100,7 +100,7 @@ struct nodeObjFinder {
 }  // namespace
 
 TEST(S2OPCUA, Server_AddrSpace) {
-    CATCH_C_ASSERTS;
+    ASSERT_NO_C_ASSERTION;
 
     CVarNode node(vInfo, SOPC_UInt32_Id);
     Logger::getLogger()->debug("Parsing '%s'", aSpaceJsonOK.c_str());
