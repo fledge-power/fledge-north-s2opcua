@@ -274,6 +274,38 @@ TEST(S2OPCUA, PluginInstance) {
     ASSERT_NE(idx, -1);
     ASSERT_EQ(gOperEventLastParams[idx], "opcua_dpc");
 
+    // Test "send" event
+    {
+        s2opc_north::Readings readings;
+        // Create READING 1
+        {
+            vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
+            dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
+            dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+            dp_vect->push_back(createIntDatapointValue("do_value", 165));
+            dp_vect->push_back(createIntDatapointValue("do_quality", 0x00000000));
+            dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+            DatapointValue do_1(dp_vect, true);
+            readings.push_back(new Reading("reading1", new Datapoint("data_object", do_1)));
+        }
+        plugin_send(handle, readings);
+        // Wait for the request to be processed by server
+        this_thread::sleep_for(chrono::milliseconds(10));
+
+        // Read back values from server
+        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
+            "-e", "opc.tcp://localhost:55345", "--none",
+            "--ca=cert/trusted/cacert.der",
+            "--crl=cert/revoked/cacrl.der",
+            "-n", "ns=1;s=/label1/addr1",
+            "-a", "13"});
+
+        string readLog(launch_and_check(read_cmd));
+        // cout << "READLOG=<" <<readLog << ">" << endl;
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(readLog, "Value: 165"); // Written value
+    }
+
     // destroy server
     plugin_shutdown(handle);
     ASSERT_EQ(OPCUA_Server::instance(), nullptr);

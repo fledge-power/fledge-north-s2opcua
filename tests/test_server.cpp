@@ -41,80 +41,6 @@ static int north_operation_event (
 }
 }
 
-// Complete OPCUA_Server class to test Server updates
-class OPCUA_Server_Test : public OPCUA_Server {
-public:
-    explicit OPCUA_Server_Test(const ConfigCategory& configData):
-        OPCUA_Server(configData),
-        nbResponses(0),
-        nbBadResponses(0) {
-        m_nbMillisecondShutdown = 500;
-    }
-
-    void reset(void) {
-        nbResponses = 0;
-        nbBadResponses = 0;
-        lastWriterName = "";
-    }
-    size_t nbResponses;
-    size_t nbBadResponses;
-    string lastWriterName;
-
-    virtual void writeEventNotify(const std::string& username) {
-        lastWriterName = username;
-    }
-
-    virtual void asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
-        OPCUA_Server::asynchWriteResponse(writeResp);
-        if (writeResp == NULL) return;
-
-        SOPC_StatusCode status;
-
-        DEBUG("asynchWriteResponse : %u updates", writeResp->NoOfResults);
-        for (int32_t i = 0 ; i < writeResp->NoOfResults; i++) {
-            status = writeResp->Results[i];
-            if (status != 0) {
-                WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
-                nbBadResponses++;
-            }
-            nbResponses++;
-        }
-    }
-
-    std::vector<string> readResults;
-    virtual void asynchReadResponse(const OpcUa_ReadResponse* readResp) {
-        OPCUA_Server::asynchReadResponse(readResp);
-
-        SOPC_StatusCode status;
-        if (readResp == NULL) return;
-        for (int32_t i = 0 ; i < readResp->NoOfResults; i++) {
-            const SOPC_DataValue& result(readResp->Results[i]);
-            char quality[4 + 8 + 4 +1];
-            sprintf(quality, "Q=0x%08X,V=", result.Status);
-            DEBUG("asynchReadResponse : type %d, status 0x%08X ", result.Value.BuiltInTypeId,
-                    result.Status);
-            string value("?");
-            if (result.Value.BuiltInTypeId == SOPC_String_Id) {
-                value = SOPC_String_GetRawCString(&result.Value.Value.String);
-            } else  if (result.Value.BuiltInTypeId == SOPC_Byte_Id) {
-                value = std::to_string(result.Value.Value.Byte);
-            } else  if (result.Value.BuiltInTypeId == SOPC_Int32_Id) {
-                value = std::to_string(result.Value.Value.Int32);
-            } else  if (result.Value.BuiltInTypeId == SOPC_Float_Id) {
-                value = std::to_string(static_cast<int>(result.Value.Value.Floatv)) +
-                        ".(...)";
-            } else  if (result.Value.BuiltInTypeId == SOPC_Boolean_Id) {
-                value = std::to_string(result.Value.Value.Boolean);
-            } else {
-                value = string("Unsupported type: typeId=") +
-                        std::to_string(result.Value.BuiltInTypeId);
-            }
-
-            readResults.push_back(string(quality) + value);
-        }
-    }
-};
-
 TEST(S2OPCUA, OPCUA_Server) {
     ERROR("*** TEST S2OPCUA OPCUA_Server");
     ASSERT_NO_C_ASSERTION;
@@ -191,7 +117,7 @@ TEST(S2OPCUA, OPCUA_Server) {
         readings.push_back(new Reading("mvf", new Datapoint("data_object", do_1)));
     }
 
-    // Create READING 4 (MVA : FLOAT)
+    // Create READING 5 (MVA : FLOAT)
     {
         vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
         dp_vect->push_back(createStringDatapointValue("do_type", "opcua_mvf"));

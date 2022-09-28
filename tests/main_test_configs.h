@@ -29,6 +29,10 @@ extern "C" {
 #include "sopc_assert.h"
 }
 
+// Tested files
+#include "opcua_server.h"
+#include "opcua_server_tools.h"
+
 ///////////////////////////////
 // catch "C" asserts from S2OPC
 extern "C" {
@@ -89,6 +93,83 @@ static void test_Assert_UserCallback(const char* context) {
 #define ASSERT_C_RAISES_ASSERTION_END \
         ASSERT_FALSE("No exception raised"); \
 } while(0)
+
+
+//////////////////////////////////////
+// TEST HELPER CLASS
+// Complete OPCUA_Server class to test Server updates
+class OPCUA_Server_Test : public s2opc_north::OPCUA_Server {
+public:
+    explicit OPCUA_Server_Test(const ConfigCategory& configData):
+        OPCUA_Server(configData),
+        nbResponses(0),
+        nbBadResponses(0) {
+        m_nbMillisecondShutdown = 500;
+    }
+
+    void reset(void) {
+        nbResponses = 0;
+        nbBadResponses = 0;
+        lastWriterName = "";
+    }
+    size_t nbResponses;
+    size_t nbBadResponses;
+    string lastWriterName;
+
+    virtual void writeEventNotify(const std::string& username) {
+        lastWriterName = username;
+    }
+
+    virtual void asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
+        OPCUA_Server::asynchWriteResponse(writeResp);
+        if (writeResp == NULL) return;
+
+        SOPC_StatusCode status;
+
+        DEBUG("asynchWriteResponse : %u updates", writeResp->NoOfResults);
+        for (int32_t i = 0 ; i < writeResp->NoOfResults; i++) {
+            status = writeResp->Results[i];
+            if (status != 0) {
+                WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
+                nbBadResponses++;
+            }
+            nbResponses++;
+        }
+    }
+
+    std::vector<string> readResults;
+    virtual void asynchReadResponse(const OpcUa_ReadResponse* readResp) {
+        OPCUA_Server::asynchReadResponse(readResp);
+
+        SOPC_StatusCode status;
+        if (readResp == NULL) return;
+        for (int32_t i = 0 ; i < readResp->NoOfResults; i++) {
+            const SOPC_DataValue& result(readResp->Results[i]);
+            char quality[4 + 8 + 4 +1];
+            sprintf(quality, "Q=0x%08X,V=", result.Status);
+            DEBUG("asynchReadResponse : type %d, status 0x%08X ", result.Value.BuiltInTypeId,
+                    result.Status);
+            string value("?");
+            if (result.Value.BuiltInTypeId == SOPC_String_Id) {
+                value = SOPC_String_GetRawCString(&result.Value.Value.String);
+            } else  if (result.Value.BuiltInTypeId == SOPC_Byte_Id) {
+                value = std::to_string(result.Value.Value.Byte);
+            } else  if (result.Value.BuiltInTypeId == SOPC_Int32_Id) {
+                value = std::to_string(result.Value.Value.Int32);
+            } else  if (result.Value.BuiltInTypeId == SOPC_Float_Id) {
+                value = std::to_string(static_cast<int>(result.Value.Value.Floatv)) +
+                        ".(...)";
+            } else  if (result.Value.BuiltInTypeId == SOPC_Boolean_Id) {
+                value = std::to_string(result.Value.Value.Boolean);
+            } else {
+                value = string("Unsupported type: typeId=") +
+                        std::to_string(result.Value.BuiltInTypeId);
+            }
+
+            readResults.push_back(string(quality) + value);
+        }
+    }
+};
 
 //////////////////////////////////////
 // TEST HELPER FUNCTIONS
