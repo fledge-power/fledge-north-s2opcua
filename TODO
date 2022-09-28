@@ -1,0 +1,29 @@
+This list is based on content of equivalent SOUTH plugin (fledge-south-s2opcua)
+
+== TODO
+- cleanup -TODO - JCH
+- docs
+- tests
+
+== WIP
+- VERSION
+- README.rst
+
+== DONE
+- patches
+- FindFledge.cmake
+- requirements.sh  
+- CMakeLists.txt
+- fledge.version
+- Description
+- mkversion
+- LICENSE
+
+
+    /**
+     * Note: possible statuses:
+     * GoodStatus
+     * OpcUa_UncertainLastUsableValue
+     * OpcUa_BadWaitingForInitialData
+     * OpcUa_GoodLocalOverride
+     */
