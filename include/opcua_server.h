@@ -57,7 +57,7 @@ typedef int (*north_operation_event_t)
         (char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...);
 typedef std::vector<Reading*> Readings;
 
-static const std::string unknownUserName("-UnknownUserName-");
+static const char unknownUserName[] = "-UnknownUserName-";
 /**
  * Interface to the S2 OPCUA library for a S2OPC server
  */
@@ -117,6 +117,7 @@ class OPCUA_Server {
      * so that calling this clean up will be required to re-instanciate plugin
      */
     static void uninitialize(void);
+
  protected:
     virtual void writeEventNotify(const std::string& username) {}
     int m_nbMillisecondShutdown;

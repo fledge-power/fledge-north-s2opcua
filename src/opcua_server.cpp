@@ -604,7 +604,6 @@ stop(void) {
     if (maxWaitMs > 0) {
         ERROR("Could not stop OPC UA services!");
     }
-
 }
 
 /**************************************************************************/
@@ -620,8 +619,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         const std::string username(toString(pUser));
         writeEventNotify(username);
         INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
-    }
-    else {
+    } else {
         writeEventNotify("");
     }
 

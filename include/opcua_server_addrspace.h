@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <utility>
 
 extern "C" {
 // S2OPC headers
@@ -139,6 +140,7 @@ class Server_AddrSpace{
     NodeVect_t nodes;
 
     const NodeInfo_t* getByNodeId(const string& nodeId)const;
+
  private:
     NodeMap_t mByNodeId;
 };  // Server_AddrSpace

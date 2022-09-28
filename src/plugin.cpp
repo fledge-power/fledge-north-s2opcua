@@ -71,16 +71,19 @@ static PLUGIN_INFORMATION g_plugin_info = {
  * The OPCUA plugin interface
  */
 extern "C" {
-
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 void plugin_Assert_UserCallback(const char* context) {
+#ifdef UNIT_TESTING
+    assert(false);
+#else  // UNIT_TESTING not defined
     FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
     // leave some time to flush logs.
     usleep(100 * 1000);
     // Throwing an exception may not be enough in case the ASSERT was raised in a separate thread.
     // Calling exit will ensure the full process is stopped.
     std::exit(1);
+#endif
 }
 
 /**************************************************************************/
@@ -102,7 +105,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
     }
     catch (const std::exception& e) {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
-        s2opc_north::OPCUA_Server::uninitialize(); // Force cleanup
+        s2opc_north::OPCUA_Server::uninitialize();  // Force cleanup
         throw exception();
     }
     WARNING("Created S2OPC server plugin (%p)...", (void*)handle);
