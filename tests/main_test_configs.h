@@ -70,30 +70,6 @@ static void test_Assert_UserCallback(const char* context) {
         ASSERT_EQ(val, 0); \
 } while(0)
 
-/**
- * Enclose some code with ASSERT_C_RAISES_ASSERTION_xxx to catch and check C failed assertions
- * e.g.
- * f(){
- * ASSERT_C_RAISES_ASSERTION_START;
- * some_code_that_raises_c_assert();
- * ASSERT_C_RAISES_ASSERTION_END;
- * }
- */
-
-#define ASSERT_C_RAISES_ASSERTION_START do {\
-        SOPC_Assert_Set_UserCallback(&test_Assert_UserCallback);\
-        int valAbortResult = setjmp(abort_jump_env); \
-        abort_jump_env_set = true; \
-        if (valAbortResult != 0) {\
-            ASSERT_EQ(valAbortResult, 0xDEAD);\
-            break;\
-        }\
-        do {} while(0)  // Note: this line just intends at handling the ';' in caller
-
-#define ASSERT_C_RAISES_ASSERTION_END \
-        ASSERT_FALSE("No exception raised"); \
-} while(0)
-
 
 //////////////////////////////////////
 // TEST HELPER CLASS

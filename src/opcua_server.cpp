@@ -25,7 +25,6 @@
 
 extern "C" {
 // S2OPC Headers
-#include "sopc_assert.h"
 #include "sopc_atomic.h"
 #include "sopc_common.h"
 #include "sopc_macros.h"
@@ -404,7 +403,7 @@ checkAllFilesExist(void)const {
         }
         p++;
     }
-    SOPC_ASSERT(result);
+    ASSERT(result);
 }
 
 }   // namespace SOPC_tools
@@ -520,7 +519,7 @@ OPCUA_Server(const ConfigCategory& configData):
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
     for (const NodeInfo_t& nodeInfo : nodes) {
         status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);
-        SOPC_ASSERT(status == SOPC_STATUS_OK);
+        ASSERT(status == SOPC_STATUS_OK);
     }
 
     status = SOPC_HelperConfigServer_SetAddressSpace(addSpace);
@@ -533,7 +532,7 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // User Management configuration
     SOPC_UserAuthentication_Manager* authenticationManager = new SOPC_UserAuthentication_Manager;
-    SOPC_ASSERT(authenticationManager != NULL && authorizationManager != NULL);
+    ASSERT(authenticationManager != NULL && authorizationManager != NULL);
 
     memset(authenticationManager, 0, sizeof (*authenticationManager));
 
@@ -718,10 +717,10 @@ init_sopc_lib_and_logs(void) {
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
     SOPC_ReturnStatus status = SOPC_CommonHelper_Initialize(&logConfig);
-    SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_CommonHelper_Initialize failed");
+    ASSERT(status == SOPC_STATUS_OK && "SOPC_CommonHelper_Initialize failed");
 
     status = SOPC_HelperConfigServer_Initialize();
-    SOPC_ASSERT(status == SOPC_STATUS_OK && "SOPC_HelperConfigServer_Initialize failed");
+    ASSERT(status == SOPC_STATUS_OK && "SOPC_HelperConfigServer_Initialize failed");
 }
 
 /**************************************************************************/

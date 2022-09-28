@@ -564,8 +564,6 @@ TEST(S2OPCUA, OPCUA_Server_MissingFile) {
     ERROR("*** TEST S2OPCUA OPCUA_Server_MissingFile");
     //ASSERT_C_RAISES_ASSERTION_START;
 
-    ASSERT_C_RAISES_ASSERTION_START;
-
     ConfigCategory testConf;
     testConf.addItem("logging", "Configure S2OPC logging level", "Info",
             "Info", {"None", "Error", "Warning", "Info", "Debug"});
@@ -575,8 +573,7 @@ TEST(S2OPCUA, OPCUA_Server_MissingFile) {
             protocolMissingFile);
 
     s2opc_north::OPCUA_Server::uninitialize(); // Ensure no previous server still exists
-    OPCUA_Server_Test server(testConf);
-    ASSERT_C_RAISES_ASSERTION_END;
+    ASSERT_ANY_THROW(OPCUA_Server_Test server(testConf));
 
     OPCUA_Server::uninitialize();
 

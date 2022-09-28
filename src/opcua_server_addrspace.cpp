@@ -96,12 +96,12 @@ template<typename T>
 void
 GarbageCollectorC<T>::
 reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
-    SOPC_ASSERT(NULL != ptr);
+    ASSERT(NULL != ptr);
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
     *ptr = new T[newSize];
-    SOPC_ASSERT(NULL != *ptr);
+    ASSERT(NULL != *ptr);
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 

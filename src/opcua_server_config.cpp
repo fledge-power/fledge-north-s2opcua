@@ -23,7 +23,6 @@
 
 extern "C" {
 // S2OPC Headers
-#include "sopc_assert.h"
 #include "sopc_atomic.h"
 #include "sopc_common.h"
 #include "sopc_encodeabletype.h"
@@ -260,7 +259,7 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
     for (const PolicyS& policy : policies) {
         DEBUG("process policy %s", LOGGABLE(policy.name));
         SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, policy.policy);
-        SOPC_ASSERT(sp != NULL);
+        ASSERT(sp != NULL);
 
         SOPC_ReturnStatus status = SOPC_SecurityConfig_SetSecurityModes(sp, policy.mode);
         ASSERT(status == SOPC_STATUS_OK,
