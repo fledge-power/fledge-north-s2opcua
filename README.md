@@ -35,23 +35,22 @@ As there are some hard dependencies between `fledge-north-s2opc` and other compo
 ```sh
 cd ${DEV_ROOT}
 git clone https://github.com/fledge-power/fledge-north-s2opcua.git
-git clone https://github.com/libexpat/libexpat.git
 wget https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz
-git clone https://gitlab.com/systerel/S2OPC.git
+git clone --branch master --single-branch https://gitlab.com/systerel/S2OPC.git
 ```
 
 - libmbedtls
 
 ```sh
-sudo apt-get install -y libmbedtls-dev
-```
-
-- libexpat
-
-```sh
 cd ${DEV_ROOT}
-cd libexpat/expat
-rm -f CMakeCache.txt ; mkdir -p build ; cd build; cmake -D CMAKE_INSTALL_PREFIX=/usr/local -D EXPAT_BUILD_PKGCONFIG=ON -D EXPAT_ENABLE_INSTALL=ON -D EXPAT_SHARED_LIBS=ON .. && make -j4 && sudo make install; cd -
+wget https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.28.1.tar.gz
+tar xf v2.28.1.tar.gz
+cd mbedtls-2.28.1
+mkdir build
+cd build
+cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_EXAMPLES=NO -DCMAKE_BUILD_TYPE=Release ..
+make -j4
+sudo make install -j4
 ```
 
 - libcheck
@@ -68,10 +67,18 @@ rm -f CMakeCache.txt ; mkdir -p build ; cd build; cmake .. && make -j4 && sudo m
 
 ```sh
 cd ${DEV_ROOT}/S2OPC
+git checkout 073040628
 git apply ${DEV_ROOT}/fledge-north-s2opcua/patches/S2OPC.patch
 
 WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh; echo; echo "BUILD done, INSTALLING..."; echo; sudo make install -C build
 ```
+
+- cpplint
+
+```sh
+pip install -I cpplint==1.6.1
+```
+
 
 ### Build plugin
 Now all dependencies are installed, the plugin itself can be built.
@@ -98,4 +105,22 @@ Plugin can be tested locally using the command line. A `Makefile` is provided in
 - `make del_plugin` : Stop the plugin (Either service or task)
 - `make cpplint` : Launch coding rules checker
 
+Once the service is started (with default configuration), a simple OPCUA read can be performed for example with the command:
+
+``` bash
+(cd ${DEV_ROOT}/fledge-north-s2opcua/samples/cert/ && ../bin/s2opc_read --none -e "opc.tcp://localhost:4841" -n "i=84" -a 3)
+```
+
+Which should return something like 
+
+```
+S2OPC read demo.
+# Info: Session activated.
+# Info: Sending ReadRequest.
+# Info: Response received.
+Read node "i=84", attribute 3:
+StatusCode: 0x00000000
+Variant @0x7f3988001bc0:
+  TypeId 20 [dim=0]: QualifiedName = 0:Root
+```
 

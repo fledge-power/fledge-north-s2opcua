@@ -7,15 +7,16 @@ CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11'
 all: build install_plugin # insert_task
 build:
 	$(Q)mkdir -p build
-	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
+	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Release -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
-unit_tests: install_plugin
+	
+unit_tests: install_certs
 	$(Q)rm -rf build/tests/RunTests_coverage_html
 	$(Q)mkdir -p build/tests
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
-	$(Q)make -C build -j4
-	$(Q)make -C build/tests RunTests_coverage_html
+	$(Q)make -C build/tests RunTests_coverage_html -j4
 	@echo "See unit tests coverage result in build/tests/RunTests_coverage_html/index.html"
+
 clean:
 	$(Q)rm -fr build
 log:
@@ -27,13 +28,15 @@ check:
 	$(Q)! [ -z "$(FLEDGE_SRC)" ] || (echo "FLEDGE_SRC not set" && false)
 	$(Q)$(FLEDGE_SRC)/cmake_build/C/plugins/utils/get_plugin_info build/libs2opcua.so plugin_info 2> /tmp/get_plugin_info.tmp
 	$(Q)! ([ -s /tmp/get_plugin_info.tmp ] && cat /tmp/get_plugin_info.tmp)
-        
-install_plugin: check
+
+install_certs:
+	@echo "Install demo certificates to $(FLEDGE_ROOT)/data..."
+	$(Q)mkdir -p $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/ > /dev/null
+	$(Q)cp -arf ./samples/cert/* $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/
+
+install_plugin: check install_certs
 	@echo "Install plugin..."
-	$(Q)make -C build install
-	@echo "Install demo certificates..."
-	$(Q)mkdir -p $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/ > /dev/null
-	$(Q)cp -arf ./samples/cert/* $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/
+	$(Q)sudo make -C build install
 	
 insert_task: del_plugin
 	@echo "Insert plugin service in Fledge as task..."
@@ -55,4 +58,4 @@ del_plugin:
 cpplint:
 	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/base_addrspace.c src/* include/*
 		
-.PHONY: all clean build check del_plugin install_plugin insert_service insert_task cpplint
+.PHONY: all clean build check del_plugin install_certs install_plugin insert_service insert_task cpplint unit_tests

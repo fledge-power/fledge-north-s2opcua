@@ -20,6 +20,9 @@
 ## Author: Amandeep Singh Arora, Mark Riddoch, Jeremie Chabod
 ##
 
+export S2OPC_COMMIT=073040628
+export MBEDTLS_VERSION=2.28.1
+
 function fail() {
     CODE=$1
     shift
@@ -40,8 +43,8 @@ echo "Using development folder ${DEV_ROOT}"
 # Before building, check that environment is clean
 ! [ -d ${DEV_ROOT} ] && fail 2 "${DEV_ROOT} does not exist!"
 cd "${DEV_ROOT}" || fail 2
-for f in libexpat S2OPC check-0.15.2; do
-    [ -e ${f} ] && fail 3 "${f} already exist in ${DEV_ROOT}/ . Cleanup ${DEV_ROOT} before continuing"
+for f in S2OPC check-0.15.2 ; do
+    [ -e "${DEV_ROOT}/${f}" ] && fail 3 "${f} already exist in ${DEV_ROOT}/ . Cleanup ${DEV_ROOT} before continuing"
 done
 ! [ -e fledge-north-s2opcua  ] && fail 4 "fledge-north-s2opcua not found in ${DEV_ROOT} "
 
@@ -51,25 +54,24 @@ done
 # Download all
 cd ${DEV_ROOT}
 # git clone https://github.com/fledge-power/fledge-north-s2opcua.git || fail 6
-git clone https://github.com/libexpat/libexpat.git || fail 6
 wget https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz || fail 6
-git clone https://gitlab.com/systerel/S2OPC.git || fail 6
+git clone --branch master --single-branch https://gitlab.com/systerel/S2OPC.git || fail 6
 
 
-# mbedtls-dev:
 if [[  $os_name == *"Red Hat"* || $os_name == *"CentOS"* ]]; then
 	echo RHEL/CentOS not currently supported by this plugin
 	exit 1
-else
-	sudo apt-get install -y libmbedtls-dev
 fi
 
-# libexpat:
-cd ${DEV_ROOT}
-cd libexpat/expat || fail 10 "Enter libexpat"
-rm -f CMakeCache.txt ; mkdir -p build && cd build && cmake -D CMAKE_INSTALL_PREFIX=/usr/local -D EXPAT_BUILD_PKGCONFIG=ON -D EXPAT_ENABLE_INSTALL=ON -D EXPAT_SHARED_LIBS=ON .. && make -j4 || fail 10 "Build libexpat"
-sudo make install || fail 10 "Install libexpat"
-
+# mbedtls-dev:
+wget https://github.com/ARMmbed/mbedtls/archive/refs/tags/v${MBEDTLS_VERSION}.tar.gz
+tar xf v${MBEDTLS_VERSION}.tar.gz
+cd mbedtls-${MBEDTLS_VERSION}
+mkdir build
+cd build
+cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_EXAMPLES=NO -DCMAKE_BUILD_TYPE=Release ..
+make -j4
+sudo make install -j4
 
 # libcheck:
 cd ${DEV_ROOT} && tar xf check-0.15.2.tar.gz 
@@ -83,12 +85,16 @@ sudo make install  || fail 11 "Install check"
 # S2OPC
 (
     cd ${DEV_ROOT}/S2OPC || fail 20 "Enter S2OPC folder"
+    git checkout "$S2OPC_COMMIT" || fail 20 "Could not find S2OPC commit $S2OPC_COMMIT"
     git apply ${DEV_ROOT}/fledge-north-s2opcua/patches/S2OPC.patch || fail 20 "Apply patch for S2OPC"
 
     WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh  || fail 20 "Build S2OPC"
     echo; echo "BUILD done, INSTALLING..."; echo
     sudo make install -C build || fail 20 "Install S2OPC"
 ) || exit
+
+# cpplint
+pip install -I cpplint==1.6.1
 
 echo "All requirement installed properly"
 
