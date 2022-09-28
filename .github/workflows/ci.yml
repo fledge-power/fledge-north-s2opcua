@@ -1,0 +1,153 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+    
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      SONAR_SCANNER_VERSION: 4.6.1.2450 # Find the latest version in the "Windows" link on this page:
+                                        # https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/
+      SONAR_SERVER_URL: "https://sonarcloud.io"
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11   
+      - name: Cache SonarQube packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Download and install EXPAT
+        env:
+          EXPAT_REPO_URL: "https://github.com/libexpat/libexpat.git"
+        run: |
+          # Install EXPAT
+          cd $GITHUB_WORKSPACE/..
+          git clone ${{ env.EXPAT_REPO_URL }}
+          cd libexpat/expat
+          mkdir -p build && cd build 
+          cmake -D CMAKE_INSTALL_PREFIX=/usr/local -D EXPAT_BUILD_PKGCONFIG=ON -D EXPAT_ENABLE_INSTALL=ON -D EXPAT_SHARED_LIBS=ON ..
+          make -j8
+          sudo make install -j4
+      - name: Download and install LIBCHECK
+        env:
+          LIBCHECK_REPO_URL: "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz"
+        run: |
+          # Install LIBCHECK
+          cd $GITHUB_WORKSPACE/..
+          wget ${{ env.LIBCHECK_REPO_URL }}
+          tar xf check-0.15.2.tar.gz 
+          cd check-0.15.2
+          patch CMakeLists.txt $GITHUB_WORKSPACE/fledge-north-s2opcua/patches/check-0.15.2.patch
+          cd build && cmake .. && make -j4
+          sudo make install
+      - name: Download and install MBEDTLS
+        env:
+          MBEDTLS_REPO_URL: "https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.16.12.tar.gz"
+        run: |
+          # Install MBEDTLS
+          cd $GITHUB_WORKSPACE/..
+          wget  ${{ env.MBEDTLS_REPO_URL }}
+          tar xf v2.16.12.tar.gz
+          cd mbedtls-2.16.12
+          mkdir build
+          cd build
+          cmake -DBUILD_TESTS=NO -DBUILD_EXAMPLES=NO ..
+          make -j4
+          sudo make install -j4
+      - name: Download and set up sonar-scanner
+        env:
+          SONAR_SCANNER_DOWNLOAD_URL: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
+        run: |
+          mkdir -p $HOME/.sonar
+          curl -sSLo $HOME/.sonar/sonar-scanner.zip ${{ env.SONAR_SCANNER_DOWNLOAD_URL }} 
+          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+          echo "$HOME/.sonar/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin" >> $GITHUB_PATH
+      - name: Download and set up build-wrapper
+        env:
+          BUILD_WRAPPER_DOWNLOAD_URL: ${{ env.SONAR_SERVER_URL }}/static/cpp/build-wrapper-linux-x86.zip
+        run: |
+          curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${{ env.BUILD_WRAPPER_DOWNLOAD_URL }}
+          unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
+          echo "$HOME/.sonar/build-wrapper-linux-x86" >> $GITHUB_PATH 
+      - name: Download and install Fledge
+        env:
+          FLEDGE_REPO_URL: "https://github.com/fledge-iot/fledge/archive/refs/tags/v2.0.0.zip" 
+        run: |
+          cd $GITHUB_WORKSPACE/..
+          curl -sSLo fledge-pkg.zip ${{ env.FLEDGE_REPO_URL }}
+          unzip -o fledge-pkg.zip -d .
+          mv fledge-2.0.0 fledge
+          cd fledge
+          sudo apt-get update
+          sudo apt-get install libcurl4-openssl-dev
+          sudo ./requirements.sh
+          sudo make install -j8
+          sudo mkdir -p /usr/include/fledge/rapidjson/
+          find C/common/ -name '*.h' -exec sudo cp -prv '{}' '/usr/include/fledge/' ';'
+          find C/plugins/ -name '*.h' -exec sudo cp -prv '{}' '/usr/include/fledge/' ';'
+          find C/services/ -name '*.h' -exec sudo cp -prv '{}' '/usr/include/fledge/' ';'
+          find C/tasks/ -name '*.h' -exec sudo cp -prv '{}' '/usr/include/fledge/' ';'
+          sudo cp -prv C/thirdparty/rapidjson/include/rapidjson/* /usr/include/fledge/rapidjson/
+          sudo mkdir -p /usr/lib/fledge/
+          sudo cp -prv /usr/local/fledge/lib/* /usr/lib/fledge/
+      - name: Download and install s2opc
+        env:
+          S2OPC_REPO_URL: "https://gitlab.com/systerel/S2OPC.git" 
+          S2OPC_SHA: "073040628d4f50de7ef3e2f649dbc20f8ef806e7" 
+        run: |
+          # Install S2OPC
+          cd $GITHUB_WORKSPACE/..
+          git clone --branch master --single-branch ${{ env.S2OPC_REPO_URL }}
+          cd S2OPC
+          git checkout ${{ env.S2OPC_SHA }}
+          git show --oneline --shortstat 
+          git apply $GITHUB_WORKSPACE/fledge-north-s2opcua/patches/S2OPC.patch
+          WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh
+          sudo make install -C build 
+      - name: Download and install Google Unit Test framework
+        run: |
+          sudo apt-get install libgtest-dev
+          cd /usr/src/gtest
+          sudo cmake CMakeLists.txt
+          sudo make
+          sudo apt-get install libgmock-dev
+      - name: Download and install gcovr
+        run: |
+          sudo apt-get install gcovr
+      - name: Run build-wrapper
+        run: |
+          export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib
+          export FLEDGE_INSTALL=$GITHUB_WORKSPACE/fledge
+          make build
+          make check
+          make cpplint
+          make install_plugin
+          make unit_tests
+          
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Coverage
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
+          cd build 
+          make
+          make iec104_coverage_sonar
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.organization="fledge-power" --define sonar.projectKey="fledge-power_fledge-south-iec104" --define sonar.inclusions="**/plugin.cpp,**/iec104.cpp,**/include/iec104.h" --define sonar.coverageReportPaths="build/iec104_coverage_sonar-sonarqube.xml"
