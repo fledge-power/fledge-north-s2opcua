@@ -233,7 +233,7 @@ name(modeStr + "/" + policyStr) {
         const string userPolicyStr(getString(policy, "userPolicies"));
         DEBUG("Identify user token policy: '%s'", LOGGABLE(userPolicyStr));
         const SOPC_UserTokenPolicy* userPolicy(SOPC_tools::toUserToken(userPolicyStr));
-        ASSERT(NULL != userPolicy,
+        ASSERT(nullptr != userPolicy,
                 "Unknown/invalid user policy : '%s'", LOGGABLE(userPolicyStr));
         userTokens.push_back(userPolicy);
     }
@@ -269,7 +269,7 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
     for (const PolicyS& policy : policies) {
         DEBUG("process policy %s", LOGGABLE(policy.name));
         SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, policy.policy);
-        ASSERT(sp != NULL);
+        ASSERT(sp != nullptr);
 
         SOPC_ReturnStatus status = SOPC_SecurityConfig_SetSecurityModes(sp, policy.mode);
         ASSERT(status == SOPC_STATUS_OK,

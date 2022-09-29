@@ -67,7 +67,7 @@ s2opc_north::NodeVect_t getNS0(void) {
 
 /**************************************************************************/
 static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& text) {
-    static const SOPC_LocalizedText emptyLocal = {{0, 0, NULL}, {0, 0, NULL}, NULL};
+    static const SOPC_LocalizedText emptyLocal = {{0, 0, nullptr}, {0, 0, nullptr}, nullptr};
     *localText = emptyLocal;
 
     SOPC_String_InitializeFromCString(&localText->defaultText, text.c_str());
@@ -96,12 +96,12 @@ template<typename T>
 void
 GarbageCollectorC<T>::
 reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
-    ASSERT(NULL != ptr);
+    ASSERT(nullptr != ptr);
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
     *ptr = new T[newSize];
-    ASSERT(NULL != *ptr);
+    ASSERT(nullptr != *ptr);
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
@@ -125,7 +125,7 @@ GarbageCollectorC<T>::
 namespace {
 static const uint16_t nameSpace0(0);
 static const uint32_t serverIndex(0);
-static const SOPC_String String_NULL = {0, 0, NULL};
+static const SOPC_String String_NULL = {0, 0, nullptr};
 static const SOPC_NodeId NodeId_Organizes = {SOPC_IdentifierType_Numeric, nameSpace0, 35};
 static const SOPC_NodeId NodeId_HasTypeDefinition = {SOPC_IdentifierType_Numeric, nameSpace0, 40};
 static const SOPC_NodeId NodeId_HasComponent = {SOPC_IdentifierType_Numeric, nameSpace0, 47};
@@ -166,7 +166,7 @@ insertAndCompleteReferences(NodeVect_t* nodes,
             bool found(false);
             for (const NodeInfo_t& nodeInfo : *nodes) {
                 SOPC_AddressSpace_Node* pNode(nodeInfo.first);
-                if (NULL != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
+                if (nullptr != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
                     // Insert space in target references
                     ASSERT(!found, "Several match for the same Node Id");
                     found = true;
@@ -337,7 +337,7 @@ getByNodeId(const string& nodeId)const {
     if (it != mByNodeId.end()) {
         return &(it->second);
     }
-    return NULL;
+    return nullptr;
 }
 
 }   // namespace s2opc_north

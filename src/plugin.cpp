@@ -49,7 +49,7 @@ namespace {
 
 /**************************************************************************/
 static s2opc_north::OPCUA_Server* handleToPlugin(void* handle) {
-    SOPC_ASSERT(handle != NULL && "OPC UA called with NULL plugin");
+    SOPC_ASSERT(handle != nullptr && "OPC UA called with NULL plugin");
     return reinterpret_cast<s2opc_north::OPCUA_Server *> (handle);
 }
 
@@ -94,7 +94,7 @@ PLUGIN_INFORMATION* plugin_info(void) {
 
 /**************************************************************************/
 PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
-    PLUGIN_HANDLE handle = NULL;
+    PLUGIN_HANDLE handle = nullptr;
     // the very first thing to do is to configure ASSERTs to be routed to Logger
     SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
     try {

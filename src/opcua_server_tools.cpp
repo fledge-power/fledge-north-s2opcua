@@ -244,7 +244,7 @@ const OpcUa_UserTokenPolicy* toUserToken(const string& token) {
     if (token == SOPC_UserTokenPolicy_UserNameBasic256Sha256_ID) {
         return &SOPC_UserTokenPolicy_UserName_Basic256Sha256SecurityPolicy;
     }
-    return NULL;
+    return nullptr;
 }
 
 /**************************************************************************/
@@ -257,7 +257,7 @@ cVect((const char**)(vect)) {
         cppVect.push_back(ref[i]);
         vect[i] = strdup(cppVect.back().c_str());
     }
-    vect[size] = NULL;
+    vect[size] = nullptr;
 }
 
 /**************************************************************************/
@@ -273,7 +273,7 @@ cVect((const char**)(vect)) {
         vect[i] = strdup(cppVect.back().c_str());
         i++;
     }
-    vect[size] = NULL;
+    vect[size] = nullptr;
 }
 
 /**************************************************************************/
