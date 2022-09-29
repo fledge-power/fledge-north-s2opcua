@@ -84,6 +84,7 @@ class OpcUa_Protocol {
         explicit PolicyS(const std::string& modeStr,
                 const std::string& policyStr,
                 const rapidjson::Value::ConstArray& userPolicies);
+        explicit PolicyS(PolicyS && a) noexcept;
         const std::string name;
         SOPC_SecurityModeMask mode;
         SOPC_SecurityPolicy_URI policy;

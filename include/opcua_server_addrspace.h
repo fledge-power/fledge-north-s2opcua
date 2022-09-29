@@ -32,8 +32,8 @@ extern "C" {
 
 extern "C" {
 // Nano NS0 namespace
-extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;
-extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];
+extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;   // NOSONAR  Interface with S2OPC
+extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];   // NOSONAR  Interface with S2OPC
 }
 
 namespace s2opc_north {
@@ -82,8 +82,11 @@ class CNode {
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
     void insertAndCompleteReferences(NodeVect_t* nodes,
             NodeMap_t* nodeMap, const std::string& typeId);
+
  protected:
     explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
+
+ private:
     SOPC_AddressSpace_Node mNode;
 };  // class CNode
 

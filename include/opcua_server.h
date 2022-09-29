@@ -45,7 +45,7 @@ namespace s2opc_north {
 /*****************************************************
  *  CONFIGURATION
  *****************************************************/
-extern const char* plugin_default_config;
+extern const char* const plugin_default_config;
 
 /*****************************************************
  *  TYPES DEFINITIONS
@@ -119,8 +119,11 @@ class OPCUA_Server {
     static void uninitialize(void);
 
  protected:
-    virtual void writeEventNotify(const std::string& username) {}
-    int m_nbMillisecondShutdown;
+    virtual void writeEventNotify(const std::string& username) {
+        // This method intends at providing a child class the ability to
+        // monitor events
+    }
+    inline void setShutdownDuration(const int nbMs) {m_nbMillisecondShutdown = nbMs;}
 
  private:
     void init_sopc_lib_and_logs(void);
@@ -130,6 +133,8 @@ class OPCUA_Server {
      */
     void updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
             const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const;
+
+    int m_nbMillisecondShutdown;
 
  public:
     const OpcUa_Protocol mProtocol;

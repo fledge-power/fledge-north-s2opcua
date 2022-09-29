@@ -147,9 +147,11 @@ ExchangedDataC::internalChecks(const rapidjson::Value& json) {
         throw NotAnS2opcInstance();
     }
     ASSERT(json.HasMember(JSON_PROT_ADDR) && json[JSON_PROT_ADDR].IsString()
-            , "datapoint protocol description must have a '" JSON_PROT_ADDR "' key defining a STRING");
+            , "datapoint protocol description must have a '%s' key defining a STRING",
+            JSON_PROT_ADDR);
     ASSERT(json.HasMember(JSON_PROT_TYPEID) && json[JSON_PROT_TYPEID].IsString()
-            , "datapoint protocol description must have a '" JSON_PROT_TYPEID "' key defining a STRING");
+            , "datapoint protocol description must have a '%s' key defining a STRING",
+            JSON_PROT_TYPEID);
     return true;
 }
 
@@ -235,6 +237,14 @@ name(modeStr + "/" + policyStr) {
                 "Unknown/invalid user policy : '%s'", LOGGABLE(userPolicyStr));
         userTokens.push_back(userPolicy);
     }
+}
+/**************************************************************************/
+OpcUa_Protocol::PolicyS::
+PolicyS(PolicyS && a) noexcept:
+name(a.name),
+mode(a.mode),
+policy(a.policy),
+userTokens(std::move(a.userTokens)) {
 }
 
 /**************************************************************************/

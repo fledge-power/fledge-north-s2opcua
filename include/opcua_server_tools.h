@@ -35,24 +35,24 @@ extern "C" {
 /**************************************************************************/
 /*                DEFINITIONS                                             */
 /**************************************************************************/
-#define JSON_EXCHANGED_DATA "exchanged_data"
-#define JSON_DATAPOINTS "datapoints"
-#define JSON_PROTOCOLS "protocols"
-#define JSON_LABEL "label"
-#define JSON_PIVOT_ID "pivot_id"
-#define JSON_PIVOT_TYPE "pivot_type"
+static constexpr const char*const JSON_EXCHANGED_DATA = "exchanged_data";
+static constexpr const char*const JSON_DATAPOINTS = "datapoints";
+static constexpr const char*const JSON_PROTOCOLS = "protocols";
+static constexpr const char*const JSON_LABEL = "label";
+static constexpr const char*const JSON_PIVOT_ID = "pivot_id";
+static constexpr const char*const JSON_PIVOT_TYPE = "pivot_type";
 
-#define PROTOCOL_S2OPC "opcua"
-#define JSON_PROT_NAME "name"
-#define JSON_PROT_ADDR "address"
-#define JSON_PROT_TYPEID "typeid"
+static constexpr const char*const PROTOCOL_S2OPC = "opcua";
+static constexpr const char*const JSON_PROT_NAME = "name";
+static constexpr const char*const JSON_PROT_ADDR = "address";
+static constexpr const char*const JSON_PROT_TYPEID = "typeid";
 
 /**************************************************************************/
 /*                HELPER MACROS                                           */
 /**************************************************************************/
 
 /* HELPER MACROS*/
-static Logger* logger(Logger::getLogger());
+static Logger* const logger(Logger::getLogger());
 #define DEBUG logger->debug
 #define INFO logger->info
 #define WARNING logger->warn
@@ -143,7 +143,7 @@ typedef std::vector<StringPair_t> StringMap_t;
  *  NULL terminating string
  * @field size The number of non-NULL elements in vect
  */
-struct CStringVect {
+struct CStringVect {  // NOSONAR
     /**
      * Build a C-like vector using  C+ STL vector
      */

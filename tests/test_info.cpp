@@ -234,7 +234,8 @@ TEST(S2OPCUA, PluginInstance) {
     }
     catch (const std::exception& e) {
         cerr << "plugin_init raised an exception" << e.what() << endl;
-        system("tail -n 1000 /var/log/syslog |grep -i 'Fledge'");
+        const int sysResult = system("tail -n 1000 /var/log/syslog |grep -i 'Fledge'");
+        (void) sysResult;
         ASSERT_FALSE("plugin_init raised an exception");
     }
 

@@ -41,8 +41,8 @@ using SOPC_tools::getObject;
 extern "C" {
     extern const bool sopc_embedded_is_const_addspace;
 
-    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];
-    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;
+    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];  // NOSONAR  Interface with S2OPC
+    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;  // NOSONAR  Interface with S2OPC
 }
 
 namespace {
@@ -138,10 +138,10 @@ namespace s2opc_north {
 /**************************************************************************/
 CNode::
 CNode(SOPC_StatusCode defaultStatusCode) {
-    memset(&mNode, 0, sizeof(mNode));
-    mNode.node_class = OpcUa_NodeClass_Unspecified;     // Filled by child classes
-    mNode.value_status = defaultStatusCode;
-    mNode.value_source_ts = {0, 0};
+    memset(get(), 0, sizeof(SOPC_AddressSpace_Node));
+    get()->node_class = OpcUa_NodeClass_Unspecified;     // Filled by child classes
+    get()->value_status = defaultStatusCode;
+    get()->value_source_ts = {0, 0};
 }
 
 /**************************************************************************/
@@ -149,14 +149,15 @@ void
 CNode::
 insertAndCompleteReferences(NodeVect_t* nodes,
         NodeMap_t* nodeMap, const std::string& typeId) {
-    const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
-    NodeInfo_t nodeInfo(&mNode, typeId);
+    SOPC_AddressSpace_Node& node(*get());
+    const SOPC_NodeId& nodeId(node.data.variable.NodeId);
+    NodeInfo_t nodeInfo(&node, typeId);
     nodes->push_back(nodeInfo);
     nodeMap->emplace(toString(nodeId), nodeInfo);
     // Find references and invert them
-    const uint32_t nbRef(mNode.data.variable.NoOfReferences);
+    const uint32_t nbRef(node.data.variable.NoOfReferences);
     for (uint32_t i = 0 ; i < nbRef; i++) {
-        const OpcUa_ReferenceNode& ref(mNode.data.variable.References[i]);
+        const OpcUa_ReferenceNode& ref(node.data.variable.References[i]);
         if (ref.TargetId.ServerIndex == serverIndex) {
             const SOPC_NodeId& refTargetId(ref.TargetId.NodeId);
             // create a reverse reference
@@ -198,7 +199,7 @@ insertAndCompleteReferences(NodeVect_t* nodes,
 CVarNode::
 CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId):
 CCommonVarNode(varInfo) {
-    OpcUa_VariableNode& variableNode = mNode.data.variable;
+    OpcUa_VariableNode& variableNode = get()->data.variable;
     variableNode.Value.BuiltInTypeId = sopcTypeId;
     variableNode.Value.DoNotClear = true;
 
@@ -208,7 +209,7 @@ CCommonVarNode(varInfo) {
 
     memset(&variableNode.Value.Value, 0, sizeof(variableNode.Value.Value));
 
-    mNode.value_status = (varInfo.mReadOnly ? OpcUa_BadWaitingForInitialData : GoodStatus);
+    get()->value_status = (varInfo.mReadOnly ? OpcUa_BadWaitingForInitialData : GoodStatus);
 }
 
 /**************************************************************************/
@@ -216,8 +217,8 @@ CCommonVarNode::
 CCommonVarNode(const CVarInfo& varInfo) {
     SOPC_ReturnStatus status;
 
-    mNode.node_class = OpcUa_NodeClass_Variable;
-    OpcUa_VariableNode& variableNode = mNode.data.variable;
+    get()->node_class = OpcUa_NodeClass_Variable;
+    OpcUa_VariableNode& variableNode = get()->data.variable;
     variableNode.NodeClass = OpcUa_NodeClass_Variable;
     variableNode.encodeableType = &OpcUa_VariableNode_EncodeableType;
     variableNode.AccessLevel = (varInfo.mReadOnly ? ReadOnlyAccess : ReadWriteAccess);

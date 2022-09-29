@@ -80,7 +80,7 @@ public:
         OPCUA_Server(configData),
         nbResponses(0),
         nbBadResponses(0) {
-        m_nbMillisecondShutdown = 500;
+        setShutdownDuration(500);
     }
 
     void reset(void) {

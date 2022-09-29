@@ -20,7 +20,7 @@ namespace s2opc_north
 {
 
 END_WARNING
-/bin/echo "const char* ${VAR} = " >> ${CPP}
+/bin/echo "const char* const ${VAR} = " >> ${CPP}
 # Note:
 # - replace ' by \" (This aims at easing readability of json to avoid using \" within strings)
 # - replace \ by \\
