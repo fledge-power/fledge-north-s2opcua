@@ -168,6 +168,21 @@ static const string protocolJson5 = // Invalid policies
                   } \
               } });
 
+static string strReplacer(const string& src, const string& textOld, const string& textNew) {
+    size_t pos = src.find(textOld);
+    if (pos == string::npos) return src;
+    string result(src);
+    result.replace(pos, pos + textOld.length() - 1, textNew);
+    return result;
+}
+
+static const string protocolJson6 = strReplacer(protocolJsonOK, "protocol_stack", "PROTO");
+static const string protocolJson7 = strReplacer(protocolJsonOK, "server_2k_cert.der", "nocertxxx.der");
+static const string protocolJson8 = strReplacer(protocolJsonOK, "server_2k_key.pem", "nocertxxx.pem");
+static const string protocolJson9 = strReplacer(protocolJsonOK, "cacert.der", "nocert.der");
+static const string protocolJson10 = strReplacer(protocolJsonOK, "transport_layer", "transport_layerXXX");
+static const string protocolJson11 = strReplacer(protocolJsonOK, "username_None", "username_NoneXXX");
+
 TEST(S2OPCUA, OpcUa_Protocol) {
     ERROR("*** TEST S2OPCUA OpcUa_Protocol");
     ASSERT_NO_C_ASSERTION;
@@ -227,6 +242,12 @@ TEST(S2OPCUA, OpcUa_Protocol) {
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson3), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson4), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson5), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson6), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson7), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson8), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson9), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson10), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson11), exception);
 }
 
 TEST(S2OPCUA, OpcUa_Server_Config) {
