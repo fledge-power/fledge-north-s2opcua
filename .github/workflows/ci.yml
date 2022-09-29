@@ -149,6 +149,13 @@ jobs:
           export FLEDGE_DATA=$FLEDGE_ROOT/data
           export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
           make unit_tests || (tail -n 2000 /var/log/syslog && false)
+      - name: Archive HTML coverage results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: html-coverage-report
+          path: |
+            build/tests/RunTests_coverage_html
       - name: Run build-wrapper
         env:
           FLEDGE_SRC: "$GITHUB_WORKSPACE/../fledge" 
@@ -176,6 +183,7 @@ jobs:
         with:
           name: code-coverage-report
           path: |
-            build/tests/
-            !build/tests/CMakeFiles
+            build/tests/RunTests_coverage_sonar-sonarqube.xml
+            build/tests/default_config.inc
+            build/tests/base_addrspace.c
           
