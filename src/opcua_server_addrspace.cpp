@@ -80,17 +80,20 @@ static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& te
  * references which are statically generated but are also completed depending on configuration.
  */
 template <typename T>
-class GarbageCollectorC {
+class GarbageCollectorC {  // NOSONAR
  public:
-    typedef T* pointer;
+    GarbageCollectorC() = default;
+    using pointer =  T*;
     void reallocate(pointer* ptr, size_t oldSize, size_t newSize);
-    virtual ~GarbageCollectorC(void);
+    virtual ~GarbageCollectorC(void);  // NOSONAR
 
  private:
-    typedef map<pointer, bool>  ptrMap;  // Note that only key is used
+    GarbageCollectorC (const GarbageCollectorC&) = delete;
+    GarbageCollectorC& operator= (const GarbageCollectorC&) = delete;
+    using ptrMap = std::map<pointer, bool>;  // Note that only key is used
     ptrMap mAllocated;
 };
-static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;
+static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;   // NOSONAR
 
 template<typename T>
 void
@@ -100,13 +103,13 @@ reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
-    *ptr = new T[newSize];
+    *ptr = new T[newSize];   // NOSONAR
     ASSERT(nullptr != *ptr);
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
     if (it != mAllocated.end()) {
-        delete(oldPtr);
+        delete(oldPtr);   // NOSONAR
         mAllocated.erase(it);
     }
     mAllocated.insert({*ptr, true});
@@ -116,7 +119,7 @@ template<typename T>
 GarbageCollectorC<T>::
 ~GarbageCollectorC(void) {
     for (auto alloc : mAllocated) {
-        delete alloc.first;
+        delete alloc.first;   // NOSONAR
     }
 }
 
