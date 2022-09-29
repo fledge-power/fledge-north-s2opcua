@@ -10,6 +10,10 @@
  * Author: Amandeep Singh Arora / Jeremie Chabod
  */
 
+// Plugin headers
+#include "opcua_server_tools.h"
+#include "opcua_server_config.h"
+
 // System headers
 #include <stdint.h>
 #include <stdlib.h>
@@ -36,10 +40,6 @@ extern "C" {
 #include "sopc_toolkit_config.h"
 };
 
-// Plugin headers
-#include "opcua_server_tools.h"
-#include "opcua_server_config.h"
-
 namespace s2opc_north {
 
 /*****************************************************
@@ -51,11 +51,13 @@ extern const char* const plugin_default_config;
  *  TYPES DEFINITIONS
  *****************************************************/
 // Redefinition of plugin callbacks types to ease readability
-typedef bool (*north_write_event_t)
-        (char *name, char *value, ControlDestination destination, ...);
-typedef int (*north_operation_event_t)
-        (char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...);
-typedef std::vector<Reading*> Readings;
+using north_write_event_t = bool (*)
+        (char *name, char *value, ControlDestination destination, ...);  //NOSONAR
+using north_operation_event_t =
+        int (*)(char *operation, int paramCount,
+                char *names[], char *parameters[],  //NOSONAR
+                ControlDestination destination, ...);
+using Readings = std::vector<Reading*>;
 
 static const char unknownUserName[] = "-UnknownUserName-";
 /**

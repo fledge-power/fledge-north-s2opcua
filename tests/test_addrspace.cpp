@@ -81,15 +81,15 @@ TEST(S2OPCUA, Server_AddrSpace) {
     NodeVect_t::const_iterator it;
     const SOPC_AddressSpace_Node* pNode = nullptr;
 
-    it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(),
+    it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(),
             nodeVarFinder("ns=1;s=/FESSE_6_FESS5.1_DFAIL.DJ/S_1145_6_21_28"));
-    GTEST_ASSERT_NE(it, aSpace.nodes.end());
+    GTEST_ASSERT_NE(it, aSpace.getNodes().end());
     pNode = ((const NodeInfo_t&)(*it)).first;
     GTEST_ASSERT_EQ(pNode->data.variable.Value.BuiltInTypeId, SOPC_Boolean_Id);
 
-    it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(),
+    it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(),
             nodeVarFinder("ns=1;s=/FESSE_6_6CHAL7.1_SA.1/C_1145_6_18_1"));
-    GTEST_ASSERT_NE(it, aSpace.nodes.end());
+    GTEST_ASSERT_NE(it, aSpace.getNodes().end());
     pNode = ((const NodeInfo_t&)(*it)).first;
 
     // Check references (Root.Object + HasTypeDefinition)
@@ -115,9 +115,9 @@ TEST(S2OPCUA, Server_AddrSpace) {
     bool foundInvHasDefintion = false;
 
     // Find Root.Object
-    it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(), nodeObjFinder("i=85"));
+    it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(), nodeObjFinder("i=85"));
 
-    GTEST_ASSERT_NE(it, aSpace.nodes.end());
+    GTEST_ASSERT_NE(it, aSpace.getNodes().end());
     pNode = ((const NodeInfo_t&)(*it)).first;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
@@ -127,8 +127,8 @@ TEST(S2OPCUA, Server_AddrSpace) {
     }
 
     // Find HasReference
-    it = std::find_if(aSpace.nodes.begin(), aSpace.nodes.end(), nodeVarTypeFinder("i=63"));
-    GTEST_ASSERT_NE(it, aSpace.nodes.end());
+    it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(), nodeVarTypeFinder("i=63"));
+    GTEST_ASSERT_NE(it, aSpace.getNodes().end());
     pNode = ((const NodeInfo_t&)(*it)).first;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);

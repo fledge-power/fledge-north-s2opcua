@@ -23,6 +23,10 @@
 #include "utils.h"
 #include "rapidjson/document.h"
 
+// Project includes
+#include "opcua_server_tools.h"
+#include "opcua_server_addrspace.h"
+
 extern "C" {
 // S2OPC Headers
 #include "sopc_log_manager.h"
@@ -33,10 +37,6 @@ extern "C" {
 #include "libs2opc_server_config.h"
 #include "libs2opc_server_config_custom.h"
 };
-
-/// Project includes
-#include "opcua_server_tools.h"
-#include "opcua_server_addrspace.h"
 
 namespace s2opc_north {
 
@@ -51,15 +51,15 @@ class ExchangedDataC {
       {
           "name":"s2opcua",
           "address":"<nodeid>",
-          "typeid":"<Boolean|SByte|...>",  // See SOPC_BuiltinId
+          "typeid":"<opcua_sps|...>",
        }
      */
     explicit ExchangedDataC(const rapidjson::Value& json);
-    virtual ~ExchangedDataC(void);
+    virtual ~ExchangedDataC(void) = default;
 
  private:
     const bool mPreCheck;
-    bool internalChecks(const rapidjson::Value& json);
+    bool internalChecks(const rapidjson::Value& json)const;
 
  public:
     const std::string address;
@@ -73,7 +73,7 @@ class ExchangedDataC {
 class OpcUa_Protocol {
  public:
     explicit OpcUa_Protocol(const std::string& protocol);
-    virtual ~OpcUa_Protocol(void);
+    virtual ~OpcUa_Protocol(void) = default;
     /**
      * \brief  set up a \a SOPC_Endpoint_Config object with the  current configuration
      * \param ep The object to initialize
@@ -81,15 +81,17 @@ class OpcUa_Protocol {
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
 
     struct PolicyS {
+        explicit PolicyS(PolicyS && ref) = default;
         explicit PolicyS(const std::string& modeStr,
                 const std::string& policyStr,
                 const rapidjson::Value::ConstArray& userPolicies);
-        explicit PolicyS(PolicyS && a) noexcept;
+        virtual ~PolicyS(void) = default;
         const std::string name;
         SOPC_SecurityModeMask mode;
         SOPC_SecurityPolicy_URI policy;
         std::vector<const SOPC_UserTokenPolicy*> userTokens;
     };
+
     struct PoliciesVect : public std::vector<PolicyS> {
         explicit PoliciesVect(const rapidjson::Value& transport);
     };
@@ -108,15 +110,19 @@ class OpcUa_Protocol {
     const std::string productUri;
     const std::string localeId;
     const std::string serverDescription;
+
+ private:
     const rapidjson::Value& certificates;
+
+ public:
     const std::string serverCertPath;
     const std::string serverKeyPath;
     const SOPC_tools::CStringVect trustedRootCert;
     const SOPC_tools::CStringVect trustedIntermCert;
     const SOPC_tools::CStringVect untrustedRootCert;
     const SOPC_tools::CStringVect untrustedIntermCert;
-    const SOPC_tools::CStringVect revokedCert;
     const SOPC_tools::CStringVect issuedCert;
+    const SOPC_tools::CStringVect revokedCert;
     const PoliciesVect policies;
     const SOPC_tools::CStringVect namespacesUri;
     const SOPC_tools::StringMap_t users;
@@ -130,10 +136,8 @@ class OpcUa_Protocol {
 class OpcUa_Server_Config {
  public:
     explicit OpcUa_Server_Config(const ConfigCategory& configData);
-    virtual ~OpcUa_Server_Config(void);
+    virtual ~OpcUa_Server_Config(void) = default;
 
- public:
-    // All fields are constants, and thus can be public.
     const bool withLogs;
     const SOPC_Log_Level logLevel;  // only relevant if withLogs is true
     const std::string logPath;

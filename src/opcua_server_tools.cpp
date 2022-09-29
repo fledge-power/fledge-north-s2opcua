@@ -58,7 +58,7 @@ const char* statusCodeToCString(const int code) {
     HANDLE_CODE(SOPC_STATUS_CLOSED);
     HANDLE_CODE(SOPC_STATUS_NOT_SUPPORTED);
         default:
-            return ("Invalid code");
+            return "Invalid code";
     }
 #undef HANDLE_CODE
 }
@@ -68,7 +68,7 @@ const char* statusCodeToCString(const int code) {
 string toUpperString(const string & str) {
     string copy(str);
     for (char& c : copy) {
-        c = ::toupper(c);
+        c = static_cast<char>(::toupper(c));
     }
     return copy;
 }
@@ -123,19 +123,19 @@ const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
 string toString(const SOPC_NodeId& nodeid) {
     char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
     string result(nodeIdStr);
-    delete nodeIdStr;
+    delete nodeIdStr;  //NOSONAR  (S2OPC API)
     return result;
 }
 
 /**************************************************************************/
 SOPC_NodeId* createNodeId(const std::string& nodeid) {
-    return SOPC_NodeId_FromCString(nodeid.c_str(), nodeid.length());
+    return SOPC_NodeId_FromCString(nodeid.c_str(),
+            static_cast<int32_t>(nodeid.length()));
 }
 
 /**************************************************************************/
 SOPC_Log_Level toSOPC_Log_Level(const string & str) {
     const string sUpper(toUpperString(str));
-    typedef std::pair<string, SOPC_Log_Level> Pair;
     typedef std::map<string, SOPC_Log_Level> LevelMap;
     // Note:  static_cast is only used to help editor parser.
     static const LevelMap map {
@@ -155,7 +155,6 @@ SOPC_Log_Level toSOPC_Log_Level(const string & str) {
 
 /**************************************************************************/
 SOPC_BuiltinId toBuiltinId(const string& name) {
-    typedef std::pair<string, SOPC_BuiltinId> Pair;
     typedef std::map<string, SOPC_BuiltinId> TypeMap;
     static const TypeMap map {
         {"opcua_sps", SOPC_Boolean_Id},
@@ -186,9 +185,10 @@ bool pivotTypeToReadOnly(const std::string& pivotType) {
             (pivotType != "opcua_bsc"));
 }
 
+class UnknownSecurityPolicy : public std::exception{};
+
 /**************************************************************************/
 SOPC_SecurityPolicy_URI toSecurityPolicy(const string& policy) {
-    typedef std::pair<string, SOPC_SecurityPolicy_URI> Pair;
     typedef std::map<string, SOPC_SecurityPolicy_URI> PolicyMap;
     static const PolicyMap map {
         {"None", SOPC_SecurityPolicy_None},
@@ -203,13 +203,14 @@ SOPC_SecurityPolicy_URI toSecurityPolicy(const string& policy) {
         return (*it).second;
     }
     ERROR("Invalid security policy '%s'" , LOGGABLE(policy));
-    throw std::exception();
+    throw UnknownSecurityPolicy();
 }
+
+class UnknownSecurityMode : public std::exception{};
 
 /**************************************************************************/
 SOPC_SecurityModeMask toSecurityMode(const string& mode) {
     const string sUpper(toUpperString(mode));
-    typedef std::pair<string, SOPC_SecurityModeMask> Pair;
     typedef std::map<string, SOPC_SecurityModeMask> ModeMap;
     static const ModeMap map {
         {"NONE", SOPC_SecurityModeMask_None},
@@ -223,7 +224,7 @@ SOPC_SecurityModeMask toSecurityMode(const string& mode) {
     }
 
     ERROR("Invalid security mode: '%s'" , LOGGABLE(mode));
-    throw std::exception();
+    throw UnknownSecurityMode();
 }
 
 /**************************************************************************/
@@ -251,7 +252,7 @@ const OpcUa_UserTokenPolicy* toUserToken(const string& token) {
 CStringVect::
 CStringVect(const StringVect_t& ref):
 size(ref.size()),
-vect(new char*[size + 1]),
+vect(new char*[size + 1]),   //NOSONAR  (S2OPC API)
 cVect((const char**)(vect)) {
     for (size_t i=0 ; i < size; i++) {
         cppVect.push_back(ref[i]);
@@ -264,12 +265,12 @@ cVect((const char**)(vect)) {
 CStringVect::
 CStringVect(const rapidjson::Value& ref, const std::string& context):
 size(ref.GetArray().Size()),
-vect(new char*[size + 1]),
+vect(new char*[size + 1]),   //NOSONAR  (S2OPC API)
 cVect((const char**)(vect)) {
     size_t i(0);
     for (const rapidjson::Value& value : ref.GetArray()) {
         ASSERT(value.IsString(), "Expecting a String in array '%s'", LOGGABLE(context));
-        cppVect.push_back(value.GetString());
+        cppVect.emplace_back(value.GetString());
         vect[i] = strdup(cppVect.back().c_str());
         i++;
     }
@@ -280,9 +281,9 @@ cVect((const char**)(vect)) {
 CStringVect::
 ~CStringVect(void) {
     for (size_t i =0 ; i < size ; i++) {
-        delete vect[i];
+        delete vect[i];  //NOSONAR  (S2OPC API)
     }
-    delete vect;
+    delete vect;  //NOSONAR  (S2OPC API)
 }
 
 

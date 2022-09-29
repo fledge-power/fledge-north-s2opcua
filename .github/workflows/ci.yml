@@ -161,7 +161,7 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Coverage
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/tests --config Release
           cd build/tests
-          make -j8
+          make
           make RunTests_coverage_sonar
       - name: Run sonar-scanner
         env:
@@ -175,7 +175,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: code-coverage-report
-          path: 
+          path: |
             build/tests/
             !build/tests/CMakeFiles
           

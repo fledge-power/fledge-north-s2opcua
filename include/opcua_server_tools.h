@@ -52,7 +52,7 @@ static constexpr const char*const JSON_PROT_TYPEID = "typeid";
 /**************************************************************************/
 
 /* HELPER MACROS*/
-static Logger* const logger(Logger::getLogger());
+static Logger* const logger(Logger::getLogger());  //NOSONAR FLEDGE API
 #define DEBUG logger->debug
 #define INFO logger->info
 #define WARNING logger->warn
@@ -127,9 +127,9 @@ const OpcUa_UserTokenPolicy* toUserToken(const std::string& token);
 /*              VECTOR MANAGEMENT (C-binding)                             */
 /**************************************************************************/
 /** Vector of string */
-typedef std::vector<std::string> StringVect_t;
-typedef std::pair<std::string, std::string> StringPair_t;
-typedef std::vector<StringPair_t> StringMap_t;
+using StringVect_t = std::vector<std::string>;
+using StringPair_t = std::pair<std::string, std::string>;
+using StringMap_t = std::vector<StringPair_t>;
 
 /**
  * CStringVect intends at making a String vector useable by C S2OPC layer.
@@ -137,7 +137,7 @@ typedef std::vector<StringPair_t> StringMap_t;
  *  NULL terminating string
  * @field size The number of non-NULL elements in vect
  */
-struct CStringVect {  // NOSONAR
+struct CStringVect {  //NOSONAR
     /**
      * Build a C-like vector using  C+ STL vector
      */

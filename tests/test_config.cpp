@@ -271,9 +271,10 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
     // Check that the nodes provided in configuration are in address space
     const SOPC_AddressSpace_Node* pNode = nullptr;
 
-    it = std::find_if(config.addrSpace.nodes.begin(), config.addrSpace.nodes.end(),
+    it = std::find_if(config.addrSpace.getNodes().begin(),
+            config.addrSpace.getNodes().end(),
             nodeVarFinder("ns=1;s=/label1/addr1"));
-    GTEST_ASSERT_NE(it, config.addrSpace.nodes.end());
+    GTEST_ASSERT_NE(it, config.addrSpace.getNodes().end());
 
     const NodeInfo_t& nodeInfo(*it);
     pNode = nodeInfo.first;

@@ -514,7 +514,7 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
     ASSERT_NOT_NULL(addSpace);
 
-    const NodeVect_t& nodes(mConfig.addrSpace.nodes);
+    const NodeVect_t& nodes(mConfig.addrSpace.getNodes());
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
     for (const NodeInfo_t& nodeInfo : nodes) {
         status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);

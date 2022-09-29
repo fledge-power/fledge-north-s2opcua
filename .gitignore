@@ -1,2 +1,4 @@
 version.h
 build/
+.scannerwork/
+build_wrp

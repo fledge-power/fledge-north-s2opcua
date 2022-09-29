@@ -2,7 +2,7 @@
 Q=@
 PLUGIN_TASK_CONF='{"name": "s2opcua_server","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 10,"schedule_enabled": true}'
 PLUGIN_SERV_CONF='{"config":{}, "enabled" :"true", "name":"s2opcua_service", "plugin":"s2opcua", "type":"north"}'
-CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11'
+CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11,-whitespace/comments'
 
 all: build install_plugin # insert_task
 build:
@@ -57,5 +57,14 @@ del_plugin:
 	
 cpplint:
 	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/base_addrspace.c src/* include/*
-		
+
+test_sonar:
+	$(Q)~/dev/.sonar/sonar-scanner-4.6.1.2450-linux/bin/sonar-scanner  \
+          --define sonar.host.url="https://sonarcloud.io" \
+          --define sonar.cfamily.build-wrapper-output=${BUILD_WRAPPER_OUT_DIR}\
+          --define sonar.organization="fledge-power"\
+          --define sonar.projectKey="fledge-power_fledge-north-s2opcua"\
+          --define sonar.inclusions="**/src/plugin.cpp,**/src/opcua_server_*.cpp,**/include/opcua_server*.h"\
+          --define sonar.coverageReportPaths="build/tests/RunTests_coverage_sonar-sonarqube.xml"
+	
 .PHONY: all clean build check del_plugin install_certs install_plugin insert_service insert_task cpplint unit_tests
