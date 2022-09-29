@@ -4,8 +4,6 @@ JSON=$2
 CPP=$3
 ( [ -z ${VAR} ] || [ -z ${JSON} ] || [ -z ${CPP} ] ) && echo "Invalid parameters to mkjson" && exit 1
 
-echo $1 $2 $3 >> /tmp/jch.log 
-
 
 cat > ${CPP} << END_WARNING
 

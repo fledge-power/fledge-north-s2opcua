@@ -155,7 +155,6 @@ static void serverStopped_Fct(SOPC_ReturnStatus status) {
         WARNING("Server stopped!");
         srv->setStopped();
     }
-#warning "TODO : shall this be monitored?"
 }
 
 /**************************************************************************/
@@ -676,7 +675,6 @@ asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
             WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
         }
     }
-#warning "TODO : do we need to manage failures ?"
 }
 
 /**************************************************************************/
