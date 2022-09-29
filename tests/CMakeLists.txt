@@ -24,8 +24,8 @@ project(RunTests)
   setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
                                       EXECUTABLE RunTests
                                       DEPENDENCIES RunTests
-                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/../src"
-                                      EXCLUDE "tests/*"
+                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/.."
+                                      EXCLUDE "tests/*" "build/*"
   )    
 
   setup_target_for_coverage_gcovr_html(NAME "${PROJECT_NAME}_coverage_html"
