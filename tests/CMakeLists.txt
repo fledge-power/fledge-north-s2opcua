@@ -16,9 +16,8 @@ project(RunTests)
   include(CodeCoverage)
   append_coverage_compiler_flags()
 
-# Using -O1 (at least) is mandatory to avoid false reports of GCOV on vector initializers
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O3 --coverage")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 --coverage")
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
   set(GCOVR_ADDITIONAL_ARGS "--exclude-unreachable-branches" "--exclude-throw-branches" )
   
   setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
