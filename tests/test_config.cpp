@@ -167,6 +167,79 @@ static const string protocolJson5 = // Invalid policies
                         "issued" : "" } \
                   } \
               } });
+static const string protocolJsonNoAppURI =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "", \
+                    "productUri" : "", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+static const string protocolJsonNoProductURI =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "appURI", \
+                    "productUri" : "", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+static const string protocolJsonNoAppDesc =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "appURI", \
+                    "productUri" : "productURI", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+
 
 static string strReplacer(const string& src, const string& textOld, const string& textNew) {
     size_t pos = src.find(textOld);
@@ -248,6 +321,9 @@ TEST(S2OPCUA, OpcUa_Protocol) {
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson9), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson10), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson11), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoAppURI), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoProductURI), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoAppDesc), exception);
 }
 
 TEST(S2OPCUA, OpcUa_Server_Config) {
