@@ -32,6 +32,7 @@ extern "C" {
 
 /// Project includes
 #include "opcua_server_config.h"
+#include "opcua_server_tools.h"
 
 using SOPC_tools::toString;
 using SOPC_tools::getArray;
@@ -41,8 +42,8 @@ using SOPC_tools::getObject;
 extern "C" {
     extern const bool sopc_embedded_is_const_addspace;
 
-    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];
-    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;
+    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];  //NOSONAR  Interface with S2OPC
+    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;  //NOSONAR  Interface with S2OPC
 }
 
 namespace {
@@ -66,8 +67,10 @@ s2opc_north::NodeVect_t getNS0(void) {
 }
 
 /**************************************************************************/
-static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& text) {
-    static const SOPC_LocalizedText emptyLocal = {{0, 0, NULL}, {0, 0, NULL}, NULL};
+void toLocalizedText(SOPC_LocalizedText* localText, const std::string& text) {
+    static const SOPC_LocalizedText emptyLocal = {
+            {0, false, nullptr}, {0, false, nullptr}, nullptr
+    };
     *localText = emptyLocal;
 
     SOPC_String_InitializeFromCString(&localText->defaultText, text.c_str());
@@ -80,33 +83,36 @@ static void toLocalizedText(SOPC_LocalizedText* localText, const std::string& te
  * references which are statically generated but are also completed depending on configuration.
  */
 template <typename T>
-class GarbageCollectorC {
+class GarbageCollectorC {  //NOSONAR
  public:
-    typedef T* pointer;
+    GarbageCollectorC() = default;
+    using pointer =  T*;
     void reallocate(pointer* ptr, size_t oldSize, size_t newSize);
-    virtual ~GarbageCollectorC(void);
+    virtual ~GarbageCollectorC(void);  //NOSONAR
 
  private:
-    typedef map<pointer, bool>  ptrMap;  // Note that only key is used
+    GarbageCollectorC (const GarbageCollectorC&) = delete;
+    GarbageCollectorC& operator= (const GarbageCollectorC&) = delete;
+    using ptrMap = std::map<pointer, bool>;  // Note that only key is used
     ptrMap mAllocated;
 };
-static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;
+static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;   //NOSONAR
 
 template<typename T>
 void
 GarbageCollectorC<T>::
 reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
-    ASSERT(NULL != ptr);
+    ASSERT(nullptr != ptr);
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
-    *ptr = new T[newSize];
-    ASSERT(NULL != *ptr);
+    *ptr = new T[newSize];   //NOSONAR
+    ASSERT(nullptr != *ptr);
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
     if (it != mAllocated.end()) {
-        delete(oldPtr);
+        delete oldPtr;   //NOSONAR
         mAllocated.erase(it);
     }
     mAllocated.insert({*ptr, true});
@@ -116,21 +122,20 @@ template<typename T>
 GarbageCollectorC<T>::
 ~GarbageCollectorC(void) {
     for (auto alloc : mAllocated) {
-        delete alloc.first;
+        delete alloc.first;   //NOSONAR
     }
 }
 
 }   // namespace
 
 namespace {
-static const uint16_t nameSpace0(0);
-static const uint32_t serverIndex(0);
-static const SOPC_String String_NULL = {0, 0, NULL};
-static const SOPC_NodeId NodeId_Organizes = {SOPC_IdentifierType_Numeric, nameSpace0, 35};
-static const SOPC_NodeId NodeId_HasTypeDefinition = {SOPC_IdentifierType_Numeric, nameSpace0, 40};
-static const SOPC_NodeId NodeId_HasComponent = {SOPC_IdentifierType_Numeric, nameSpace0, 47};
-static const SOPC_NodeId NodeId_BaseDataVariableType = {SOPC_IdentifierType_Numeric, nameSpace0, 63};
-static const SOPC_NodeId NodeId_Root_Objects = {SOPC_IdentifierType_Numeric, nameSpace0, 85};
+const uint16_t nameSpace0(0);
+const uint32_t serverIndex(0);
+const SOPC_String String_NULL = {0, false, nullptr};
+const SOPC_NodeId NodeId_HasTypeDefinition = {SOPC_IdentifierType_Numeric, nameSpace0, 40};
+const SOPC_NodeId NodeId_HasComponent = {SOPC_IdentifierType_Numeric, nameSpace0, 47};
+const SOPC_NodeId NodeId_BaseDataVariableType = {SOPC_IdentifierType_Numeric, nameSpace0, 63};
+const SOPC_NodeId NodeId_Root_Objects = {SOPC_IdentifierType_Numeric, nameSpace0, 85};
 }
 
 namespace s2opc_north {
@@ -138,10 +143,49 @@ namespace s2opc_north {
 /**************************************************************************/
 CNode::
 CNode(SOPC_StatusCode defaultStatusCode) {
-    memset(&mNode, 0, sizeof(mNode));
-    mNode.node_class = OpcUa_NodeClass_Unspecified;     // Filled by child classes
-    mNode.value_status = defaultStatusCode;
-    mNode.value_source_ts = {0, 0};
+    memset(get(), 0, sizeof(SOPC_AddressSpace_Node));
+    get()->node_class = OpcUa_NodeClass_Unspecified;     // Filled by child classes
+    get()->value_status = defaultStatusCode;
+    get()->value_source_ts = {0, 0};
+}
+
+/**************************************************************************/
+void
+CNode::
+createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref,
+        const SOPC_NodeId& nodeId)const {
+    // create a reverse reference
+    const SOPC_NodeId& refTargetId(ref.TargetId.NodeId);
+    // Find matching node in 'nodes'
+    bool found(false);
+    for (const NodeInfo_t& loopInfoy : *nodes) {
+        SOPC_AddressSpace_Node* pNode(loopInfoy.first);
+        if (nullptr != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
+            // Insert space in target references
+            ASSERT(!found, "Several match for the same Node Id");
+            found = true;
+            // Initial setup provides RO-Mem allocation. Thus deallocation shall only be done for
+            // elements explicitly allocated here
+            const size_t oldSize(pNode->data.variable.NoOfReferences);
+            const size_t newSize(oldSize + 1);
+            referencesGarbageCollector.reallocate(&pNode->data.variable.References,
+                    oldSize, newSize);
+
+            // Fill new reference with inverted reference
+            OpcUa_ReferenceNode& reverse(pNode->data.variable.References[oldSize]);
+            reverse.IsInverse = !ref.IsInverse;
+            reverse.ReferenceTypeId = ref.ReferenceTypeId;
+            reverse.TargetId.NodeId = nodeId;
+            reverse.TargetId.ServerIndex = serverIndex;
+            reverse.TargetId.NamespaceUri = String_NULL;
+
+            ASSERT(newSize < UINT32_MAX);
+            pNode->data.variable.NoOfReferences = static_cast<uint32_t>(newSize);
+        }
+    }
+    if (!found) {
+        WARNING("No reverse reference found for nodeId '%s'", toString(nodeId).c_str());
+    }
 }
 
 /**************************************************************************/
@@ -149,47 +193,17 @@ void
 CNode::
 insertAndCompleteReferences(NodeVect_t* nodes,
         NodeMap_t* nodeMap, const std::string& typeId) {
-    const SOPC_NodeId& nodeId(mNode.data.variable.NodeId);
-    NodeInfo_t nodeInfo(&mNode, typeId);
-    nodes->push_back(nodeInfo);
-    nodeMap->emplace(toString(nodeId), nodeInfo);
+    SOPC_AddressSpace_Node& node(*get());
+    const SOPC_NodeId& nodeId(node.data.variable.NodeId);
+    NodeInfo_t refInfo(&node, typeId);
+    nodes->push_back(refInfo);
+    nodeMap->emplace(toString(nodeId), refInfo);
     // Find references and invert them
-    const uint32_t nbRef(mNode.data.variable.NoOfReferences);
+    const uint32_t nbRef(node.data.variable.NoOfReferences);
     for (uint32_t i = 0 ; i < nbRef; i++) {
-        const OpcUa_ReferenceNode& ref(mNode.data.variable.References[i]);
+        const OpcUa_ReferenceNode& ref(node.data.variable.References[i]);
         if (ref.TargetId.ServerIndex == serverIndex) {
-            const SOPC_NodeId& refTargetId(ref.TargetId.NodeId);
-            // create a reverse reference
-
-            // Find matching node in 'nodes'
-            bool found(false);
-            for (const NodeInfo_t& nodeInfo : *nodes) {
-                SOPC_AddressSpace_Node* pNode(nodeInfo.first);
-                if (NULL != pNode && SOPC_NodeId_Equal(&pNode->data.variable.NodeId, &refTargetId)) {
-                    // Insert space in target references
-                    ASSERT(!found, "Several match for the same Node Id");
-                    found = true;
-                    // Initial setup provides RO-Mem allocation. Thus deallocation shall only be done for
-                    // elements explicitly allocated here
-                    const size_t oldSize(pNode->data.variable.NoOfReferences);
-                    const size_t newSize(oldSize + 1);
-                    referencesGarbageCollector.reallocate(&pNode->data.variable.References,
-                            oldSize, newSize);
-
-                    // Fill new reference with inverted reference
-                    OpcUa_ReferenceNode& reverse(pNode->data.variable.References[oldSize]);
-                    reverse.IsInverse = !ref.IsInverse;
-                    reverse.ReferenceTypeId = ref.ReferenceTypeId;
-                    reverse.TargetId.NodeId = nodeId;
-                    reverse.TargetId.ServerIndex = serverIndex;
-                    reverse.TargetId.NamespaceUri = String_NULL;
-
-                    pNode->data.variable.NoOfReferences = newSize;
-                }
-            }
-            if (!found) {
-                WARNING("No reverse reference found for nodeId '%s'", toString(nodeId).c_str());
-            }
+            createReverseRef(nodes, ref, nodeId);
         }
     }
 }
@@ -198,7 +212,7 @@ insertAndCompleteReferences(NodeVect_t* nodes,
 CVarNode::
 CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId):
 CCommonVarNode(varInfo) {
-    OpcUa_VariableNode& variableNode = mNode.data.variable;
+    OpcUa_VariableNode& variableNode = get()->data.variable;
     variableNode.Value.BuiltInTypeId = sopcTypeId;
     variableNode.Value.DoNotClear = true;
 
@@ -208,7 +222,7 @@ CCommonVarNode(varInfo) {
 
     memset(&variableNode.Value.Value, 0, sizeof(variableNode.Value.Value));
 
-    mNode.value_status = (varInfo.mReadOnly ? OpcUa_BadWaitingForInitialData : GoodStatus);
+    get()->value_status = (varInfo.mReadOnly ? OpcUa_BadWaitingForInitialData : GoodStatus);
 }
 
 /**************************************************************************/
@@ -216,8 +230,8 @@ CCommonVarNode::
 CCommonVarNode(const CVarInfo& varInfo) {
     SOPC_ReturnStatus status;
 
-    mNode.node_class = OpcUa_NodeClass_Variable;
-    OpcUa_VariableNode& variableNode = mNode.data.variable;
+    get()->node_class = OpcUa_NodeClass_Variable;
+    OpcUa_VariableNode& variableNode = get()->data.variable;
     variableNode.NodeClass = OpcUa_NodeClass_Variable;
     variableNode.encodeableType = &OpcUa_VariableNode_EncodeableType;
     variableNode.AccessLevel = (varInfo.mReadOnly ? ReadOnlyAccess : ReadWriteAccess);
@@ -229,7 +243,8 @@ CCommonVarNode(const CVarInfo& varInfo) {
 
     // Node Id
     status = SOPC_NodeId_InitializeFromCString(
-            &variableNode.NodeId, varInfo.mNodeId.c_str(), varInfo.mNodeId.length());
+            &variableNode.NodeId, varInfo.mNodeId.c_str(),
+            static_cast<uint32_t>(varInfo.mNodeId.length()));
     ASSERT(status == SOPC_STATUS_OK, "Invalid NodeId : %s", varInfo.mNodeId.c_str());
 
     // Browse name
@@ -240,7 +255,7 @@ CCommonVarNode(const CVarInfo& varInfo) {
     ::toLocalizedText(&variableNode.Description, varInfo.mDescription);
 
     variableNode.NoOfReferences = 2;
-    variableNode.References = new OpcUa_ReferenceNode[variableNode.NoOfReferences];
+    variableNode.References = new OpcUa_ReferenceNode[variableNode.NoOfReferences];   //NOSONAR (managed by S2OPC)
 
     OpcUa_ReferenceNode* ref(variableNode.References);
     // Reference #0: Organized by Root.Objects
@@ -262,9 +277,9 @@ CCommonVarNode(const CVarInfo& varInfo) {
 
 /**************************************************************************/
 Server_AddrSpace::
-Server_AddrSpace(const std::string& json):
-    nodes(getNS0()) {
+Server_AddrSpace(const std::string& json) {
     using rapidjson::Value;
+    nodes = getNS0();
 
     /* "nodes" are initially set-up with namespace 0 default nodes.
      Now this will be completed with configuration-extracted data
@@ -298,7 +313,7 @@ Server_AddrSpace(const std::string& json):
                 const bool readOnly(SOPC_tools::pivotTypeToReadOnly(data.typeId));
                 const char* readOnlyStr(readOnly ? "RO" : "RW");
                 CVarInfo cVarInfo(nodeIdName, browseName, displayName, description, parent, readOnly);
-                CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));
+                CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));   //NOSONAR (deletion managed by S2OPC)
                 DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
                         LOGGABLE(nodeIdName), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
                 pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);
@@ -308,7 +323,8 @@ Server_AddrSpace(const std::string& json):
                     static const string replyAddr(nodeIdName + "_reply");
                     static const string replyDescr("Status of command '" + data.address +"'");
                     CVarInfo cVarInfoReply(replyAddr, replyAddr, replyAddr, replyDescr, parent, true);
-                    CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));
+                    // note: deletion handled by S2OPC
+                    CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));   //NOSONAR
                     DEBUG("Adding node data '%s' of type '%s-%d' (RO)",
                             LOGGABLE(replyAddr), "SOPC_String_Id", SOPC_String_Id);
                     pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);
@@ -322,13 +338,6 @@ Server_AddrSpace(const std::string& json):
 }
 
 /**************************************************************************/
-Server_AddrSpace::
-~Server_AddrSpace(void) {
-    // Note: nodes are freed automatically (See call to ::SOPC_AddressSpace_Create)
-}
-
-
-/**************************************************************************/
 const NodeInfo_t*
 Server_AddrSpace::
 getByNodeId(const string& nodeId)const {
@@ -336,7 +345,7 @@ getByNodeId(const string& nodeId)const {
     if (it != mByNodeId.end()) {
         return &(it->second);
     }
-    return NULL;
+    return nullptr;
 }
 
 }   // namespace s2opc_north

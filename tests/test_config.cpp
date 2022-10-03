@@ -167,6 +167,94 @@ static const string protocolJson5 = // Invalid policies
                         "issued" : "" } \
                   } \
               } });
+static const string protocolJsonNoAppURI =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "", \
+                    "productUri" : "", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+static const string protocolJsonNoProductURI =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "appURI", \
+                    "productUri" : "", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+static const string protocolJsonNoAppDesc =
+        QUOTE({"protocol_stack" : { "name" : "s2opcserver",\
+                "version":"1.0", \
+                "transport_layer":{ \
+                    "url" : "opc.tcp://localhost:4841", \
+                    "appUri" : "appURI", \
+                    "productUri" : "productURI", \
+                    "appDescription": "", \
+                    "localeId" : "en-US", \
+                    "namespaces" : [ "urn:S2OPC:localhost" ], \
+                    "policies" : [ \
+                      { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] } ], \
+                    "users" : {}, \
+                    "certificates" : { \
+                        "serverCertPath" : "server_2k_cert.der",        \
+                        "serverKeyPath" : "server_2k_key.pem", \
+                        "trusted_root" : [ "cacert.der" ],  \
+                        "trusted_intermediate" : [ ], \
+                        "revoked" : [ "cacrl.der" ], \
+                        "untrusted_root" : [ ], \
+                        "untrusted_intermediate" : [ ], \
+                        "issued" : [  ] } \
+                  } \
+              } });
+
+
+static string strReplacer(const string& src, const string& textOld, const string& textNew) {
+    size_t pos = src.find(textOld);
+    if (pos == string::npos) return src;
+    string result(src);
+    result.replace(pos, pos + textOld.length() - 1, textNew);
+    return result;
+}
+
+static const string protocolJson6 = strReplacer(protocolJsonOK, "protocol_stack", "PROTO");
+static const string protocolJson7 = strReplacer(protocolJsonOK, "server_2k_cert.der", "nocertxxx.der");
+static const string protocolJson8 = strReplacer(protocolJsonOK, "server_2k_key.pem", "nocertxxx.pem");
+static const string protocolJson9 = strReplacer(protocolJsonOK, "cacert.der", "nocert.der");
+static const string protocolJson10 = strReplacer(protocolJsonOK, "transport_layer", "transport_layerXXX");
+static const string protocolJson11 = strReplacer(protocolJsonOK, "username_None", "username_NoneXXX");
 
 TEST(S2OPCUA, OpcUa_Protocol) {
     ERROR("*** TEST S2OPCUA OpcUa_Protocol");
@@ -227,6 +315,15 @@ TEST(S2OPCUA, OpcUa_Protocol) {
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson3), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson4), exception);
     ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson5), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson6), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson7), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson8), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson9), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson10), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJson11), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoAppURI), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoProductURI), exception);
+    ASSERT_THROW(proto = new OpcUa_Protocol(protocolJsonNoAppDesc), exception);
 }
 
 TEST(S2OPCUA, OpcUa_Server_Config) {
@@ -250,9 +347,10 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
     // Check that the nodes provided in configuration are in address space
     const SOPC_AddressSpace_Node* pNode = nullptr;
 
-    it = std::find_if(config.addrSpace.nodes.begin(), config.addrSpace.nodes.end(),
+    it = std::find_if(config.addrSpace.getNodes().begin(),
+            config.addrSpace.getNodes().end(),
             nodeVarFinder("ns=1;s=/label1/addr1"));
-    GTEST_ASSERT_NE(it, config.addrSpace.nodes.end());
+    GTEST_ASSERT_NE(it, config.addrSpace.getNodes().end());
 
     const NodeInfo_t& nodeInfo(*it);
     pNode = nodeInfo.first;

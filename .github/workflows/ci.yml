@@ -32,18 +32,6 @@ jobs:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - name: Download and install EXPAT
-        env:
-          EXPAT_REPO_URL: "https://github.com/libexpat/libexpat.git"
-        run: |
-          # Install EXPAT
-          cd $GITHUB_WORKSPACE/..
-          git clone ${{ env.EXPAT_REPO_URL }}
-          cd libexpat/expat
-          mkdir -p build && cd build 
-          cmake -D CMAKE_INSTALL_PREFIX=/usr/local -D EXPAT_BUILD_PKGCONFIG=ON -D EXPAT_ENABLE_INSTALL=ON -D EXPAT_SHARED_LIBS=ON ..
-          make -j8
-          sudo make install -j4
       - name: Download and install LIBCHECK
         env:
           LIBCHECK_REPO_URL: "https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz"
@@ -53,23 +41,32 @@ jobs:
           wget ${{ env.LIBCHECK_REPO_URL }}
           tar xf check-0.15.2.tar.gz 
           cd check-0.15.2
-          patch CMakeLists.txt $GITHUB_WORKSPACE/fledge-north-s2opcua/patches/check-0.15.2.patch
-          cd build && cmake .. && make -j4
+          patch CMakeLists.txt $GITHUB_WORKSPACE/patches/check-0.15.2.patch
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j4
           sudo make install
+      - name: Download and install CPPLINT
+        env:
+          CPPLINT_VERSION: "1.6.1"
+        run: |
+          pip install cpplint==${{env.CPPLINT_VERSION}}
       - name: Download and install MBEDTLS
         env:
-          MBEDTLS_REPO_URL: "https://github.com/ARMmbed/mbedtls/archive/refs/tags/v2.16.12.tar.gz"
+          MBEDTLS_VERSION: "2.28.1"
+          MBEDTLS_REPO_URL: "https://github.com/ARMmbed/mbedtls/archive/refs/tags"
         run: |
           # Install MBEDTLS
           cd $GITHUB_WORKSPACE/..
-          wget  ${{ env.MBEDTLS_REPO_URL }}
-          tar xf v2.16.12.tar.gz
-          cd mbedtls-2.16.12
+          wget  ${{ env.MBEDTLS_REPO_URL }}/v${{ env.MBEDTLS_VERSION}}.tar.gz
+          tar xf v${{ env.MBEDTLS_VERSION}}.tar.gz
+          cd mbedtls-${{ env.MBEDTLS_VERSION}}
           mkdir build
           cd build
-          cmake -DBUILD_TESTS=NO -DBUILD_EXAMPLES=NO ..
-          make -j4
-          sudo make install -j4
+          cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_EXAMPLES=NO -DCMAKE_BUILD_TYPE=Release ..
+          make -j8
+          sudo make install
       - name: Download and set up sonar-scanner
         env:
           SONAR_SCANNER_DOWNLOAD_URL: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
@@ -85,6 +82,20 @@ jobs:
           curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${{ env.BUILD_WRAPPER_DOWNLOAD_URL }}
           unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
           echo "$HOME/.sonar/build-wrapper-linux-x86" >> $GITHUB_PATH 
+      - name: Download and install s2opc
+        env:
+          S2OPC_REPO_URL: "https://gitlab.com/systerel/S2OPC.git" 
+          S2OPC_SHA: "073040628d4f50de7ef3e2f649dbc20f8ef806e7" 
+        run: |
+          # Install S2OPC
+          cd $GITHUB_WORKSPACE/..
+          git clone --branch master --single-branch ${{ env.S2OPC_REPO_URL }}
+          cd S2OPC
+          git checkout ${{ env.S2OPC_SHA }}
+          git show --oneline --shortstat 
+          git apply $GITHUB_WORKSPACE/patches/S2OPC.patch
+          WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh
+          sudo make install -C build 
       - name: Download and install Fledge
         env:
           FLEDGE_REPO_URL: "https://github.com/fledge-iot/fledge/archive/refs/tags/v2.0.0.zip" 
@@ -106,20 +117,6 @@ jobs:
           sudo cp -prv C/thirdparty/rapidjson/include/rapidjson/* /usr/include/fledge/rapidjson/
           sudo mkdir -p /usr/lib/fledge/
           sudo cp -prv /usr/local/fledge/lib/* /usr/lib/fledge/
-      - name: Download and install s2opc
-        env:
-          S2OPC_REPO_URL: "https://gitlab.com/systerel/S2OPC.git" 
-          S2OPC_SHA: "073040628d4f50de7ef3e2f649dbc20f8ef806e7" 
-        run: |
-          # Install S2OPC
-          cd $GITHUB_WORKSPACE/..
-          git clone --branch master --single-branch ${{ env.S2OPC_REPO_URL }}
-          cd S2OPC
-          git checkout ${{ env.S2OPC_SHA }}
-          git show --oneline --shortstat 
-          git apply $GITHUB_WORKSPACE/fledge-north-s2opcua/patches/S2OPC.patch
-          WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh
-          sudo make install -C build 
       - name: Download and install Google Unit Test framework
         run: |
           sudo apt-get install libgtest-dev
@@ -130,24 +127,63 @@ jobs:
       - name: Download and install gcovr
         run: |
           sudo apt-get install gcovr
-      - name: Run build-wrapper
+      - name: Build and coding rules
+        env:
+          FLEDGE_SRC: "$GITHUB_WORKSPACE/../fledge" 
         run: |
-          export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib
-          export FLEDGE_INSTALL=$GITHUB_WORKSPACE/fledge
+          export FLEDGE_SRC=${{ env.FLEDGE_SRC }}
+          export FLEDGE_INSTALL=/usr/local/fledge
+          export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
+          export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
+          make clean
           make build
           make check
           make cpplint
-          make install_plugin
-          make unit_tests
-          
+      - name: Run unit tests
+        env:
+          FLEDGE_SRC: "$GITHUB_WORKSPACE/../fledge" 
+        run: |
+          export FLEDGE_SRC=${{ env.FLEDGE_SRC }}
+          export FLEDGE_INSTALL=/usr/local/fledge
+          export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
+          export FLEDGE_DATA=$FLEDGE_ROOT/data
+          export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
+          make unit_tests || (tail -n 2000 /var/log/syslog && false)
+      - name: Archive HTML coverage results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: html-coverage-report
+          path: |
+            build/tests/RunTests_coverage_html
+      - name: Run build-wrapper
+        env:
+          FLEDGE_SRC: "$GITHUB_WORKSPACE/../fledge" 
+        run: |
+          export FLEDGE_SRC=${{ env.FLEDGE_SRC }}
+          export FLEDGE_INSTALL=/usr/local/fledge
+          export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
+          export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
+          make clean
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Coverage
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
-          cd build 
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/tests --config Release
+          cd build/tests
           make
-          make iec104_coverage_sonar
+          make RunTests_coverage_sonar
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sonar-scanner --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.organization="fledge-power" --define sonar.projectKey="fledge-power_fledge-south-iec104" --define sonar.inclusions="**/plugin.cpp,**/iec104.cpp,**/include/iec104.h" --define sonar.coverageReportPaths="build/iec104_coverage_sonar-sonarqube.xml"
+          sonar-scanner --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.organization="fledge-power" --define sonar.projectKey="fledge-power_fledge-north-s2opcua" --define sonar.inclusions="**/src/plugin.cpp,**/src/opcua_server_*.cpp,**/include/opcua_server*.h" --define sonar.coverageReportPaths="build/tests/RunTests_coverage_sonar-sonarqube.xml"
+
+      - name: Archive code coverage results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: |
+            build/tests/RunTests_coverage_sonar-sonarqube.xml
+            build/tests/default_config.inc
+            build/tests/base_addrspace.c
+          

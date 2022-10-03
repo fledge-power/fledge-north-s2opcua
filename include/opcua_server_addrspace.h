@@ -18,6 +18,10 @@
 #include <string>
 #include <utility>
 
+// Fledge headers
+#include "logger.h"
+#include "rapidjson/document.h"
+
 extern "C" {
 // S2OPC headers
 #include "sopc_assert.h"
@@ -26,14 +30,10 @@ extern "C" {
 #include "sopc_address_space.h"
 };
 
-// Fledge headers
-#include "logger.h"
-#include "rapidjson/document.h"
-
 extern "C" {
 // Nano NS0 namespace
-extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;
-extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];
+extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;   //NOSONAR  Interface with S2OPC
+extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];   //NOSONAR  Interface with S2OPC
 }
 
 namespace s2opc_north {
@@ -44,11 +44,11 @@ static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
 /** NodeInfo_t = <@spceNode, typeid> */
-typedef std::pair<SOPC_AddressSpace_Node*, std::string> NodeInfo_t;
+using NodeInfo_t = std::pair<SOPC_AddressSpace_Node*, std::string>;
 /** vector of \a NodeInfo_t */
-typedef std::vector<NodeInfo_t> NodeVect_t;
+using NodeVect_t = std::vector<NodeInfo_t>;
 /** NodeInfo_t = <NodeId, NodeInfo_t> */
-typedef std::unordered_map<string, NodeInfo_t> NodeMap_t;
+using NodeMap_t = std::unordered_map<string, NodeInfo_t>;
 
 /**************************************************************************/
 struct CVarInfo {
@@ -82,8 +82,14 @@ class CNode {
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
     void insertAndCompleteReferences(NodeVect_t* nodes,
             NodeMap_t* nodeMap, const std::string& typeId);
+
  protected:
     explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
+
+ private:
+    void createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref,
+            const SOPC_NodeId& nodeId)const;
+
     SOPC_AddressSpace_Node mNode;
 };  // class CNode
 
@@ -132,16 +138,21 @@ class Server_AddrSpace{
     /**
      * \brief Deletes an address space
      */
-    virtual ~Server_AddrSpace(void);
+    virtual ~Server_AddrSpace(void) = default;
 
+    const NodeInfo_t* getByNodeId(const string& nodeId)const;
+
+ public:
+    inline const NodeVect_t& getNodes(void)const {return nodes;}
+    inline NodeVect_t& getNodes(void) {return nodes;}
+
+ private:
     /**
      * The content of the address space.
      */
     NodeVect_t nodes;
+    // Note: nodes are freed automatically (See call to ::SOPC_AddressSpace_Create)
 
-    const NodeInfo_t* getByNodeId(const string& nodeId)const;
-
- private:
     NodeMap_t mByNodeId;
 };  // Server_AddrSpace
 

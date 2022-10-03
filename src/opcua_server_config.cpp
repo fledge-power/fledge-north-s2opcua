@@ -56,21 +56,21 @@ using SOPC_tools::loggableString;
 namespace {
 
 // Plugin data storage
-static const std::string dataDir(getDataDir());
+const std::string dataDir(getDataDir());
 // logs folder
-static const std::string logDir(dataDir + "/logs/");
+const std::string logDir(dataDir + "/logs/");
 // Certificate folder
-static const std::string certDir(dataDir + "/etc/certs/s2opc_srv/");
-static const std::string certDirServer(::certDir + "server/");
-static const std::string certDirTrusted(::certDir + "trusted/");
-static const std::string certDirUntrusted(::certDir + "untrusted/");
-static const std::string certDirIssued(::certDir + "issued/");
-static const std::string certDirRevoked(::certDir + "revoked/");
+const std::string certDir(dataDir + "/etc/certs/s2opc_srv/");
+const std::string certDirServer(::certDir + "server/");
+const std::string certDirTrusted(::certDir + "trusted/");
+const std::string certDirUntrusted(::certDir + "untrusted/");
+const std::string certDirIssued(::certDir + "issued/");
+const std::string certDirRevoked(::certDir + "revoked/");
 
 
 /**************************************************************************/
 /** \brief reads a value from configuration, or raise an error if not found*/
-static std::string
+std::string
 extractString(const ConfigCategory& config, const std::string& name) {
     ASSERT(config.itemExists(name), "Missing config parameter:'%s'", LOGGABLE(name));
 
@@ -79,7 +79,7 @@ extractString(const ConfigCategory& config, const std::string& name) {
 }
 
 /**************************************************************************/
-static SOPC_tools::CStringVect extractCStrArray(
+SOPC_tools::CStringVect extractCStrArray(
         const rapidjson::Value& value, const char* section,
         const std::string & prefix = "", const std::string& suffix = "") {
     using rapidjson::Value;
@@ -97,19 +97,17 @@ static SOPC_tools::CStringVect extractCStrArray(
 }
 
 /**************************************************************************/
-static StringMap_t extractUsersPasswords(const rapidjson::Value& config) {
+StringMap_t extractUsersPasswords(const rapidjson::Value& config) {
     using rapidjson::Document;
     using rapidjson::Value;
     StringMap_t result;
-    Value::ConstMemberIterator it;
-
     ASSERT(config.IsObject(),
             "Invalid users configuration.");
 
-    for (it = config.MemberBegin() ; it != config.MemberEnd(); it++) {
+    for (Value::ConstMemberIterator  it = config.MemberBegin() ; it != config.MemberEnd(); it++) {
         const char* user = it->name.GetString();
         const char* pass = it->value.GetString();
-        result.push_back(std::make_pair(user, pass));
+        result.emplace_back(SOPC_tools::StringPair_t{user, pass});
     }
 
     return result;
@@ -133,12 +131,8 @@ address(json[JSON_PROT_ADDR].GetString()),
 typeId(json[JSON_PROT_TYPEID].GetString()) {
 }
 
-ExchangedDataC::
-~ExchangedDataC(void) {
-}
-
 bool
-ExchangedDataC::internalChecks(const rapidjson::Value& json) {
+ExchangedDataC::internalChecks(const rapidjson::Value& json)const {
     ASSERT(json.IsObject(), "datapoint protocol description must be JSON");
     ASSERT(json.HasMember(JSON_PROT_NAME) && json[JSON_PROT_NAME].IsString()
             , "datapoint protocol description must have a 'name' key defining a STRING");
@@ -147,9 +141,11 @@ ExchangedDataC::internalChecks(const rapidjson::Value& json) {
         throw NotAnS2opcInstance();
     }
     ASSERT(json.HasMember(JSON_PROT_ADDR) && json[JSON_PROT_ADDR].IsString()
-            , "datapoint protocol description must have a '" JSON_PROT_ADDR "' key defining a STRING");
+            , "datapoint protocol description must have a '%s' key defining a STRING",
+            JSON_PROT_ADDR);
     ASSERT(json.HasMember(JSON_PROT_TYPEID) && json[JSON_PROT_TYPEID].IsString()
-            , "datapoint protocol description must have a '" JSON_PROT_TYPEID "' key defining a STRING");
+            , "datapoint protocol description must have a '%s' key defining a STRING",
+            JSON_PROT_TYPEID);
     return true;
 }
 
@@ -194,10 +190,6 @@ users(extractUsersPasswords(mTransport["users"])) {
             LOGGABLE(serverKeyPath));
 }
 
-/**************************************************************************/
-OpcUa_Protocol::
-~OpcUa_Protocol(void) {
-}
 
 /**************************************************************************/
 rapidjson::Document
@@ -227,11 +219,11 @@ name(modeStr + "/" + policyStr) {
 
     mode = (SOPC_tools::toSecurityMode(modeStr));
     policy = (SOPC_tools::toSecurityPolicy(policyStr));
-    for (const Value& policy : userPolicies) {
-        const string userPolicyStr(getString(policy, "userPolicies"));
+    for (const Value& loopPolicy : userPolicies) {
+        const string userPolicyStr(getString(loopPolicy, "userPolicies"));
         DEBUG("Identify user token policy: '%s'", LOGGABLE(userPolicyStr));
         const SOPC_UserTokenPolicy* userPolicy(SOPC_tools::toUserToken(userPolicyStr));
-        ASSERT(NULL != userPolicy,
+        ASSERT(nullptr != userPolicy,
                 "Unknown/invalid user policy : '%s'", LOGGABLE(userPolicyStr));
         userTokens.push_back(userPolicy);
     }
@@ -242,13 +234,13 @@ OpcUa_Protocol::PoliciesVect::
 PoliciesVect(const rapidjson::Value& transport) {
     using rapidjson::Value;
     const Value::ConstArray& policies(getArray(transport, "policies", "transport_layer"));
-    for (const Value& policy : policies) {
-        checkObject(policy, "'policies' elements");
-        const string secuPolicyStr(getString(policy, "securityPolicy", "policies"));
-        const string secuModeStr(getString(policy, "securityMode", "policies"));
-        const rapidjson::Value::ConstArray userPolicies(getArray(policy, "userPolicies", "policies"));
+    for (const Value& loopPolicy : policies) {
+        checkObject(loopPolicy, "'policies' elements");
+        const string secuPolicyStr(getString(loopPolicy, "securityPolicy", "policies"));
+        const string secuModeStr(getString(loopPolicy, "securityMode", "policies"));
+        const rapidjson::Value::ConstArray userPolicies(getArray(loopPolicy, "userPolicies", "policies"));
 
-        this->push_back(PolicyS(secuModeStr, secuPolicyStr, userPolicies));
+        this->emplace_back(secuModeStr, secuPolicyStr, userPolicies);
     }
 }
 
@@ -256,16 +248,16 @@ PoliciesVect(const rapidjson::Value& transport) {
 void
 OpcUa_Protocol::
 setupServerSecurity(SOPC_Endpoint_Config* ep)const {
-    for (const PolicyS& policy : policies) {
-        DEBUG("process policy %s", LOGGABLE(policy.name));
-        SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, policy.policy);
-        ASSERT(sp != NULL);
+    for (const PolicyS& loopPolicy : policies) {
+        DEBUG("process policy %s", LOGGABLE(loopPolicy.name));
+        SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, loopPolicy.policy);
+        ASSERT(sp != nullptr);
 
-        SOPC_ReturnStatus status = SOPC_SecurityConfig_SetSecurityModes(sp, policy.mode);
+        SOPC_ReturnStatus status = SOPC_SecurityConfig_SetSecurityModes(sp, loopPolicy.mode);
         ASSERT(status == SOPC_STATUS_OK,
                 "SOPC_SecurityConfig_SetSecurityModes failed");
 
-        for (const SOPC_UserTokenPolicy* userToken : policy.userTokens) {
+        for (const SOPC_UserTokenPolicy* userToken : loopPolicy.userTokens) {
             status = SOPC_SecurityConfig_AddUserTokenPolicy(sp, userToken);
             ASSERT(status == SOPC_STATUS_OK,
                     "SOPC_SecurityConfig_AddUserTokenPolicy returned code %s(%d)",
@@ -279,17 +271,12 @@ OpcUa_Server_Config::
 OpcUa_Server_Config(const ConfigCategory& configData):
         withLogs(SOPC_tools::toUpperString(extractString(configData, "logging")) != "NONE"),
         logLevel(SOPC_tools::toSOPC_Log_Level(extractString(configData, "logging"))),
-        logPath(::logDir),
+        logPath(::logDir),    //NOSONAR logDir is not visible in .h level
         addrSpace(extractString(configData, "exchanged_data")) {
     INFO("OpcUa_Server_Config() OK.");
     INFO("Conf : logPath = %s", LOGGABLE(logPath));
     DEBUG("Conf : logLevel = %d", logLevel);
     DEBUG("Conf : withLogs = %d", withLogs);
-}
-
-/**************************************************************************/
-OpcUa_Server_Config::
-~OpcUa_Server_Config(void) {
 }
 
 }   // namespace s2opc_north

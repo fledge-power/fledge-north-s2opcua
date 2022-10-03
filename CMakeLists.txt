@@ -103,8 +103,11 @@ if (FLEDGE_INSTALL)
 	install(TARGETS ${PROJECT_NAME} DESTINATION ${FLEDGE_INSTALL}/plugins/${PLUGIN_TYPE}/${PROJECT_NAME})
 endif()
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage" OR "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
   add_subdirectory(tests)
-else()
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  set(CMAKE_CXX_FLAGS "-std=c++11 -O0")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
   set(CMAKE_CXX_FLAGS "-std=c++11 -O3")
 endif()
+

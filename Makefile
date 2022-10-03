@@ -2,20 +2,21 @@
 Q=@
 PLUGIN_TASK_CONF='{"name": "s2opcua_server","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 10,"schedule_enabled": true}'
 PLUGIN_SERV_CONF='{"config":{}, "enabled" :"true", "name":"s2opcua_service", "plugin":"s2opcua", "type":"north"}'
-CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11'
+CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11,-whitespace/comments'
 
 all: build install_plugin # insert_task
 build:
 	$(Q)mkdir -p build
-	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
+	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Release -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
 	$(Q)make -C build -j4
-unit_tests: install_plugin
+	
+unit_tests: install_certs
 	$(Q)rm -rf build/tests/RunTests_coverage_html
 	$(Q)mkdir -p build/tests
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
-	$(Q)make -C build -j4
-	$(Q)make -C build/tests RunTests_coverage_html
+	$(Q)make -C build/tests RunTests_coverage_html -j4
 	@echo "See unit tests coverage result in build/tests/RunTests_coverage_html/index.html"
+
 clean:
 	$(Q)rm -fr build
 log:
@@ -27,13 +28,15 @@ check:
 	$(Q)! [ -z "$(FLEDGE_SRC)" ] || (echo "FLEDGE_SRC not set" && false)
 	$(Q)$(FLEDGE_SRC)/cmake_build/C/plugins/utils/get_plugin_info build/libs2opcua.so plugin_info 2> /tmp/get_plugin_info.tmp
 	$(Q)! ([ -s /tmp/get_plugin_info.tmp ] && cat /tmp/get_plugin_info.tmp)
-        
-install_plugin: check
+
+install_certs:
+	@echo "Install demo certificates to $(FLEDGE_ROOT)/data..."
+	$(Q)mkdir -p $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/ > /dev/null
+	$(Q)cp -arf ./samples/cert/* $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/
+
+install_plugin: check install_certs
 	@echo "Install plugin..."
-	$(Q)make -C build install
-	@echo "Install demo certificates..."
-	$(Q)mkdir -p $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/ > /dev/null
-	$(Q)cp -arf ./samples/cert/* $(FLEDGE_INSTALL)/data/etc/certs/s2opc_srv/
+	$(Q)sudo make -C build install
 	
 insert_task: del_plugin
 	@echo "Insert plugin service in Fledge as task..."
@@ -54,5 +57,14 @@ del_plugin:
 	
 cpplint:
 	$(Q)cpplint --output=eclipse --repository=src --linelength=120 --filter=$(CPPLINT_EXCLUDE) --exclude=src/base_addrspace.c src/* include/*
-		
-.PHONY: all clean build check del_plugin install_plugin insert_service insert_task cpplint
+
+test_sonar:
+	$(Q)~/dev/.sonar/sonar-scanner-4.6.1.2450-linux/bin/sonar-scanner  \
+          --define sonar.host.url="https://sonarcloud.io" \
+          --define sonar.cfamily.build-wrapper-output=${BUILD_WRAPPER_OUT_DIR}\
+          --define sonar.organization="fledge-power"\
+          --define sonar.projectKey="fledge-power_fledge-north-s2opcua"\
+          --define sonar.inclusions="**/src/plugin.cpp,**/src/opcua_server_*.cpp,**/include/opcua_server*.h"\
+          --define sonar.coverageReportPaths="build/tests/RunTests_coverage_sonar-sonarqube.xml"
+	
+.PHONY: all clean build check del_plugin install_certs install_plugin insert_service insert_task cpplint unit_tests

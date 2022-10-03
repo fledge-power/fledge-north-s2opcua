@@ -92,7 +92,7 @@ static void SOPC_LocalServiceAsyncRespCallback(SOPC_EncodeableType* encType, voi
 static SOPC_ReturnStatus authentication_check(SOPC_UserAuthentication_Manager* authn,
                                               const SOPC_ExtensionObject* token,
                                               SOPC_UserAuthentication_Status* authenticated) {
-    assert(NULL != token && NULL != authenticated && NULL != authn);
+    assert(nullptr != token && nullptr != authenticated && nullptr != authn);
     const s2opc_north::OPCUA_Server& server = *reinterpret_cast<const s2opc_north::OPCUA_Server*>(authn->pData);
 
     const SOPC_tools::StringMap_t& users(server.mProtocol.users);
@@ -139,7 +139,7 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
         OpcUa_WriteValue* writeValue,
         SOPC_StatusCode writeStatus) {
     s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
-    if (srv != NULL) {
+    if (srv != nullptr) {
         if (SOPC_STATUS_OK == writeStatus) {
             srv->writeNotificationCallback(callCtxPtr, writeValue);
         } else {
@@ -151,16 +151,15 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
 /**************************************************************************/
 static void serverStopped_Fct(SOPC_ReturnStatus status) {
     s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
-    if (srv != NULL) {
+    if (srv != nullptr) {
         WARNING("Server stopped!");
         srv->setStopped();
     }
-#warning "TODO : shall this be monitored?"
 }
 
 /**************************************************************************/
 static std::string toString(const SOPC_User* pUser) {
-    if (pUser != NULL && SOPC_User_IsUsername(pUser)) {
+    if (pUser != nullptr && SOPC_User_IsUsername(pUser)) {
         const SOPC_String* str(SOPC_User_GetUsername(pUser));
         if (str) {
             return std::string(SOPC_String_GetRawCString(str));
@@ -207,7 +206,7 @@ static uint64_t toInteger(const DatapointValue& value) {
         return static_cast<uint64_t>(value.toInt());
     } else if (value.getType() == DatapointValue::T_STRING) {
         try {
-            return stoll(value.toStringValue(), NULL, 0);
+            return stoll(value.toStringValue(), nullptr, 0);
         }
         catch(const exception &) {
             WARNING("Could not convert STRING %s to an INTEGER value. Using '0'",
@@ -417,7 +416,7 @@ namespace s2opc_north {
 using SOPC_tools::statusCodeToCString;
 
 /**************************************************************************/
-OPCUA_Server* OPCUA_Server::mInstance = NULL;
+OPCUA_Server* OPCUA_Server::mInstance = nullptr;
 /**************************************************************************/
 OPCUA_Server::
 OPCUA_Server(const ConfigCategory& configData):
@@ -430,7 +429,7 @@ OPCUA_Server(const ConfigCategory& configData):
     m_nbMillisecondShutdown(2) {
     SOPC_ReturnStatus status;
 
-    ASSERT(mInstance == NULL, "OPCUA_Server may not be instanced twice within the same plugin");
+    ASSERT(mInstance == nullptr, "OPCUA_Server may not be instanced twice within the same plugin");
 
     // Configure the server according to mConfig
 
@@ -447,7 +446,7 @@ OPCUA_Server(const ConfigCategory& configData):
             "SOPC_HelperConfigServer_SetNamespaces returned code %s(%d)",
             statusCodeToCString(status), status);
 
-    const char* localesArray[2] = {mProtocol.localeId.c_str(), NULL};
+    const char* localesArray[2] = {mProtocol.localeId.c_str(), nullptr};
     status = SOPC_HelperConfigServer_SetLocaleIds(1, localesArray);
     ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");
 
@@ -479,11 +478,11 @@ OPCUA_Server(const ConfigCategory& configData):
             statusCodeToCString(status), status);
 
     // Set PKI configuration
-    char* lPathsTrustedLinks[] = {NULL};
-    char* lPathsUntrustedRoots[] = {NULL};
-    char* lPathsUntrustedLinks[] = {NULL};
-    char* lPathsIssuedCerts[] = {NULL};
-    SOPC_PKIProvider* pkiProvider = NULL;
+    char* lPathsTrustedLinks[] = {nullptr};
+    char* lPathsUntrustedRoots[] = {nullptr};
+    char* lPathsUntrustedLinks[] = {nullptr};
+    char* lPathsIssuedCerts[] = {nullptr};
+    SOPC_PKIProvider* pkiProvider = nullptr;
 
     // Certificates presence is checked beforehand because S2OPC PKI implementation
     // has no ability to log properly the defaults.
@@ -515,7 +514,7 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
     ASSERT_NOT_NULL(addSpace);
 
-    const NodeVect_t& nodes(mConfig.addrSpace.nodes);
+    const NodeVect_t& nodes(mConfig.addrSpace.getNodes());
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
     for (const NodeInfo_t& nodeInfo : nodes) {
         status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);
@@ -532,7 +531,7 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // User Management configuration
     SOPC_UserAuthentication_Manager* authenticationManager = new SOPC_UserAuthentication_Manager;
-    ASSERT(authenticationManager != NULL && authorizationManager != NULL);
+    ASSERT(authenticationManager != nullptr && authorizationManager != nullptr);
 
     memset(authenticationManager, 0, sizeof (*authenticationManager));
 
@@ -614,7 +613,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     using SOPC_tools::toString;
     const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
     const string nodeName(toString(writeValue->NodeId));
-    if (NULL != pUser) {
+    if (nullptr != pUser) {
         const std::string username(toString(pUser));
         writeEventNotify(username);
         INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
@@ -622,7 +621,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         writeEventNotify("");
     }
 
-    if (m_oper != NULL) {
+    if (m_oper != nullptr) {
         // Find the nodeId
         const NodeInfo_t* nodeInfo = mConfig.addrSpace.getByNodeId(nodeName);
 
@@ -665,7 +664,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
 void
 OPCUA_Server::
 asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
-    if (writeResp == NULL) return;
+    if (writeResp == nullptr) return;
 
     SOPC_StatusCode status;
 
@@ -676,7 +675,6 @@ asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
             WARNING("Internal data update[%d] failed with code 0x%08X", i, status);
         }
     }
-#warning "TODO : do we need to manage failures ?"
 }
 
 /**************************************************************************/
@@ -742,7 +740,7 @@ updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
     setupVariant(&opcDv.Value, dv, typeId);
 
     status = SOPC_WriteRequest_SetWriteValue(request, 0, nodeId, SOPC_AttributeId_Value,
-            NULL, &opcDv);
+            nullptr, &opcDv);
     if (status != SOPC_STATUS_OK) {
         WARNING("SetWriteValue failed with code  %s(%d)",
             statusCodeToCString(status), status);
@@ -765,7 +763,7 @@ send(const Readings& readings) {
 
     // Loop over all readings
     for (Reading* reading : readings) {
-        if (NULL == reading) {continue;}
+        if (nullptr == reading) {continue;}
         vector<Datapoint*>& dataPoints = reading->getReadingData();
         const string assetName = reading->getAssetName();
 
@@ -795,7 +793,7 @@ send(const Readings& readings) {
                     if (attrVal.getType() == DatapointValue::T_STRING) {
                         typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
                     }
-                } else if (dpName == "do_nodeid" && nodeId == NULL) {
+                } else if (dpName == "do_nodeid" && nodeId == nullptr) {
                     // A node Id is either a string or a integer (NS0)
                     if (attrVal.getType() == DatapointValue::T_STRING) {
                         nodeId = SOPC_tools::createNodeId(attrVal.toStringValue());
@@ -805,7 +803,7 @@ send(const Readings& readings) {
                     } else {
                         WARNING("do_nodeid ignored because not of type 'T_STRING' or 'T_INTEGER'");
                     }
-                } else if (dpName == "do_value" && value == NULL) {
+                } else if (dpName == "do_value" && value == nullptr) {
                     value = new DatapointValue(attrVal);
                 } else if (dpName == "do_quality") {
                     quality = static_cast<SOPC_StatusCode>(::toInteger(attrVal));
@@ -814,7 +812,7 @@ send(const Readings& readings) {
                 }
             }
 
-            if (value != NULL && nodeId != NULL && typeId != SOPC_Null_Id) {
+            if (value != nullptr && nodeId != nullptr && typeId != SOPC_Null_Id) {
                 updateAddressSpace(nodeId, typeId, value, quality, ts);
             } else {
                 WARNING("Skipped sending data because all fields were not provided or valid");

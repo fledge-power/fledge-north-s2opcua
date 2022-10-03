@@ -16,14 +16,15 @@ project(RunTests)
   include(CodeCoverage)
   append_coverage_compiler_flags()
 
-# Using -O1 (at least) is mandatory to avoid false reports of GCOV on vector initializers
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -O1")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1")
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+  set(GCOVR_ADDITIONAL_ARGS "--exclude-unreachable-branches" "--exclude-throw-branches" )
+  
   setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
                                       EXECUTABLE RunTests
                                       DEPENDENCIES RunTests
-                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/../src"
-                                      EXCLUDE "tests/*"
+                                      BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/.."
+                                      EXCLUDE "tests/*" "build/*"
   )    
 
   setup_target_for_coverage_gcovr_html(NAME "${PROJECT_NAME}_coverage_html"
@@ -55,6 +56,16 @@ add_custom_command(
   VERBATIM
 )
 	
+# Generation of JSON default file
+set_source_files_properties(default_config.inc PROPERTIES GENERATED TRUE)
+add_custom_command(
+  OUTPUT default_config.inc
+  DEPENDS ${GEN_SRC_DIR}/include/default_config.json ${GEN_SRC_DIR}/mkjson
+  COMMAND ${GEN_SRC_DIR}/mkjson plugin_default_config ${GEN_SRC_DIR}/include/default_config.json default_config.inc 
+  COMMENT "Generating JSON default configuration file"
+  VERBATIM
+)
+	
 # Generation of AddressSpace NS0 file
 set_source_files_properties(base_addrspace.c PROPERTIES GENERATED TRUE)
 add_custom_command(
@@ -71,7 +82,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_read
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/samples/cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
      
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_BINARY_DIR} "${CMAKE_CURRENT_BINARY_DIR}")
 
 # Set plugin type (south, north, filter)
 set(PLUGIN_TYPE "north")
@@ -111,7 +122,7 @@ include_directories(${FLEDGE_INCLUDE_DIRS})
 link_directories(${FLEDGE_LIB_DIRS})
 
 # Link runTests with what we want to test and the GTest and pthread library
-add_executable(RunTests ${unittests} ${SOURCES} version.h base_addrspace.c)
+add_executable(RunTests ${unittests} ${SOURCES} version.h base_addrspace.c default_config.inc)
 
 set(FLEDGE_INSTALL "" CACHE INTERNAL "")
 # Install library

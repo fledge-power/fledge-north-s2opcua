@@ -10,6 +10,10 @@
  * Author: Amandeep Singh Arora / Jeremie Chabod
  */
 
+// Plugin headers
+#include "opcua_server_tools.h"
+#include "opcua_server_config.h"
+
 // System headers
 #include <stdint.h>
 #include <stdlib.h>
@@ -36,26 +40,24 @@ extern "C" {
 #include "sopc_toolkit_config.h"
 };
 
-// Plugin headers
-#include "opcua_server_tools.h"
-#include "opcua_server_config.h"
-
 namespace s2opc_north {
 
 /*****************************************************
  *  CONFIGURATION
  *****************************************************/
-extern const char* plugin_default_config;
+extern const char* const plugin_default_config;
 
 /*****************************************************
  *  TYPES DEFINITIONS
  *****************************************************/
 // Redefinition of plugin callbacks types to ease readability
-typedef bool (*north_write_event_t)
-        (char *name, char *value, ControlDestination destination, ...);
-typedef int (*north_operation_event_t)
-        (char *operation, int paramCount, char *names[], char *parameters[], ControlDestination destination, ...);
-typedef std::vector<Reading*> Readings;
+using north_write_event_t = bool (*)
+        (char *name, char *value, ControlDestination destination, ...);  //NOSONAR
+using north_operation_event_t =
+        int (*)(char *operation, int paramCount,
+                char *names[], char *parameters[],  //NOSONAR
+                ControlDestination destination, ...);
+using Readings = std::vector<Reading*>;
 
 static const char unknownUserName[] = "-UnknownUserName-";
 /**
@@ -119,8 +121,11 @@ class OPCUA_Server {
     static void uninitialize(void);
 
  protected:
-    virtual void writeEventNotify(const std::string& username) {}
-    int m_nbMillisecondShutdown;
+    virtual void writeEventNotify(const std::string& username) {
+        // This method intends at providing a child class the ability to
+        // monitor events
+    }
+    inline void setShutdownDuration(const int nbMs) {m_nbMillisecondShutdown = nbMs;}
 
  private:
     void init_sopc_lib_and_logs(void);
@@ -130,6 +135,8 @@ class OPCUA_Server {
      */
     void updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
             const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const;
+
+    int m_nbMillisecondShutdown;
 
  public:
     const OpcUa_Protocol mProtocol;

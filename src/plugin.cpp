@@ -43,28 +43,17 @@ extern "C" {
  */
 
 namespace {
-#define PLUGIN_NAME  "s2opcua"
-#define INTERFACE_VERSION  "1.0.0"
+#define PLUGIN_NAME  "s2opcua"      //NOSONAR interpreted in macros
+#define INTERFACE_VERSION  "1.0.0"  //NOSONAR interpreted in macros
 #define PLUGIN_FLAGS SP_CONTROL
 
 /**************************************************************************/
-static s2opc_north::OPCUA_Server* handleToPlugin(void* handle) {
-    SOPC_ASSERT(handle != NULL && "OPC UA called with NULL plugin");
-    return reinterpret_cast<s2opc_north::OPCUA_Server *> (handle);
+static s2opc_north::OPCUA_Server* handleToPlugin(const PLUGIN_HANDLE handle) {
+    SOPC_ASSERT(handle != nullptr && "OPC UA called with NULL plugin");
+    return static_cast<s2opc_north::OPCUA_Server *> (handle);
 }
 
-/**
- * The plugin information structure
- */
-static PLUGIN_INFORMATION g_plugin_info = {
-    PLUGIN_NAME,              // Name
-    FLEDGE_NORTH_S2OPC_VERSION,                  // Version
-    PLUGIN_FLAGS,             // Flags
-    PLUGIN_TYPE_NORTH,        // Type
-    INTERFACE_VERSION,        // Interface version
-    s2opc_north::plugin_default_config  // Default configuration
-};
-
+class PulginInitFailedE : public std::exception {};
 }   // namespace
 
 /**
@@ -75,6 +64,7 @@ extern "C" {
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 void plugin_Assert_UserCallback(const char* context) {
 #ifdef UNIT_TESTING
+    (void) context;
     assert(false);
 #else  // UNIT_TESTING not defined
     FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
@@ -88,25 +78,38 @@ void plugin_Assert_UserCallback(const char* context) {
 
 /**************************************************************************/
 PLUGIN_INFORMATION* plugin_info(void) {
+    /**
+     * The plugin information structure
+     */
+    static PLUGIN_INFORMATION g_plugin_info = {
+        PLUGIN_NAME,              // Name
+        FLEDGE_NORTH_S2OPC_VERSION,                  // Version
+        PLUGIN_FLAGS,             // Flags
+        PLUGIN_TYPE_NORTH,        // Type
+        INTERFACE_VERSION,        // Interface version
+        s2opc_north::plugin_default_config  // Default configuration
+    };   //NOSONAR FLEDGE API
+
     Logger::getLogger()->debug("OPC UA Server Config is %s", LOGGABLE(g_plugin_info.config));
-    return &::g_plugin_info;
+    return &g_plugin_info;
 }
 
 /**************************************************************************/
 PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
-    PLUGIN_HANDLE handle = NULL;
+    PLUGIN_HANDLE handle = nullptr;
     // the very first thing to do is to configure ASSERTs to be routed to Logger
     SOPC_Assert_Set_UserCallback(&plugin_Assert_UserCallback);
     try {
         Logger::getLogger()->setMinLevel("debug");
         INFO("----------------------------");
         DEBUG("OPC UA Server plugin_init()");
-        handle = (PLUGIN_HANDLE)(new s2opc_north::OPCUA_Server(*configData));
+        handle = (PLUGIN_HANDLE)
+                (new s2opc_north::OPCUA_Server(*configData));  //NOSONAR FLEDGE API
     }
     catch (const std::exception& e) {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
         s2opc_north::OPCUA_Server::uninitialize();  // Force cleanup
-        throw exception();
+        throw PulginInitFailedE();
     }
     WARNING("Created S2OPC server plugin (%p)...", (void*)handle);
     return handle;
@@ -117,7 +120,7 @@ void plugin_shutdown(PLUGIN_HANDLE handle) {
     WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
     s2opc_north::OPCUA_Server* plugin(handleToPlugin(handle));
     plugin->stop();
-    delete plugin;
+    delete plugin;  //NOSONAR FLEDGE API
 }
 
 /**************************************************************************/
@@ -127,9 +130,9 @@ uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings) {
 
 /**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
-        s2opc_north::north_write_event_t write,
-        s2opc_north::north_operation_event_t operation) {
-    INFO("plugin_register (%p)...", reinterpret_cast<void*>(operation));
+        s2opc_north::north_write_event_t write,  //NOSONAR FLEDGE API
+        s2opc_north::north_operation_event_t operation) {  //NOSONAR FLEDGE API
+    INFO("plugin_register...");
     handleToPlugin(handle)->setpointCallbacks(operation);
 }
 
