@@ -271,7 +271,7 @@ OpcUa_Server_Config::
 OpcUa_Server_Config(const ConfigCategory& configData):
         withLogs(SOPC_tools::toUpperString(extractString(configData, "logging")) != "NONE"),
         logLevel(SOPC_tools::toSOPC_Log_Level(extractString(configData, "logging"))),
-        logPath(::logDir),    //NOSONAR logDir is not visible in .h level
+        logPath(::logDir),    // //NOSONAR logDir is not visible in .h level
         addrSpace(extractString(configData, "exchanged_data")) {
     INFO("OpcUa_Server_Config() OK.");
     INFO("Conf : logPath = %s", LOGGABLE(logPath));

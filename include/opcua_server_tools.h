@@ -52,7 +52,7 @@ static constexpr const char*const JSON_PROT_TYPEID = "typeid";
 /**************************************************************************/
 
 /* HELPER MACROS*/
-static Logger* const logger(Logger::getLogger());  //NOSONAR FLEDGE API
+static Logger* const logger(Logger::getLogger());  // //NOSONAR FLEDGE API
 #define DEBUG logger->debug
 #define INFO logger->info
 #define WARNING logger->warn
@@ -137,7 +137,7 @@ using StringMap_t = std::vector<StringPair_t>;
  *  NULL terminating string
  * @field size The number of non-NULL elements in vect
  */
-struct CStringVect {  //NOSONAR
+struct CStringVect {  // //NOSONAR
     /**
      * Build a C-like vector using  C+ STL vector
      */

@@ -43,8 +43,8 @@ extern "C" {
  */
 
 namespace {
-#define PLUGIN_NAME  "s2opcua"      //NOSONAR interpreted in macros
-#define INTERFACE_VERSION  "1.0.0"  //NOSONAR interpreted in macros
+#define PLUGIN_NAME  "s2opcua"      // //NOSONAR interpreted in macros
+#define INTERFACE_VERSION  "1.0.0"  // //NOSONAR interpreted in macros
 #define PLUGIN_FLAGS SP_CONTROL
 
 /**************************************************************************/
@@ -88,7 +88,7 @@ PLUGIN_INFORMATION* plugin_info(void) {
         PLUGIN_TYPE_NORTH,        // Type
         INTERFACE_VERSION,        // Interface version
         s2opc_north::plugin_default_config  // Default configuration
-    };   //NOSONAR FLEDGE API
+    };   // //NOSONAR FLEDGE API
 
     Logger::getLogger()->debug("OPC UA Server Config is %s", LOGGABLE(g_plugin_info.config));
     return &g_plugin_info;
@@ -104,7 +104,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
         INFO("----------------------------");
         DEBUG("OPC UA Server plugin_init()");
         handle = (PLUGIN_HANDLE)
-                (new s2opc_north::OPCUA_Server(*configData));  //NOSONAR FLEDGE API
+                (new s2opc_north::OPCUA_Server(*configData));  // //NOSONAR FLEDGE API
     }
     catch (const std::exception& e) {
         FATAL(std::string("OPC UA server plugin creation failed:") + e.what());
@@ -120,7 +120,7 @@ void plugin_shutdown(PLUGIN_HANDLE handle) {
     WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
     s2opc_north::OPCUA_Server* plugin(handleToPlugin(handle));
     plugin->stop();
-    delete plugin;  //NOSONAR FLEDGE API
+    delete plugin;  // //NOSONAR FLEDGE API
 }
 
 /**************************************************************************/
@@ -130,8 +130,8 @@ uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings) {
 
 /**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
-        s2opc_north::north_write_event_t write,  //NOSONAR FLEDGE API
-        s2opc_north::north_operation_event_t operation) {  //NOSONAR FLEDGE API
+        s2opc_north::north_write_event_t write,  // //NOSONAR FLEDGE API
+        s2opc_north::north_operation_event_t operation) {  // //NOSONAR FLEDGE API
     INFO("plugin_register...");
     handleToPlugin(handle)->setpointCallbacks(operation);
 }

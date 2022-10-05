@@ -123,7 +123,7 @@ const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
 string toString(const SOPC_NodeId& nodeid) {
     char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
     string result(nodeIdStr);
-    delete nodeIdStr;  //NOSONAR  (S2OPC API)
+    delete nodeIdStr;  // //NOSONAR  (S2OPC API)
     return result;
 }
 
@@ -252,7 +252,7 @@ const OpcUa_UserTokenPolicy* toUserToken(const string& token) {
 CStringVect::
 CStringVect(const StringVect_t& ref):
 size(ref.size()),
-vect(new char*[size + 1]),   //NOSONAR  (S2OPC API)
+vect(new char*[size + 1]),   // //NOSONAR  (S2OPC API)
 cVect((const char**)(vect)) {
     for (size_t i=0 ; i < size; i++) {
         cppVect.push_back(ref[i]);
@@ -265,7 +265,7 @@ cVect((const char**)(vect)) {
 CStringVect::
 CStringVect(const rapidjson::Value& ref, const std::string& context):
 size(ref.GetArray().Size()),
-vect(new char*[size + 1]),   //NOSONAR  (S2OPC API)
+vect(new char*[size + 1]),   // //NOSONAR  (S2OPC API)
 cVect((const char**)(vect)) {
     size_t i(0);
     for (const rapidjson::Value& value : ref.GetArray()) {
@@ -281,9 +281,9 @@ cVect((const char**)(vect)) {
 CStringVect::
 ~CStringVect(void) {
     for (size_t i =0 ; i < size ; i++) {
-        delete vect[i];  //NOSONAR  (S2OPC API)
+        delete vect[i];  // //NOSONAR  (S2OPC API)
     }
-    delete vect;  //NOSONAR  (S2OPC API)
+    delete vect;  // //NOSONAR  (S2OPC API)
 }
 
 
