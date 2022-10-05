@@ -220,114 +220,49 @@ static uint64_t toInteger(const DatapointValue& value) {
 }
 
 /**************************************************************************/
-static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, SOPC_BuiltinId typeId) {
+static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, const string& typeId) {
     ASSERT_NOT_NULL(variant);
     ASSERT_NOT_NULL(dv);
-
     const DatapointValue::dataTagType dvType(dv->getType());
 
     SOPC_Variant_Initialize(variant);
     variant->ArrayType = SOPC_VariantArrayType_SingleValue;
-    variant->BuiltInTypeId = typeId;
+    variant->BuiltInTypeId = SOPC_Null_Id;
     variant->DoNotClear = false;
-    const bool dvIsStr(dvType == DatapointValue::T_STRING);
-    const bool dvIsFloat(dvType == DatapointValue::T_FLOAT);
 
-    bool valid = false;
-    // Note: currently unused types are commented to avoid coverage leaks
-    switch (typeId) {
-    case SOPC_Boolean_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
+    if (dvType == DatapointValue::T_INTEGER) {
+        if (typeId == "opcua_sps") {
+            variant->BuiltInTypeId = SOPC_Boolean_Id;
             variant->Value.Boolean = static_cast<bool>(dv->toInt());
-        }
-        break;
-//    case SOPC_SByte_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Sbyte = static_cast<SOPC_SByte>(dv->toInt());
-//        }
-//        break;
-    case SOPC_Byte_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
+        } else if (typeId == "opcua_dps") {
+            variant->BuiltInTypeId = SOPC_Byte_Id;
             variant->Value.Byte = static_cast<SOPC_Byte>(dv->toInt());
-        }
-        break;
-//    case SOPC_Int16_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Int16 = static_cast<int16_t>(dv->toInt());
-//        }
-//        break;
-//    case SOPC_UInt16_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Uint16 = static_cast<uint16_t>(dv->toInt());
-//        }
-//        break;
-    case SOPC_Int32_Id:
-        if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
+        } else if (typeId == "opcua_mva") {
+            variant->BuiltInTypeId = SOPC_Int32_Id;
             variant->Value.Int32 = static_cast<int32_t>(dv->toInt());
         }
-        break;
-//    case SOPC_UInt32_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Uint32 = static_cast<uint32_t>(dv->toInt());
-//        }
-//        break;
-//    case SOPC_Int64_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Int64 = static_cast<int64_t>(dv->toInt());
-//        }
-//        break;
-//    case SOPC_UInt64_Id:
-//        if (dvType == DatapointValue::T_INTEGER) {
-//            valid = true;
-//            variant->Value.Uint64 = static_cast<uint64_t>(dv->toInt());
-//        }
-//        break;
-    case SOPC_Float_Id:
-        if (dvIsFloat) {
-            valid = true;
+    } else if (dvType == DatapointValue::T_STRING) {
+        if (typeId == "opcua_spc" || typeId == "opcua_dpc" || typeId == "opcua_inc" ||
+                typeId == "opcua_apc" || typeId == "opcua_bsc") {
+            // This is a "_reply" value
+            variant->BuiltInTypeId = SOPC_String_Id;
+            SOPC_String_InitializeFromCString(&variant->Value.String,
+                    dv->toStringValue().c_str());
+        }
+    } else if (dvType == DatapointValue::T_FLOAT) {
+        if (typeId == "opcua_mvf") {
+            variant->BuiltInTypeId = SOPC_Float_Id;
             variant->Value.Floatv = static_cast<float>(dv->toDouble());
-        } else if (dvType == DatapointValue::T_INTEGER) {
-            valid = true;
+        } else if (typeId == "opcua_mva") {
+            variant->BuiltInTypeId = SOPC_Float_Id;
             variant->Value.Floatv = static_cast<float>(dv->toInt());
         }
-        break;
-//    case SOPC_Double_Id:
-//        if (dvIsFloat) {
-//            valid = true;
-//            variant->Value.Floatv = static_cast<double>(dv->toDouble());
-//        } else if (dvType == DatapointValue::T_INTEGER) {
-//        valid = true;
-//        variant->Value.Floatv = static_cast<double>(dv->toInt());
-//    }
-//        break;
-//    case SOPC_ByteString_Id:
-//        if (dvType == DatapointValue::T_STRING) {
-//            valid = true;
-//            SOPC_String_InitializeFromCString(&variant->Value.Bstring, dv->toStringValue().c_str());
-//        }
-//        break;
-    case SOPC_String_Id:
-        if (dvType == DatapointValue::T_STRING) {
-            valid = true;
-            SOPC_String_InitializeFromCString(&variant->Value.String, dv->toStringValue().c_str());
-        }
-        break;
-    default:
-        break;
     }
 
-    if (!valid) {
+    if (variant->BuiltInTypeId == SOPC_Null_Id) {
         SOPC_Variant_Clear(variant);
-        ERROR("Impossible to convert datapoint value (%s) to SOPC type (%d)",
-                dv->getTypeStr().c_str() , typeId);
+        ERROR("Impossible to convert datapoint value (%s) to SOPC type (%s)",
+                dv->getTypeStr().c_str() , typeId.c_str());
     }
 }   // setupVariant()
 
@@ -724,7 +659,7 @@ init_sopc_lib_and_logs(void) {
 /**************************************************************************/
 void
 OPCUA_Server::
-updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
+updateAddressSpace(SOPC_NodeId* nodeId, const string& typeId,
         const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const {
     SOPC_ReturnStatus status;
 
@@ -777,7 +712,7 @@ send(const Readings& readings) {
             vector<Datapoint*>* sdp = dpv.getDpVec();
 
             // Parameters to be read from Datapoint
-            SOPC_BuiltinId typeId = SOPC_Null_Id;
+            string typeId = "";
             DatapointValue* value = nullptr;
             SOPC_NodeId* nodeId = nullptr;
             SOPC_StatusCode quality = OpcUa_BadWaitingForInitialData;
@@ -791,7 +726,7 @@ send(const Readings& readings) {
                 // Read relevant attributes
                 if (dpName == "do_type") {
                     if (attrVal.getType() == DatapointValue::T_STRING) {
-                        typeId = SOPC_tools::toBuiltinId(attrVal.toStringValue());
+                        typeId = attrVal.toStringValue();
                     }
                 } else if (dpName == "do_nodeid" && nodeId == nullptr) {
                     // A node Id is either a string or a integer (NS0)
@@ -812,7 +747,10 @@ send(const Readings& readings) {
                 }
             }
 
-            if (value != nullptr && nodeId != nullptr && typeId != SOPC_Null_Id) {
+            if (value != nullptr && nodeId != nullptr && typeId != "") {
+                INFO("updateAddressSpace(%s, %s, (dv), 0x%08x, (ts))",
+                        SOPC_tools::toString(*nodeId).c_str(),
+                        typeId.c_str(), quality);
                 updateAddressSpace(nodeId, typeId, value, quality, ts);
             } else {
                 WARNING("Skipped sending data because all fields were not provided or valid");

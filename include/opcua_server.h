@@ -133,7 +133,7 @@ class OPCUA_Server {
     /**
      * This function updates a node Id in the address space given a DatapointValue
      */
-    void updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
+    void updateAddressSpace(SOPC_NodeId* nodeId, const string& typeId,
             const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const;
 
     int m_nbMillisecondShutdown;
