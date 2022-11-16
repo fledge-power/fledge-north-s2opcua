@@ -75,10 +75,7 @@ extern void plugin_Assert_UserCallback(const char* context);
 
 #define ASSERT_NOT_NULL(c) ASSERT((c) != NULL, "NULL pointer:'" #c "'")
 
-// Note: it is possible (for performance reasons) to remove the logging robustness by simply
-// using:
-// #define LOGGABLE(s) (s).c_str()
-#define LOGGABLE(s) SOPC_tools::loggableString(s).c_str()
+#define LOGGABLE(s) string(s).c_str()
 
 /**************************************************************************/
 /*                     FUNCTIONS                                          */

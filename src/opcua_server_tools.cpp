@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include <map>
+#include <memory>
 #include <exception>
 
 // FLEDGE headers
@@ -121,10 +122,8 @@ const rapidjson::Value::ConstArray getArray(const rapidjson::Value& value,
 
 /**************************************************************************/
 string toString(const SOPC_NodeId& nodeid) {
-    char* nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
-    string result(nodeIdStr);
-    delete nodeIdStr;  // //NOSONAR  (S2OPC API)
-    return result;
+    std::unique_ptr<char> nodeIdStr(SOPC_NodeId_ToCString(&nodeid));
+    return string(nodeIdStr.get());
 }
 
 /**************************************************************************/
@@ -269,8 +268,7 @@ vect(new char*[size + 1]),   // //NOSONAR  (S2OPC API)
 cVect((const char**)(vect)) {
     size_t i(0);
     for (const rapidjson::Value& value : ref.GetArray()) {
-        ASSERT(value.IsString(), "Expecting a String in array '%s'", LOGGABLE(context));
-        cppVect.emplace_back(value.GetString());
+        cppVect.emplace_back(getString(value, context));
         vect[i] = strdup(cppVect.back().c_str());
         i++;
     }

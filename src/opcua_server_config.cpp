@@ -230,6 +230,14 @@ name(modeStr + "/" + policyStr) {
 }
 
 /**************************************************************************/
+OpcUa_Protocol::PolicyS::
+PolicyS(PolicyS && ref):
+name(std::move(ref.name)),
+mode(ref.mode),
+policy(ref.policy),
+userTokens(std::move(ref.userTokens)) {}
+
+/**************************************************************************/
 OpcUa_Protocol::PoliciesVect::
 PoliciesVect(const rapidjson::Value& transport) {
     using rapidjson::Value;
