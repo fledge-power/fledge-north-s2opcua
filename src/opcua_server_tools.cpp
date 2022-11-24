@@ -29,6 +29,8 @@ extern "C" {
 #include "libs2opc_server_config_custom.h"
 }
 
+#include "opc_maps.inc"
+
 /**************************************************************************/
 /**************************************************************************/
 namespace SOPC_tools {
@@ -128,24 +130,20 @@ string toString(const SOPC_NodeId& nodeid) {
 
 /**************************************************************************/
 SOPC_NodeId* createNodeId(const std::string& nodeid) {
-    return SOPC_NodeId_FromCString(nodeid.c_str(),
+    SOPC_NodeId* result = SOPC_NodeId_FromCString(nodeid.c_str(),
             static_cast<int32_t>(nodeid.length()));
+    if (result == NULL) {
+        WARNING("Failed to convert '%s' to a valid NodeId", nodeid.c_str());
+    }
+    return result;
 }
 
 /**************************************************************************/
 SOPC_Log_Level toSOPC_Log_Level(const string & str) {
     const string sUpper(toUpperString(str));
-    typedef std::map<string, SOPC_Log_Level> LevelMap;
-    // Note:  static_cast is only used to help editor parser.
-    static const LevelMap map {
-        {"DEBUG", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_DEBUG)},
-        {"INFO", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_INFO)},
-        {"WARNING", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_WARNING)},
-        {"ERROR", static_cast<SOPC_Log_Level>(SOPC_LOG_LEVEL_ERROR)}
-    };
-    LevelMap::const_iterator it(map.find(sUpper));
+    LevelMap::const_iterator it(levelsMap.find(sUpper));
 
-    if (it != map.end()) {
+    if (it != levelsMap.end()) {
         return (*it).second;
     }
     // Default value
@@ -154,24 +152,12 @@ SOPC_Log_Level toSOPC_Log_Level(const string & str) {
 
 /**************************************************************************/
 SOPC_BuiltinId toBuiltinId(const string& name) {
-    typedef std::map<string, SOPC_BuiltinId> TypeMap;
-    static const TypeMap map {
-        {"opcua_sps", SOPC_Boolean_Id},
-        {"opcua_spc", SOPC_Boolean_Id},
-        {"opcua_dps", SOPC_Byte_Id},
-        {"opcua_dpc", SOPC_Byte_Id},
-        {"opcua_mva", SOPC_Int32_Id},
-        {"opcua_inc", SOPC_Int32_Id},
-        {"opcua_mvf", SOPC_Float_Id},
-        {"opcua_apc", SOPC_Float_Id},
-        {"opcua_spcr", SOPC_String_Id}
-    };
-    TypeMap::const_iterator it(map.find(name));
+    StringToOpcTypes::const_iterator it(pivto2Opc_Types.find(name));
 
-    if (it != map.end()) {
+    if (it != pivto2Opc_Types.end()) {
         return (*it).second;
     }
-    ERROR("Invalid builtin type '%s'", LOGGABLE(name));
+    ERROR("Invalid builtin type '%s'", name.c_str());
     return SOPC_Null_Id;
 }
 
@@ -188,20 +174,12 @@ class UnknownSecurityPolicy : public std::exception{};
 
 /**************************************************************************/
 SOPC_SecurityPolicy_URI toSecurityPolicy(const string& policy) {
-    typedef std::map<string, SOPC_SecurityPolicy_URI> PolicyMap;
-    static const PolicyMap map {
-        {"None", SOPC_SecurityPolicy_None},
-        {"Basic256", SOPC_SecurityPolicy_Basic256},
-        {"Basic256Sha256", SOPC_SecurityPolicy_Basic256Sha256},
-        {"Aes128Sha256RsaOaep", SOPC_SecurityPolicy_Aes128Sha256RsaOaep},
-        {"Aes128Sha256RsaPss", SOPC_SecurityPolicy_Aes256Sha256RsaPss}
-    };
-    PolicyMap::const_iterator it(map.find(policy));
+    PolicyMap::const_iterator it(policiesMap.find(policy));
 
-    if (it != map.end()) {
+    if (it != policiesMap.end()) {
         return (*it).second;
     }
-    ERROR("Invalid security policy '%s'" , LOGGABLE(policy));
+    ERROR("Invalid security policy '%s'" , policy.c_str());
     throw UnknownSecurityPolicy();
 }
 
@@ -210,19 +188,13 @@ class UnknownSecurityMode : public std::exception{};
 /**************************************************************************/
 SOPC_SecurityModeMask toSecurityMode(const string& mode) {
     const string sUpper(toUpperString(mode));
-    typedef std::map<string, SOPC_SecurityModeMask> ModeMap;
-    static const ModeMap map {
-        {"NONE", SOPC_SecurityModeMask_None},
-        {"SIGN", SOPC_SecurityModeMask_Sign},
-        {"SIGNANDENCRYPT", SOPC_SecurityModeMask_SignAndEncrypt}
-    };
-    ModeMap::const_iterator it(map.find(sUpper));
+    ModeMap::const_iterator it(modesMap.find(sUpper));
 
-    if (it != map.end()) {
+    if (it != modesMap.end()) {
         return (*it).second;
     }
 
-    ERROR("Invalid security mode: '%s'" , LOGGABLE(mode));
+    ERROR("Invalid security mode: '%s'" , mode.c_str());
     throw UnknownSecurityMode();
 }
 
@@ -231,7 +203,7 @@ SOPC_SecurityModeMask toSecurityMode(const string& mode) {
  * @param token the token amongst [Anonymous|UserName_None|UserName|UserName_Basic256Sha256]
  */
 const OpcUa_UserTokenPolicy* toUserToken(const string& token) {
-    DEBUG("Converting value '%s' to user token Id", LOGGABLE(token));
+    DEBUG("Converting value '%s' to user token Id", token.c_str());
     if (token == SOPC_UserTokenPolicy_Anonymous_ID) {
         return &SOPC_UserTokenPolicy_Anonymous;
     }

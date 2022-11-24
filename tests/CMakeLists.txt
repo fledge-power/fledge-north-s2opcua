@@ -17,10 +17,10 @@ project(RunTests)
   append_coverage_compiler_flags()
   
  # Required to avoid misreport on initializer lists
- # set(CMAKE_CXX_FLAGS "-std=c++11 -O1")
+  set(CMAKE_CXX_FLAGS "-std=c++11 -O0")
 
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g --coverage")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g --coverage")
   set(GCOVR_ADDITIONAL_ARGS "--exclude-unreachable-branches" "--exclude-throw-branches" )
   
   setup_target_for_coverage_gcovr_sonar(NAME "${PROJECT_NAME}_coverage_sonar"
@@ -82,6 +82,8 @@ add_custom_command(
 file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_write
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_read
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/samples/bin/s2opc_browse
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/samples/cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
      

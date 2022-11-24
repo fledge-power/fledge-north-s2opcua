@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <exception>
 #include <chrono>
+#include <map>
 #include <thread>
 
 // Fledge headers
@@ -60,6 +61,7 @@ extern "C" {
    - As a consequence the character ' cannot be used inside strings. The escape sequence "\x27" can be used if required
 */
 #include "default_config.inc"
+#include "opc_maps.inc"
 
 /**************************************************************************/
 // Reminder: all callbacks/events called from s2opc must be enclosed in
@@ -67,17 +69,16 @@ extern "C" {
 extern "C" {
 
 static void SOPC_LocalServiceAsyncRespCallback(SOPC_EncodeableType* encType, void* response, uintptr_t appContext) {
-    if (appContext == 0) return;
+    if (appContext == 0) return;  // //LCOV_EXCL_LINE
 
     s2opc_north::OPCUA_Server& srv(*reinterpret_cast<s2opc_north::OPCUA_Server*>(appContext));
     if (encType == &OpcUa_WriteResponse_EncodeableType) {
         OpcUa_WriteResponse* writeResp = reinterpret_cast<OpcUa_WriteResponse*>(response);
         srv.asynchWriteResponse(writeResp);
-    } else if (encType == &OpcUa_ReadResponse_EncodeableType) {
+    }
+    if (encType == &OpcUa_ReadResponse_EncodeableType) {
         OpcUa_ReadResponse* readResp = reinterpret_cast<OpcUa_ReadResponse*>(response);
         srv.asynchReadResponse(readResp);
-    } else {
-        WARNING("Unknown response from server 0x%p", encType);
     }
 }
 
@@ -92,13 +93,13 @@ static void SOPC_LocalServiceAsyncRespCallback(SOPC_EncodeableType* encType, voi
 static SOPC_ReturnStatus authentication_check(SOPC_UserAuthentication_Manager* authn,
                                               const SOPC_ExtensionObject* token,
                                               SOPC_UserAuthentication_Status* authenticated) {
-    assert(nullptr != token && nullptr != authenticated && nullptr != authn);
+    assert(nullptr != token && nullptr != authenticated && nullptr != authn);  // //LCOV_EXCL_LINE
     const s2opc_north::OPCUA_Server& server = *reinterpret_cast<const s2opc_north::OPCUA_Server*>(authn->pData);
 
     const SOPC_tools::StringMap_t& users(server.mProtocol.users);
 
     *authenticated = SOPC_USER_AUTHENTICATION_REJECTED_TOKEN;
-    assert(SOPC_ExtObjBodyEncoding_Object == token->Encoding);
+    assert(SOPC_ExtObjBodyEncoding_Object == token->Encoding);   // //LCOV_EXCL_LINE
 
     if (&OpcUa_UserNameIdentityToken_EncodeableType == token->Body.Object.ObjType) {
         OpcUa_UserNameIdentityToken* userToken =
@@ -139,7 +140,7 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
         OpcUa_WriteValue* writeValue,
         SOPC_StatusCode writeStatus) {
     s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
-    if (srv != nullptr) {
+    if (srv != nullptr) {  // //LCOV_EXCL_LINE
         if (SOPC_STATUS_OK == writeStatus) {
             srv->writeNotificationCallback(callCtxPtr, writeValue);
         } else {
@@ -151,7 +152,7 @@ static void C_serverWriteEvent(const SOPC_CallContext* callCtxPtr,
 /**************************************************************************/
 static void serverStopped_Fct(SOPC_ReturnStatus status) {
     s2opc_north::OPCUA_Server* srv(s2opc_north::OPCUA_Server::instance());
-    if (srv != nullptr) {
+    if (srv != nullptr) {  // //LCOV_EXCL_LINE
         WARNING("Server stopped!");
         srv->setStopped();
     }
@@ -174,10 +175,10 @@ static void sopcDoLog(const char* category, const char* const line) {
     // The Log formats is:
     // [2022/09/07 13:20:18.787] (Error) ....
     static const size_t datelen(strlen("[YYYY/MM/DD HH:MM:SS.SSS] "));
-    static const std::string prefixError("(Error)");
+    static const std::string prefixError("(Error)");                    // //LCOV_EXCL_LINE
     const size_t len = strlen(line);
 
-    if (len > datelen + 2) {
+    if (len > datelen + 2) {   // //LCOV_EXCL_LINE (Robustness)
         const std::string text(SOPC_tools::loggableString(line + datelen));
         switch (text[1]) {
         case 'E':
@@ -200,77 +201,11 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 namespace {
 
-/**************************************************************************/
-static uint64_t toInteger(const DatapointValue& value) {
-    if (value.getType() == DatapointValue::T_INTEGER) {
-        return static_cast<uint64_t>(value.toInt());
-    } else if (value.getType() == DatapointValue::T_STRING) {
-        try {
-            return stoll(value.toStringValue(), nullptr, 0);
-        }
-        catch(const exception &) {
-            WARNING("Could not convert STRING %s to an INTEGER value. Using '0'",
-                    value.toString().c_str());
-        }
-        return 0;
-    } else {
-        WARNING("Could not convert value (not of type 'T_STRING' or 'T_INTEGER')");
-        return 0;
-    }
-}
-
-/**************************************************************************/
-static void setupVariant(SOPC_Variant* variant, const DatapointValue* dv, const string& typeId) {
-    ASSERT_NOT_NULL(variant);
-    ASSERT_NOT_NULL(dv);
-    const DatapointValue::dataTagType dvType(dv->getType());
-
-    SOPC_Variant_Initialize(variant);
-    variant->ArrayType = SOPC_VariantArrayType_SingleValue;
-    variant->BuiltInTypeId = SOPC_Null_Id;
-    variant->DoNotClear = false;
-
-    if (dvType == DatapointValue::T_INTEGER) {
-        if (typeId == "opcua_sps") {
-            variant->BuiltInTypeId = SOPC_Boolean_Id;
-            variant->Value.Boolean = static_cast<bool>(dv->toInt());
-        } else if (typeId == "opcua_dps") {
-            variant->BuiltInTypeId = SOPC_Byte_Id;
-            variant->Value.Byte = static_cast<SOPC_Byte>(dv->toInt());
-        } else if (typeId == "opcua_mva") {
-            variant->BuiltInTypeId = SOPC_Int32_Id;
-            variant->Value.Int32 = static_cast<int32_t>(dv->toInt());
-        }
-    } else if (dvType == DatapointValue::T_STRING) {
-        if (typeId == "opcua_spc" || typeId == "opcua_dpc" || typeId == "opcua_inc" ||
-                typeId == "opcua_apc" || typeId == "opcua_bsc") {
-            // This is a "_reply" value
-            variant->BuiltInTypeId = SOPC_String_Id;
-            SOPC_String_InitializeFromCString(&variant->Value.String,
-                    dv->toStringValue().c_str());
-        }
-    } else if (dvType == DatapointValue::T_FLOAT) {
-        if (typeId == "opcua_mvf") {
-            variant->BuiltInTypeId = SOPC_Float_Id;
-            variant->Value.Floatv = static_cast<float>(dv->toDouble());
-        } else if (typeId == "opcua_mva") {
-            variant->BuiltInTypeId = SOPC_Float_Id;
-            variant->Value.Floatv = static_cast<float>(dv->toInt());
-        }
-    }
-
-    if (variant->BuiltInTypeId == SOPC_Null_Id) {
-        SOPC_Variant_Clear(variant);
-        ERROR("Impossible to convert datapoint value (%s) to SOPC type (%s)",
-                dv->getTypeStr().c_str() , typeId.c_str());
-    }
-}   // setupVariant()
-
 /**
  * Allocates and return a char* representing the value of a variant.
  */
 static string variantToString(const SOPC_Variant& variant) {
-    string result;
+    string result("?");
     // Note: currently unused types are commented to avoid coverage leaks
     switch (variant.BuiltInTypeId) {
     case SOPC_Boolean_Id:
@@ -309,13 +244,14 @@ static string variantToString(const SOPC_Variant& variant) {
 //    case SOPC_ByteString_Id:
 //        result = SOPC_String_GetRawCString(&variant.Value.Bstring);
 //        break;
-    case SOPC_String_Id:
-        result = SOPC_String_GetRawCString(&variant.Value.String);
-        break;
+//    case SOPC_String_Id:
+//        result = SOPC_String_GetRawCString(&variant.Value.String);
+//        break;
+        // //LCOV_EXCL_START
     default:
         WARNING("Could not convert data type %d (Unsupported OPCUA type)", variant.BuiltInTypeId);
-        result = "???";
         break;
+        // //LCOV_EXCL_STOP
     }
     return strdup(result.c_str());
 }
@@ -337,7 +273,7 @@ checkAllFilesExist(void)const {
         }
         p++;
     }
-    ASSERT(result);
+    ASSERT(result);  // //LCOV_EXCL_LINE
 }
 
 }   // namespace SOPC_tools
@@ -349,6 +285,240 @@ namespace {
 /**************************************************************************/
 namespace s2opc_north {
 using SOPC_tools::statusCodeToCString;
+
+
+/**************************************************************************/
+const OPCUA_Server::Object_Reader::decoder_map_t
+OPCUA_Server::Object_Reader::decoder_map = {
+        {"do_id", &decodePivotId},
+        {"do_type", &decodeType},
+        {"do_cot", &decodeCause},
+        {"do_confirmation", &decodeConfirmation},
+        {"do_source", &decodeSource},
+        {"do_comingfrom", &decodeComingFrom},
+        {"do_ts_org", &decodeTmOrg},
+        {"do_ts_validity", &decodeTmValidity},
+        {"do_quality", &decodeQuality},
+        {"do_ts_quality", &decodeTsQuality},
+        {"do_value", &decodeValue},
+        {"do_value_quality", &decodeValueQuality},
+};
+
+/**************************************************************************/
+OPCUA_Server::Object_Reader::
+Object_Reader(Datapoints* dp, const std::string& objName):
+mPivotId(""),
+mInputValue(nullptr),
+mValueQuality(0),
+mTypeId(SOPC_Null_Id) {
+    static DatapointValue DV_zero(0l);            // //LCOV_EXCL_LINE
+    static DatapointValue DV_process("process");  // //LCOV_EXCL_LINE
+    // Set default values
+    setDataValue(&mConfirmation, SOPC_Boolean_Id, &DV_zero);
+    setDataValue(&mSource, SOPC_String_Id, &DV_process);
+    setDataValue(&mQuality, SOPC_UInt32_Id, &DV_zero);
+    setDataValue(&mTsQuality, SOPC_UInt32_Id, &DV_zero);
+
+    for (Datapoint* objDp : *dp) {
+        const string dpName(objDp->getName());
+
+        decoder_map_t::const_iterator it(decoder_map.find(dpName));
+        if (it != decoder_map.end()) {
+            DEBUG("Decoding field %s.%s", objName.c_str(), dpName.c_str());
+            (*it->second)(this, &objDp->getData());
+        } else {
+            WARNING("Unknown 'data_object' field '%s'", dpName.c_str());
+        }
+    }
+
+    if (mInputValue != nullptr && mTypeId != SOPC_Null_Id) {
+        // Convert value using expected type
+        setDataValue(&mValue, mTypeId, mInputValue);
+    }
+    // Apply quality to value
+    if (mValue.get() != nullptr) {
+        mValue.get()->Status = mValueQuality;
+    }
+    // Check validity
+
+    if (mPivotId == "") {mInvalidityDetails += "Missing do_id, ";}
+    if (mTypeId == SOPC_Null_Id) {mInvalidityDetails += "Missing do_type, ";}
+    if (mCause.get() == nullptr) {mInvalidityDetails += "Missing do_cot, ";}
+    if (mComingFrom.get() == nullptr) {mInvalidityDetails += "Missing do_comingfrom, ";}
+    if (mTmOrg.get() == nullptr) {mInvalidityDetails += "Missing do_ts_org, ";}
+    if (mTmValidity.get() == nullptr) {mInvalidityDetails += "Missing do_ts_validity, ";}
+    if (mValue.get() == nullptr) {mInvalidityDetails += "Missing do_value, ";}
+    if (!isValid()) {WARNING("Invalid object:%s", mInvalidityDetails.c_str());}
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodePivotId(Object_Reader* pivot, DatapointValue* data) {
+    if (data->getType() == DatapointValue::T_STRING) {
+        pivot->mPivotId  = data->toStringValue();
+    }
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeType(Object_Reader* pivot, DatapointValue* data) {
+    if (data->getType() == DatapointValue::T_STRING) {
+        pivot->mTypeId  = SOPC_tools::toBuiltinId(data->toStringValue());
+    }
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeCause(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mCause, SOPC_UInt32_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeConfirmation(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mConfirmation, SOPC_Boolean_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeSource(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mSource, SOPC_String_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeComingFrom(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mComingFrom, SOPC_String_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeTmOrg(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mTmOrg, SOPC_String_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeTmValidity(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mTmValidity, SOPC_String_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeQuality(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mQuality, SOPC_UInt32_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeTsQuality(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mTsQuality, SOPC_UInt32_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeValue(Object_Reader* pivot, DatapointValue* data) {
+    pivot->mInputValue = data;
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+decodeValueQuality(Object_Reader* pivot, DatapointValue* data) {
+    if (data->getType() == DatapointValue::T_INTEGER) {
+        pivot->mValueQuality = static_cast<uint32_t>(data->toInt());
+    }
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
+setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data) {
+    // Conversion from DatapointValue to SOPC_DataValue
+    SOPC_DataValue* newValue(new SOPC_DataValue);
+
+    SOPC_DataValue_Initialize(newValue);
+    SOPC_Variant & variant(newValue->Value);
+
+    const DatapointValue::dataTagType dvType(data->getType());
+
+    SOPC_Variant_Initialize(&variant);
+    variant.ArrayType = SOPC_VariantArrayType_SingleValue;
+    variant.BuiltInTypeId = typeId;
+    variant.DoNotClear = false;
+    bool isValid = false;
+
+    switch (typeId) {
+    case SOPC_Boolean_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Boolean = static_cast<bool>(data->toInt());
+        }
+        break;
+    case SOPC_Byte_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Byte = static_cast<uint8_t>(data->toInt());
+        }
+        break;
+    case SOPC_Int32_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Int32 = static_cast<int32_t>(data->toInt());
+        }
+        break;
+    case SOPC_UInt32_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Uint32 = static_cast<uint32_t>(data->toInt());
+        }
+        break;
+    case SOPC_Float_Id:
+        if (dvType == DatapointValue::T_FLOAT) {
+            isValid = true;
+            variant.Value.Floatv = static_cast<float>(data->toDouble());
+        } else if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Floatv = static_cast<float>(data->toInt());
+        }
+        break;
+    case SOPC_String_Id:
+        if (dvType == DatapointValue::T_STRING) {
+            isValid = true;
+            SOPC_String_InitializeFromCString(&variant.Value.String,
+                    data->toStringValue().c_str());
+        }
+        break;
+        // //LCOV_EXCL_START
+    default:
+        break;
+        // //LCOV_EXCL_STOP
+    }
+    if (isValid) {
+        if (nullptr != value->get()) {
+            SOPC_Variant_Clear(&value->get()->Value);
+            SOPC_DataValue_Clear(value->get());
+        }
+        value->reset(newValue);
+    } else {
+        SOPC_Variant_Clear(&variant);
+        SOPC_DataValue_Clear(newValue);
+        ERROR("Impossible to convert datapoint value (%s) to SOPC type (%d)",
+                data->getTypeStr().c_str() , typeId);
+        delete newValue;
+    }
+}
 
 /**************************************************************************/
 OPCUA_Server* OPCUA_Server::mInstance = nullptr;
@@ -364,7 +534,7 @@ OPCUA_Server(const ConfigCategory& configData):
     m_nbMillisecondShutdown(2) {
     SOPC_ReturnStatus status;
 
-    ASSERT(mInstance == nullptr, "OPCUA_Server may not be instanced twice within the same plugin");
+    ASSERT(mInstance == nullptr, "OPCUA_Server may not be instanced twice within the same plugin");  // //LCOV_EXCL_LINE
 
     // Configure the server according to mConfig
 
@@ -377,13 +547,13 @@ OPCUA_Server(const ConfigCategory& configData):
     // Namespaces initialization
     status = SOPC_HelperConfigServer_SetNamespaces(mProtocol.namespacesUri.size,
             mProtocol.namespacesUri.cVect);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetNamespaces returned code %s(%d)",
             statusCodeToCString(status), status);
 
     const char* localesArray[2] = {mProtocol.localeId.c_str(), nullptr};
     status = SOPC_HelperConfigServer_SetLocaleIds(1, localesArray);
-    ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");
+    ASSERT(status == SOPC_STATUS_OK, "SOPC_HelperConfigServer_SetLocaleIds failed");  // //LCOV_EXCL_LINE
 
     //////////////////////////////////
     // Global descriptions initialization
@@ -391,14 +561,14 @@ OPCUA_Server(const ConfigCategory& configData):
             mProtocol.appUri.c_str(), mProtocol.productUri.c_str(),
             mProtocol.serverDescription.c_str(), mProtocol.localeId.c_str(),
             OpcUa_ApplicationType_Server);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,             // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetApplicationDescription() returned code %s(%d)",
             statusCodeToCString(status), status);
 
     //////////////////////////////////
     // Create endpoints configuration
     mEpConfig = SOPC_HelperConfigServer_CreateEndpoint(mProtocol.url.c_str(), true);
-    ASSERT_NOT_NULL(mEpConfig);
+    ASSERT_NOT_NULL(mEpConfig);  // //LCOV_EXCL_LINE
 
     INFO("Setting up security...");
     mProtocol.setupServerSecurity(mEpConfig);
@@ -408,7 +578,7 @@ OPCUA_Server(const ConfigCategory& configData):
     status = SOPC_HelperConfigServer_SetKeyCertPairFromPath(
             mProtocol.serverCertPath.c_str(),
             mProtocol.serverKeyPath.c_str());
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetKeyCertPairFromPath() returned code %s(%d)",
             statusCodeToCString(status), status);
 
@@ -432,13 +602,13 @@ OPCUA_Server(const ConfigCategory& configData):
             mProtocol.trustedRootCert.vect, mProtocol.trustedIntermCert.vect,
             mProtocol.untrustedRootCert.vect, mProtocol.untrustedIntermCert.vect,
             mProtocol.issuedCert.vect, mProtocol.revokedCert.vect, &pkiProvider);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_PKIProviderStack_CreateFromPaths() returned code %s(%d). "
             "Check that certificates have correct format.",
             statusCodeToCString(status), status);
 
     status = SOPC_HelperConfigServer_SetPKIprovider(pkiProvider);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetPKIprovider() returned code %s(%d)",
             statusCodeToCString(status), status);
 
@@ -447,17 +617,17 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // Setup AddressSpace
     SOPC_AddressSpace* addSpace = SOPC_AddressSpace_Create(false);
-    ASSERT_NOT_NULL(addSpace);
+    ASSERT_NOT_NULL(addSpace);  // //LCOV_EXCL_LINE
 
     const NodeVect_t& nodes(mConfig.addrSpace.getNodes());
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
     for (const NodeInfo_t& nodeInfo : nodes) {
         status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);
-        ASSERT(status == SOPC_STATUS_OK);
+        ASSERT(status == SOPC_STATUS_OK);  // //LCOV_EXCL_LINE
     }
 
     status = SOPC_HelperConfigServer_SetAddressSpace(addSpace);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetAddressSpace() returned code %s(%d)",
             statusCodeToCString(status), status);
 
@@ -466,7 +636,7 @@ OPCUA_Server(const ConfigCategory& configData):
     //////////////////////////////////
     // User Management configuration
     SOPC_UserAuthentication_Manager* authenticationManager = new SOPC_UserAuthentication_Manager;
-    ASSERT(authenticationManager != nullptr && authorizationManager != nullptr);
+    ASSERT(authenticationManager != nullptr && authorizationManager != nullptr);   // //LCOV_EXCL_LINE
 
     memset(authenticationManager, 0, sizeof (*authenticationManager));
 
@@ -479,14 +649,14 @@ OPCUA_Server(const ConfigCategory& configData):
     SOPC_HelperConfigServer_SetUserAuthorizationManager(authorizationManager);
 
     status = SOPC_HelperConfigServer_SetWriteNotifCallback(&C_serverWriteEvent);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetWriteNotifCallback() returned code %s(%d)",
             statusCodeToCString(status), status);
 
     //////////////////////////////////
     // Set the asynchronous event callback
     status = SOPC_HelperConfigServer_SetLocalServiceAsyncResponse(SOPC_LocalServiceAsyncRespCallback);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SetLocalServiceAsyncResponse() returned code %s(%d)",
             statusCodeToCString(status), status);
 
@@ -494,13 +664,13 @@ OPCUA_Server(const ConfigCategory& configData):
     // Start the server
     SOPC_HelperConfigServer_SetShutdownCountdown(0);
     status = SOPC_ServerHelper_StartServer(&serverStopped_Fct);
-    ASSERT(status == SOPC_STATUS_OK,
+    ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "StartServer() returned code %s(%d)",
             statusCodeToCString(status), status);
 
     // Check for server status after some time. (Start is asynchronous)
     this_thread::sleep_for(chrono::milliseconds(100));
-    ASSERT(!mStopped, "Server failed to start.");
+    ASSERT(!mStopped, "Server failed to start.");  // //LCOV_EXCL_LINE
 
     INFO("Started OPC UA server on endpoint %s", LOGGABLE(mProtocol.url));
     mServerOnline = true;
@@ -544,7 +714,7 @@ void
 OPCUA_Server::
 writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         OpcUa_WriteValue* writeValue) {
-    ASSERT_NOT_NULL(writeValue);
+    ASSERT_NOT_NULL(writeValue);    // //LCOV_EXCL_LINE
     using SOPC_tools::toString;
     const SOPC_User* pUser = SOPC_CallContext_GetUser(callContextPtr);
     const string nodeName(toString(writeValue->NodeId));
@@ -553,7 +723,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         writeEventNotify(username);
         INFO("Client '%s' wrote into node [%s]", LOGGABLE(username), LOGGABLE(nodeName));
     } else {
-        writeEventNotify("");
+        writeEventNotify("");  // //LCOV_EXCL_LINE
     }
 
     if (m_oper != nullptr) {
@@ -591,7 +761,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
 
         delete operName;
     } else {
-        WARNING("Cannot send operation because oper callback was not set");
+        WARNING("Cannot send operation because oper callback was not set");     // //LCOV_EXCL_LINE
     }
 }
 
@@ -599,7 +769,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
 void
 OPCUA_Server::
 asynchWriteResponse(const OpcUa_WriteResponse* writeResp) {
-    if (writeResp == nullptr) return;
+    if (writeResp == nullptr) return;   // //LCOV_EXCL_LINE
 
     SOPC_StatusCode status;
 
@@ -620,11 +790,13 @@ sendAsynchRequest(void* request)const {
         SOPC_ReturnStatus status;
         const uintptr_t thisParam(reinterpret_cast<uintptr_t>(this));
         status = SOPC_ServerHelper_LocalServiceAsync(request, thisParam);
+        // //LCOV_EXCL_START
         if (status != SOPC_STATUS_OK) {
             WARNING("LocalServiceAsync failed with code  %s(%d)",
                     statusCodeToCString(status), status);
             SOPC_Free(request);
         }
+        // //LCOV_EXCL_STOP
     }
 }
 
@@ -650,39 +822,89 @@ init_sopc_lib_and_logs(void) {
         logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
     }
     SOPC_ReturnStatus status = SOPC_CommonHelper_Initialize(&logConfig);
-    ASSERT(status == SOPC_STATUS_OK && "SOPC_CommonHelper_Initialize failed");
+    ASSERT(status == SOPC_STATUS_OK && "SOPC_CommonHelper_Initialize failed");  // //LCOV_EXCL_LINE
 
     status = SOPC_HelperConfigServer_Initialize();
-    ASSERT(status == SOPC_STATUS_OK && "SOPC_HelperConfigServer_Initialize failed");
+    ASSERT(status == SOPC_STATUS_OK && "SOPC_HelperConfigServer_Initialize failed");  // //LCOV_EXCL_LINE
 }
+
+/**************************************************************************/
+class AddressSpace_Item {
+ public:
+    AddressSpace_Item(const string& nodeId, SOPC_DataValue* dv):
+        mNodeId(SOPC_tools::createNodeId(nodeId)),
+        mDataValue(dv) {}
+
+    AddressSpace_Item(const AddressSpace_Item&) = delete;
+    AddressSpace_Item(const AddressSpace_Item&&) = delete;
+    AddressSpace_Item(AddressSpace_Item&&) = delete;
+    virtual ~AddressSpace_Item(void) {
+        SOPC_NodeId_Clear(mNodeId.get());
+    }
+
+    inline SOPC_NodeId* nodeId(void)const {return mNodeId.get();}
+    inline SOPC_DataValue* dataValue(void) {return mDataValue;}
+
+ private:
+    std::unique_ptr<SOPC_NodeId> mNodeId;
+    SOPC_DataValue* mDataValue;
+};
 
 /**************************************************************************/
 void
 OPCUA_Server::
-updateAddressSpace(SOPC_NodeId* nodeId, const string& typeId,
-        const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const {
+updateAddressSpace(const Object_Reader& object)const {
+    using Item_Vector = vector<AddressSpace_Item*>;
     SOPC_ReturnStatus status;
 
-    OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(1));
-    ASSERT_NOT_NULL(request);
-    ASSERT_NOT_NULL(nodeId);
-    DEBUG("updateAddressSpace(%s)", LOGGABLE(SOPC_tools::toString(*nodeId)));
+    INFO("updateAddressSpace for PIVOT(%s)", object.pivotId().c_str());
 
-    SOPC_DataValue opcDv;
-    SOPC_DataValue_Initialize(&opcDv);
-    opcDv.Status = quality;
-    opcDv.SourceTimestamp = timestamp;
-    setupVariant(&opcDv.Value, dv, typeId);
+    static const string nodePrefix("ns=1;s=");   // //LCOV_EXCL_LINE
+    const string nodePath(nodePrefix + mConfig.addrSpace.getByPivotId(object.pivotId()));
+    INFO("updateAddressSpace: address = %s", nodePath.c_str());
+    bool failed(false);
 
-    status = SOPC_WriteRequest_SetWriteValue(request, 0, nodeId, SOPC_AttributeId_Value,
-            nullptr, &opcDv);
-    if (status != SOPC_STATUS_OK) {
-        WARNING("SetWriteValue failed with code  %s(%d)",
-            statusCodeToCString(status), status);
-        delete request;
+    Item_Vector vector;
+
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Cause", object.cause()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Source", object.source()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Confirmation", object.confirmation()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/ComingFrom", object.comingFrom()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmOrg", object.tmOrg()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmValidity", object.tmValidity()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/DetailQuality", object.quality()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TimeQuality", object.tsQuality()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Value", object.value()));
+
+    OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(vector.size()));
+    ASSERT_NOT_NULL(request);  // //LCOV_EXCL_LINE
+
+    size_t idx(0);
+    for (AddressSpace_Item* item : vector) {
+        DEBUG("WriteRequest[%d] = %s", idx, SOPC_tools::toString(*item->nodeId()).c_str());
+        status = SOPC_WriteRequest_SetWriteValue(request, idx, item->nodeId(), SOPC_AttributeId_Value,
+                    nullptr, item->dataValue());
+        // //LCOV_EXCL_START
+        if (status != SOPC_STATUS_OK) {
+            WARNING("SetWriteValue failed for %s with code  %s(%d)",
+                    SOPC_tools::toString(*item->nodeId()).c_str(),
+                    statusCodeToCString(status), status);
+            failed = true;
+        }
+        // //LCOV_EXCL_STOP
+        idx++;
     }
 
-    sendAsynchRequest(request);
+    if (failed) {
+        delete request;  // //LCOV_EXCL_LINE
+    } else {
+        DEBUG("sendAsynchRequest (%d updates)", vector.size());
+        sendAsynchRequest(request);
+    }
+
+    for (AddressSpace_Item* item : vector) {
+        delete item;  // //LCOV_EXCL_LINE
+    }
 }
 
 /**************************************************************************/
@@ -691,10 +913,12 @@ OPCUA_Server::
 send(const Readings& readings) {
     DEBUG("OPCUA_Server::send(%ld elements)", readings.size());
 
+    // //LCOV_EXCL_START
     if (!mServerOnline) {
         ERROR("Server not connected, cannot send %u readings", readings.size());
         return 0;
     }
+    // //LCOV_EXCL_STOP
 
     // Loop over all readings
     for (Reading* reading : readings) {
@@ -708,55 +932,15 @@ send(const Readings& readings) {
             DEBUG("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
                     assetName.c_str(),  assetName.length(), dp->getName().c_str());
 
-            DatapointValue dpv = dp->getData();
-            vector<Datapoint*>* sdp = dpv.getDpVec();
-
-            // Parameters to be read from Datapoint
-            string typeId = "";
-            DatapointValue* value = nullptr;
-            SOPC_NodeId* nodeId = nullptr;
-            SOPC_StatusCode quality = OpcUa_BadWaitingForInitialData;
-            uint64_t ts = 0;
-
-            // Read parameters
-            for (Datapoint* objDp : *sdp) {
-                const string dpName(objDp->getName());
-                const DatapointValue& attrVal = objDp->getData();
-
-                // Read relevant attributes
-                if (dpName == "do_type") {
-                    if (attrVal.getType() == DatapointValue::T_STRING) {
-                        typeId = attrVal.toStringValue();
-                    }
-                } else if (dpName == "do_nodeid" && nodeId == nullptr) {
-                    // A node Id is either a string or a integer (NS0)
-                    if (attrVal.getType() == DatapointValue::T_STRING) {
-                        nodeId = SOPC_tools::createNodeId(attrVal.toStringValue());
-                    } else if (attrVal.getType() == DatapointValue::T_INTEGER) {
-                        uint64_t iNode(attrVal.toInt());
-                        nodeId = SOPC_tools::createNodeId(string("i=") + std::to_string(iNode));
-                    } else {
-                        WARNING("do_nodeid ignored because not of type 'T_STRING' or 'T_INTEGER'");
-                    }
-                } else if (dpName == "do_value" && value == nullptr) {
-                    value = new DatapointValue(attrVal);
-                } else if (dpName == "do_quality") {
-                    quality = static_cast<SOPC_StatusCode>(::toInteger(attrVal));
-                } else if (dpName == "do_ts") {
-                    ts = ::toInteger(attrVal);
+            DatapointValue& dpv = dp->getData();
+            if (dpv.getType() == DatapointValue::T_DP_DICT) {
+                Object_Reader object(dpv.getDpVec(), assetName);
+                if (object.isValid()) {
+                    updateAddressSpace(object);
+                } else {
+                    WARNING("Invalid/Incomplete 'data_object' asset name= '%s'", assetName.c_str());
                 }
             }
-
-            if (value != nullptr && nodeId != nullptr && typeId != "") {
-                INFO("updateAddressSpace(%s, %s, (dv), 0x%08x, (ts))",
-                        SOPC_tools::toString(*nodeId).c_str(),
-                        typeId.c_str(), quality);
-                updateAddressSpace(nodeId, typeId, value, quality, ts);
-            } else {
-                WARNING("Skipped sending data because all fields were not provided or valid");
-            }
-            delete value;
-            delete nodeId;
         }
     }
     return readings.size();
