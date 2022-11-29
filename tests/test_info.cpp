@@ -97,6 +97,17 @@ TEST(S2OPCUA, ServerToolsHelpers) {
     ASSERT_EQ(getString(vC[0], "c1"), "C1");
     ASSERT_EQ(getString(vC[1], "c2"), "C2");
 
+    ASSERT_ANY_THROW(SOPC_tools::getString(root, "a", "a"));
+
+    ASSERT_ANY_THROW(SOPC_tools::getString(root, "a"));
+
+    ASSERT_ANY_THROW(SOPC_tools::getObject(root, "c", "c"));
+
+    ASSERT_ANY_THROW(SOPC_tools::checkObject(vA["b"], "b"));
+
+    ASSERT_ANY_THROW(SOPC_tools::getArray(vA ,"b", "b"));
+    ASSERT_ANY_THROW(SOPC_tools::getArray(root ,"f", "f"));
+
     // SOPC helpers
     SOPC_NodeId* nodeId = createNodeId("ns=3;s=anything");
     ASSERT_NE(nullptr, nodeId);

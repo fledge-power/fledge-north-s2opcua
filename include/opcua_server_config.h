@@ -81,7 +81,7 @@ class OpcUa_Protocol {
     void setupServerSecurity(SOPC_Endpoint_Config* ep)const;
 
     struct PolicyS {
-        explicit PolicyS(PolicyS && ref) = default;
+        explicit PolicyS(PolicyS && ref);
         explicit PolicyS(const std::string& modeStr,
                 const std::string& policyStr,
                 const rapidjson::Value::ConstArray& userPolicies);

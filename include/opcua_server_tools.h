@@ -52,7 +52,7 @@ static constexpr const char*const JSON_PROT_TYPEID = "typeid";
 /**************************************************************************/
 
 /* HELPER MACROS*/
-static Logger* const logger(Logger::getLogger());  //NOSONAR FLEDGE API
+static Logger* const logger(Logger::getLogger());  // //NOSONAR FLEDGE API
 #define DEBUG logger->debug
 #define INFO logger->info
 #define WARNING logger->warn
@@ -75,10 +75,7 @@ extern void plugin_Assert_UserCallback(const char* context);
 
 #define ASSERT_NOT_NULL(c) ASSERT((c) != NULL, "NULL pointer:'" #c "'")
 
-// Note: it is possible (for performance reasons) to remove the logging robustness by simply
-// using:
-// #define LOGGABLE(s) (s).c_str()
-#define LOGGABLE(s) SOPC_tools::loggableString(s).c_str()
+#define LOGGABLE(s) string(s).c_str()
 
 /**************************************************************************/
 /*                     FUNCTIONS                                          */
@@ -137,7 +134,7 @@ using StringMap_t = std::vector<StringPair_t>;
  *  NULL terminating string
  * @field size The number of non-NULL elements in vect
  */
-struct CStringVect {  //NOSONAR
+struct CStringVect {  // //NOSONAR
     /**
      * Build a C-like vector using  C+ STL vector
      */

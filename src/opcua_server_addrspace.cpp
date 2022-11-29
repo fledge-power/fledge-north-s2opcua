@@ -42,8 +42,8 @@ using SOPC_tools::getObject;
 extern "C" {
     extern const bool sopc_embedded_is_const_addspace;
 
-    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];  //NOSONAR  Interface with S2OPC
-    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;  //NOSONAR  Interface with S2OPC
+    extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes[];  // //NOSONAR  Interface with S2OPC
+    extern const uint32_t SOPC_Embedded_AddressSpace_nNodes;  // //NOSONAR  Interface with S2OPC
 }
 
 namespace {
@@ -83,12 +83,12 @@ void toLocalizedText(SOPC_LocalizedText* localText, const std::string& text) {
  * references which are statically generated but are also completed depending on configuration.
  */
 template <typename T>
-class GarbageCollectorC {  //NOSONAR
+class GarbageCollectorC {  // //NOSONAR
  public:
     GarbageCollectorC() = default;
     using pointer =  T*;
     void reallocate(pointer* ptr, size_t oldSize, size_t newSize);
-    virtual ~GarbageCollectorC(void);  //NOSONAR
+    virtual ~GarbageCollectorC(void);  // //NOSONAR
 
  private:
     GarbageCollectorC (const GarbageCollectorC&) = delete;
@@ -96,7 +96,7 @@ class GarbageCollectorC {  //NOSONAR
     using ptrMap = std::map<pointer, bool>;  // Note that only key is used
     ptrMap mAllocated;
 };
-static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;   //NOSONAR
+static GarbageCollectorC<OpcUa_ReferenceNode> referencesGarbageCollector;   // //NOSONAR
 
 template<typename T>
 void
@@ -106,13 +106,13 @@ reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
-    *ptr = new T[newSize];   //NOSONAR
+    *ptr = new T[newSize];   // //NOSONAR
     ASSERT(nullptr != *ptr);
 
     memcpy(*ptr, oldPtr, oldSize * sizeof(T));
 
     if (it != mAllocated.end()) {
-        delete oldPtr;   //NOSONAR
+        delete oldPtr;   // //NOSONAR
         mAllocated.erase(it);
     }
     mAllocated.insert({*ptr, true});
@@ -122,7 +122,7 @@ template<typename T>
 GarbageCollectorC<T>::
 ~GarbageCollectorC(void) {
     for (auto alloc : mAllocated) {
-        delete alloc.first;   //NOSONAR
+        delete alloc.first;   // //NOSONAR
     }
 }
 
@@ -255,7 +255,7 @@ CCommonVarNode(const CVarInfo& varInfo) {
     ::toLocalizedText(&variableNode.Description, varInfo.mDescription);
 
     variableNode.NoOfReferences = 2;
-    variableNode.References = new OpcUa_ReferenceNode[variableNode.NoOfReferences];   //NOSONAR (managed by S2OPC)
+    variableNode.References = new OpcUa_ReferenceNode[variableNode.NoOfReferences];   // //NOSONAR (managed by S2OPC)
 
     OpcUa_ReferenceNode* ref(variableNode.References);
     // Reference #0: Organized by Root.Objects
@@ -313,7 +313,7 @@ Server_AddrSpace(const std::string& json) {
                 const bool readOnly(SOPC_tools::pivotTypeToReadOnly(data.typeId));
                 const char* readOnlyStr(readOnly ? "RO" : "RW");
                 CVarInfo cVarInfo(nodeIdName, browseName, displayName, description, parent, readOnly);
-                CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));   //NOSONAR (deletion managed by S2OPC)
+                CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));   // //NOSONAR (deletion managed by S2OPC)
                 DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
                         LOGGABLE(nodeIdName), LOGGABLE(data.typeId), sopcTypeId, readOnlyStr);
                 pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);
@@ -324,7 +324,7 @@ Server_AddrSpace(const std::string& json) {
                     static const string replyDescr("Status of command '" + data.address +"'");
                     CVarInfo cVarInfoReply(replyAddr, replyAddr, replyAddr, replyDescr, parent, true);
                     // note: deletion handled by S2OPC
-                    CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));   //NOSONAR
+                    CVarNode* pNode(new CVarNode(cVarInfoReply, SOPC_String_Id));   // //NOSONAR
                     DEBUG("Adding node data '%s' of type '%s-%d' (RO)",
                             LOGGABLE(replyAddr), "SOPC_String_Id", SOPC_String_Id);
                     pNode->insertAndCompleteReferences(&nodes, &mByNodeId, data.typeId);

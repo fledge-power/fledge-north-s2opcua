@@ -32,8 +32,8 @@ extern "C" {
 
 extern "C" {
 // Nano NS0 namespace
-extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;   //NOSONAR  Interface with S2OPC
-extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];   //NOSONAR  Interface with S2OPC
+extern const uint32_t SOPC_Embedded_AddressSpace_nNodes_nano;   // //NOSONAR  Interface with S2OPC
+extern SOPC_AddressSpace_Node SOPC_Embedded_AddressSpace_Nodes_nano[];   // //NOSONAR  Interface with S2OPC
 }
 
 namespace s2opc_north {

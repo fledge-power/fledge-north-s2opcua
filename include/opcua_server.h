@@ -52,10 +52,10 @@ extern const char* const plugin_default_config;
  *****************************************************/
 // Redefinition of plugin callbacks types to ease readability
 using north_write_event_t = bool (*)
-        (char *name, char *value, ControlDestination destination, ...);  //NOSONAR
+        (char *name, char *value, ControlDestination destination, ...);  // //NOSONAR
 using north_operation_event_t =
         int (*)(char *operation, int paramCount,
-                char *names[], char *parameters[],  //NOSONAR
+                char *names[], char *parameters[],  // //NOSONAR
                 ControlDestination destination, ...);
 using Readings = std::vector<Reading*>;
 
@@ -133,7 +133,7 @@ class OPCUA_Server {
     /**
      * This function updates a node Id in the address space given a DatapointValue
      */
-    void updateAddressSpace(SOPC_NodeId* nodeId, SOPC_BuiltinId typeId,
+    void updateAddressSpace(SOPC_NodeId* nodeId, const string& typeId,
             const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const;
 
     int m_nbMillisecondShutdown;

@@ -15,6 +15,9 @@ project(RunTests)
   enable_testing()
   include(CodeCoverage)
   append_coverage_compiler_flags()
+  
+ # Required to avoid misreport on initializer lists
+ # set(CMAKE_CXX_FLAGS "-std=c++11 -O1")
 
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} --coverage")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
