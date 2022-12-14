@@ -56,7 +56,7 @@ file(GLOB SOURCES src/*.cpp src/*.c)
 
 # Find Fledge includes and libs, by including FindFledge.cmake file
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
-find_package(Fledge)
+find_package(Fledge 2.0.1)
 # If errors: make clean and remove Makefile
 if (NOT FLEDGE_FOUND)
 	if (EXISTS "${CMAKE_BINARY_DIR}/Makefile")

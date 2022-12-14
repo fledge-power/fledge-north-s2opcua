@@ -98,12 +98,12 @@ jobs:
           sudo make install -C build 
       - name: Download and install Fledge
         env:
-          FLEDGE_REPO_URL: "https://github.com/fledge-iot/fledge/archive/refs/tags/v2.0.0.zip" 
+          FLEDGE_REPO_URL: "https://github.com/fledge-iot/fledge/archive/refs/tags/v2.0.1.zip" 
         run: |
           cd $GITHUB_WORKSPACE/..
           curl -sSLo fledge-pkg.zip ${{ env.FLEDGE_REPO_URL }}
           unzip -o fledge-pkg.zip -d .
-          mv fledge-2.0.0 fledge
+          mv fledge-2.0.1 fledge
           cd fledge
           sudo apt-get update
           sudo apt-get install libcurl4-openssl-dev
