@@ -411,6 +411,7 @@ createPivotNodes(const string& label, const string& pivotId,
     insertUnrefVarNode(address, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
     insertUnrefVarNode(address, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
     insertUnrefVarNode(address, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
+    insertUnrefVarNode(address, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
 
     // Create <..>/Value, (dynamic type, based on 'pivotType')
     const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivotType));

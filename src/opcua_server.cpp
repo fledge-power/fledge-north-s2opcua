@@ -296,6 +296,7 @@ OPCUA_Server::Object_Reader::decoder_map = {
         {"do_confirmation", &decodeConfirmation},
         {"do_source", &decodeSource},
         {"do_comingfrom", &decodeComingFrom},
+        {"do_ts", &decodeTs},
         {"do_ts_org", &decodeTmOrg},
         {"do_ts_validity", &decodeTmValidity},
         {"do_quality", &decodeQuality},
@@ -318,6 +319,7 @@ mTypeId(SOPC_Null_Id) {
     setDataValue(&mSource, SOPC_String_Id, &DV_process);
     setDataValue(&mQuality, SOPC_UInt32_Id, &DV_zero);
     setDataValue(&mTsQuality, SOPC_UInt32_Id, &DV_zero);
+    setDataValue(&mTsValue, SOPC_UInt64_Id, &DV_zero);
 
     for (Datapoint* objDp : *dp) {
         const string dpName(objDp->getName());
@@ -414,6 +416,13 @@ decodeTmValidity(Object_Reader* pivot, DatapointValue* data) {
 /**************************************************************************/
 void
 OPCUA_Server::Object_Reader::
+decodeTs(Object_Reader* pivot, DatapointValue* data) {
+    setDataValue(&pivot->mTsValue, SOPC_UInt64_Id, data);
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::Object_Reader::
 decodeQuality(Object_Reader* pivot, DatapointValue* data) {
     setDataValue(&pivot->mQuality, SOPC_UInt32_Id, data);
 }
@@ -482,6 +491,12 @@ setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data
         if (dvType == DatapointValue::T_INTEGER) {
             isValid = true;
             variant.Value.Uint32 = static_cast<uint32_t>(data->toInt());
+        }
+        break;
+    case SOPC_UInt64_Id:
+        if (dvType == DatapointValue::T_INTEGER) {
+            isValid = true;
+            variant.Value.Uint64 = static_cast<uint64_t>(data->toInt());
         }
         break;
     case SOPC_Float_Id:
@@ -875,6 +890,7 @@ updateAddressSpace(const Object_Reader& object)const {
     vector.emplace_back(new AddressSpace_Item(nodePath + "/TmValidity", object.tmValidity()));
     vector.emplace_back(new AddressSpace_Item(nodePath + "/DetailQuality", object.quality()));
     vector.emplace_back(new AddressSpace_Item(nodePath + "/TimeQuality", object.tsQuality()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/SecondSinceEpoch", object.tsValue()));
     vector.emplace_back(new AddressSpace_Item(nodePath + "/Value", object.value()));
 
     OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(vector.size()));

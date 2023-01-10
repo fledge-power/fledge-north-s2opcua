@@ -148,6 +148,7 @@ class OPCUA_Server {
         inline SOPC_DataValue* tmValidity(void)const {return mTmValidity.get();}
         inline SOPC_DataValue* quality(void)const {return mQuality.get();}
         inline SOPC_DataValue* tsQuality(void)const {return mTsQuality.get();}
+        inline SOPC_DataValue* tsValue(void)const {return mTsValue.get();}
         inline SOPC_DataValue* value(void)const {return mValue.get();}
 
      private:
@@ -160,6 +161,7 @@ class OPCUA_Server {
         static void decodeSource(Object_Reader* pivot, DatapointValue* data);
         static void decodeComingFrom(Object_Reader* pivot, DatapointValue* data);
         static void decodeTmOrg(Object_Reader* pivot, DatapointValue* data);
+        static void decodeTs(Object_Reader* pivot, DatapointValue* data);
         static void decodeTmValidity(Object_Reader* pivot, DatapointValue* data);
         static void decodeQuality(Object_Reader* pivot, DatapointValue* data);
         static void decodeTsQuality(Object_Reader* pivot, DatapointValue* data);
@@ -180,6 +182,7 @@ class OPCUA_Server {
         Value_Ptr mTmValidity;            // do_ts_validity
         Value_Ptr mQuality;               // do_quality
         Value_Ptr mTsQuality;             // do_ts_quality
+        Value_Ptr mTsValue;               // do_ts
         DatapointValue* mInputValue;      // do_value
         Value_Ptr mValue;                 // do_value
         uint32_t  mValueQuality;          // do_value_quality

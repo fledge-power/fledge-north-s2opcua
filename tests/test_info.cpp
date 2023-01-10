@@ -323,7 +323,7 @@ TEST(S2OPCUA, PluginInstance) {
             dp_vect->push_back(createIntDatapointValue("do_quality", 0x00000008));
             dp_vect->push_back(createIntDatapointValue("do_value", 1));
             dp_vect->push_back(createIntDatapointValue("do_value_quality", 0x00000000));
-#warning "TODO : Missing timestamp!"
+            dp_vect->push_back(createIntDatapointValue("do_ts", 1673363780));
             DatapointValue do_1(dp_vect, true);
             readings.push_back(new Reading("reading1", new Datapoint("data_object", do_1)));
         }
@@ -335,6 +335,10 @@ TEST(S2OPCUA, PluginInstance) {
         log = client.readValue("ns=1;s=sps/Value");
         ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(log, "Value: 1"); // Written value
+        // Read back values from server
+        log = client.readValue("ns=1;s=sps/SecondSinceEpoch");
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 1673363780"); // Written value
     }
 
     // Check multiple instances are not supported
