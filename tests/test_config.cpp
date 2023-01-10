@@ -347,19 +347,91 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
     // Check that the nodes provided in configuration are in address space
     const SOPC_AddressSpace_Node* pNode = nullptr;
 
-    it = std::find_if(config.addrSpace.getNodes().begin(),
-            config.addrSpace.getNodes().end(),
-            nodeVarFinder("ns=1;s=/label1/addr1"));
+    it = findNodeInASpc(config.addrSpace, "ns=1;s=dps/Value");
     GTEST_ASSERT_NE(it, config.addrSpace.getNodes().end());
 
-    const NodeInfo_t& nodeInfo(*it);
-    pNode = nodeInfo.first;
-    GTEST_ASSERT_NE(nodeInfo.first, nullptr);
+    {
+        const NodeInfo_t& nodeInfo(*it);
+        pNode = nodeInfo.first;
+        GTEST_ASSERT_NE(nodeInfo.first, nullptr);
 
+        ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
+        ASSERT_EQ(nodeInfo.second, "opcua_dps");
+        ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=dps/Value");
+    }
 
-    ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
-    ASSERT_EQ(nodeInfo.first->node_class, OpcUa_NodeClass_Variable);
-    ASSERT_EQ(nodeInfo.second, "opcua_dps");
-    ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=/label1/addr1");
+    it = findNodeInASpc(config.addrSpace, "ns=1;s=dps");
+    GTEST_ASSERT_NE(it, config.addrSpace.getNodes().end());
+    {
+        const NodeInfo_t& nodeInfo(*it);
+        pNode = nodeInfo.first;
+        GTEST_ASSERT_NE(nodeInfo.first, nullptr);
 
+        ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Object);
+        ASSERT_EQ(nodeInfo.second, "");  // Folder objects are unnamed
+        ASSERT_EQ(SOPC_tools::toString(pNode->data.object.NodeId), "ns=1;s=dps");
+    }
+
+    // Additional defaults to increase coverage
+    {
+        using s2opc_north::OpcUa_Protocol;
+        ConfigCategory testConf2;
+        testConf2.addItem("exchanged_data", "exchanged_data", config_exData,
+                config_exData, {"None", "Error", "Warning", "Info", "Debug"});
+        ASSERT_ANY_THROW(OpcUa_Server_Config config2(testConf2));
+
+        OpcUa_Protocol* proto = nullptr;
+        string sTest;
+
+        // full section missing
+        sTest = replace_in_string(protocolJsonOK, QUOTE("protocol_stack"), QUOTE("protocol_stak"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+        sTest = QUOTE({"protocol_stack" : 33});
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+        sTest = replace_in_string(protocolJsonOK, QUOTE("transport_layer"), QUOTE("transport_layers"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+        sTest = replace_in_string(protocolJsonOK, QUOTE("transport_layer"), QUOTE("transport_layers" : 33, "x"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // Bad user policy
+        sTest = replace_in_string(protocolJsonOK, QUOTE("username_Basic256Sha256"), QUOTE("username_Basic256Sha257"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // String array section missing
+        sTest = replace_in_string(protocolJsonOK, QUOTE("trusted_root"), QUOTE("trusted_rooot"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // String array section contains non-string elements
+        sTest = replace_in_string(protocolJsonOK, QUOTE("cacrl.der"), QUOTE("cacrl.der", 3.14));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // String array section is not an array
+        sTest = replace_in_string(protocolJsonOK, QUOTE(\\[ "cacrl.der" \\]), QUOTE("cacrl.der"));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // Bad User section
+        sTest = replace_in_string(protocolJsonOK, "\"users\" *: *\\{[^\\}]*\\}", QUOTE("users" : ""));
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+
+        // Missing file
+        sTest = replace_in_string(protocolJsonOK, "server_2k_cert.der", "server_2k_certs.der");
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+        sTest = replace_in_string(protocolJsonOK, "server_2k_key.pem", "server_2k_keys.pem");
+        ASSERT_ANY_THROW(proto = new OpcUa_Protocol(sTest));
+    }
+    // Bad protocol
+    {
+        OpcUa_Server_Config* config2;
+        ConfigCategory testConf2;
+        static const std::string config_exData2 = QUOTE({"exchanged_data" : {
+                    "name" : "data1",
+                    "version" : "1.0",
+                    "datapoints" : [{"label":"l","pivot_id":"p","pivot_type": "t","protocols":[33]}]
+        }});
+        testConf2.addItem("logging", "Configure S2OPC logging level", "Info",
+                "Info", {"None", "Error", "Warning", "Info", "Debug"});
+        testConf2.addItem("exchanged_data", "exchanged_data", config_exData2,
+                config_exData2, {"None", "Error", "Warning", "Info", "Debug"});
+        ASSERT_ANY_THROW(config2 = new OpcUa_Server_Config(testConf2));
+    }
 }

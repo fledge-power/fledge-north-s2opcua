@@ -4,6 +4,7 @@ A simple OPC UA plugin that provides an OPC UA server based on S2OPC stack.
 This plugin supports several OPC UA Security Policies and Message Security Modes.
 It supports both anonymous access and authentication using username and password.
 
+This plugin requires FLEDGE V2.0.1
 
 ## Configuration
 

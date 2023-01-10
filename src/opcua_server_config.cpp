@@ -72,9 +72,9 @@ const std::string certDirRevoked(::certDir + "revoked/");
 /** \brief reads a value from configuration, or raise an error if not found*/
 std::string
 extractString(const ConfigCategory& config, const std::string& name) {
-    ASSERT(config.itemExists(name), "Missing config parameter:'%s'", LOGGABLE(name));
+    ASSERT(config.itemExists(name), "Missing config parameter:'%s'", name.c_str());
 
-    DEBUG("Reading config parameter:'%s'", LOGGABLE(name));
+    DEBUG("Reading config parameter:'%s'", name.c_str());
     return config.getValue(name);
 }
 
@@ -84,12 +84,12 @@ SOPC_tools::CStringVect extractCStrArray(
         const std::string & prefix = "", const std::string& suffix = "") {
     using rapidjson::Value;
     StringVect_t result;
-    ASSERT(value.HasMember(section), "Missing section '%s' for ARRAY", LOGGABLE(section));
+    ASSERT(value.HasMember(section), "Missing section '%s' for ARRAY", section);
     const Value& array(value[section]);
-    ASSERT(array.IsArray(), "Section '%s' must be an ARRAY", LOGGABLE(section));
+    ASSERT(array.IsArray(), "Section '%s' must be an ARRAY", section);
 
     for (const rapidjson::Value& subV : array.GetArray()) {
-        ASSERT(subV.IsString(), "Section '%s' must be an ARRAY of STRINGS", LOGGABLE(section));
+        ASSERT(subV.IsString(), "Section '%s' must be an ARRAY of STRINGS", section);
         const std::string str(prefix + subV.GetString() + suffix);
         result.push_back(str);
     }
@@ -161,7 +161,7 @@ appUri(getString(mTransport, "appUri", "transport_layer")),
 productUri(getString(mTransport, "productUri", "transport_layer")),
 localeId(getString(mTransport, "localeId", "transport_layer")),
 serverDescription(getString(mTransport, "appDescription", "transport_layer")),
-certificates(mTransport["certificates"]),
+certificates(getObject(mTransport, "certificates", "transport")),
 serverCertPath(::certDirServer + getString(certificates, "serverCertPath", "certificates")),
 serverKeyPath(::certDirServer + getString(certificates, "serverKeyPath", "certificates")),
 trustedRootCert(extractCStrArray(certificates, "trusted_root", ::certDirTrusted)),
@@ -173,23 +173,20 @@ revokedCert(extractCStrArray(certificates, "revoked", ::certDirRevoked)),
 policies(PoliciesVect(mTransport)),
 namespacesUri(SOPC_tools::CStringVect(mTransport["namespaces"], "namespaces")),
 users(extractUsersPasswords(mTransport["users"])) {
-    DEBUG("Conf : url = %s", LOGGABLE(url));
-    DEBUG("Conf : appUri = %s", LOGGABLE(appUri));
-    DEBUG("Conf : productUri = %s", LOGGABLE(productUri));
-    DEBUG("Conf : serverDescription = %s", LOGGABLE(serverDescription));
-    DEBUG("Conf : serverCertPath = %s", LOGGABLE(serverCertPath));
-    DEBUG("Conf : serverKeyPath = %s", LOGGABLE(serverKeyPath));
-    ASSERT(!serverCertPath.empty(), "serverCertPath is missing");
-    ASSERT(!serverKeyPath.empty(), "serverKeyPath is missing");
+    DEBUG("Conf : url = %s", url.c_str());
+    DEBUG("Conf : appUri = %s", appUri.c_str());
+    DEBUG("Conf : productUri = %s", productUri.c_str());
+    DEBUG("Conf : serverDescription = %s", serverDescription.c_str());
+    DEBUG("Conf : serverCertPath = %s", serverCertPath.c_str());
+    DEBUG("Conf : serverKeyPath = %s", serverKeyPath.c_str());
     ASSERT(appUri.length() > 0, "Application URI cannot be empty");
     ASSERT(productUri.length() > 0, "Product URI cannot be empty");
     ASSERT(serverDescription.length() > 0, "Application description cannot be empty");
     ASSERT(0 == access(serverCertPath.c_str(), R_OK), "Missing Server certificate file: %s" ,
-            LOGGABLE(serverCertPath));
+            serverCertPath.c_str());
     ASSERT(0 == access(serverKeyPath.c_str(), R_OK), "Missing Server key file: %s" ,
-            LOGGABLE(serverKeyPath));
+            serverKeyPath.c_str());
 }
-
 
 /**************************************************************************/
 rapidjson::Document
@@ -198,7 +195,7 @@ initDoc(const std::string& json)const {
     rapidjson::Document doc;
     doc.Parse(json.c_str());
     ASSERT(!doc.HasParseError(), "Malformed JSON (section '%s', offset= %u) :%s",
-            JSON_PROTOCOLS, doc.GetErrorOffset(), LOGGABLE(json));
+            JSON_PROTOCOLS, doc.GetErrorOffset(), json.c_str());
 
     ASSERT(doc.HasMember("protocol_stack") && doc["protocol_stack"].IsObject(),
             "Invalid section 'protocol_stack'");
@@ -259,7 +256,6 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
     for (const PolicyS& loopPolicy : policies) {
         DEBUG("process policy %s", LOGGABLE(loopPolicy.name));
         SOPC_SecurityPolicy* sp = SOPC_EndpointConfig_AddSecurityConfig(ep, loopPolicy.policy);
-        ASSERT(sp != nullptr);
 
         SOPC_ReturnStatus status = SOPC_SecurityConfig_SetSecurityModes(sp, loopPolicy.mode);
         ASSERT(status == SOPC_STATUS_OK,
@@ -268,8 +264,7 @@ setupServerSecurity(SOPC_Endpoint_Config* ep)const {
         for (const SOPC_UserTokenPolicy* userToken : loopPolicy.userTokens) {
             status = SOPC_SecurityConfig_AddUserTokenPolicy(sp, userToken);
             ASSERT(status == SOPC_STATUS_OK,
-                    "SOPC_SecurityConfig_AddUserTokenPolicy returned code %s(%d)",
-                    statusCodeToCString(status), status);
+                    "SOPC_SecurityConfig_AddUserTokenPolicy failed");
         }
     }
 }
