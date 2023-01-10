@@ -25,7 +25,7 @@ using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
 
-#define NB_VAR_PER_READING 9
+#define NB_VAR_PER_READING 10
 
 extern "C" {
 static int north_operation_event_nbCall = 0;
