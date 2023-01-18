@@ -577,7 +577,8 @@ OPCUA_Server(const ConfigCategory& configData):
     // Server certificates configuration
     status = SOPC_HelperConfigServer_SetKeyCertPairFromPath(
             mProtocol.serverCertPath.c_str(),
-            mProtocol.serverKeyPath.c_str());
+            mProtocol.serverKeyPath.c_str(),
+            false);
     ASSERT(status == SOPC_STATUS_OK,  // //LCOV_EXCL_LINE
             "SOPC_HelperConfigServer_SetKeyCertPairFromPath() returned code %s(%d)",
             statusCodeToCString(status), status);

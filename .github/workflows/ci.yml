@@ -85,11 +85,11 @@ jobs:
       - name: Download and install s2opc
         env:
           S2OPC_REPO_URL: "https://gitlab.com/systerel/S2OPC.git" 
-          S2OPC_SHA: "073040628d4f50de7ef3e2f649dbc20f8ef806e7" 
+          S2OPC_SHA: "S2OPC_Toolkit_1.3.0" 
         run: |
           # Install S2OPC
           cd $GITHUB_WORKSPACE/..
-          git clone --branch master --single-branch ${{ env.S2OPC_REPO_URL }}
+          git clone --branch ${{ env.S2OPC_SHA }} --single-branch ${{ env.S2OPC_REPO_URL }}
           cd S2OPC
           git checkout ${{ env.S2OPC_SHA }}
           git show --oneline --shortstat 
