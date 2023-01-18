@@ -134,6 +134,7 @@ jobs:
           export FLEDGE_SRC=${{ env.FLEDGE_SRC }}
           export FLEDGE_INSTALL=/usr/local/fledge
           export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
+          export S2OPC_ROOT=$GITHUB_WORKSPACE/../S2OPC
           export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
           make clean
           make build
@@ -147,6 +148,7 @@ jobs:
           export FLEDGE_INSTALL=/usr/local/fledge
           export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
           export FLEDGE_DATA=$FLEDGE_ROOT/data
+          export S2OPC_ROOT=$GITHUB_WORKSPACE/../S2OPC
           export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
           make unit_tests || (tail -n 2000 /var/log/syslog && false)
       - name: Archive HTML coverage results
@@ -163,6 +165,7 @@ jobs:
           export FLEDGE_SRC=${{ env.FLEDGE_SRC }}
           export FLEDGE_INSTALL=/usr/local/fledge
           export FLEDGE_ROOT=${{ env.FLEDGE_SRC }}
+          export S2OPC_ROOT=$GITHUB_WORKSPACE/../S2OPC
           export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$FLEDGE_SRC/cmake_build/C/lib:/usr/local/fledge/lib/
           make clean
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Coverage

@@ -87,6 +87,7 @@ Now all dependencies are installed, the plugin itself can be built.
 To build the OPC UA S2OPC South plugin run the commands:
 
 ```
+export S2OPC_ROOT=${DEV_ROOT}/S2OPC
 cd ${DEV_ROOT}/fledge-north-s2opcua
 make
 ```
