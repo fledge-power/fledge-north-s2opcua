@@ -11,6 +11,7 @@
 // System headers
 
 #include <vector>
+#include <memory>
 #include <exception>
 
 // Fledge includes
@@ -49,7 +50,6 @@ namespace {
 
 /**************************************************************************/
 static s2opc_north::OPCUA_Server* handleToPlugin(const PLUGIN_HANDLE handle) {
-    SOPC_ASSERT(handle != nullptr && "OPC UA called with NULL plugin");
     return static_cast<s2opc_north::OPCUA_Server *> (handle);
 }
 
@@ -60,21 +60,18 @@ class PulginInitFailedE : public std::exception {};
  * The OPCUA plugin interface
  */
 extern "C" {
+#ifndef UNIT_TESTING
 /**************************************************************************/
 // The callback for ASSERTION failure (SOPC_ASSERT macro)
 void plugin_Assert_UserCallback(const char* context) {
-#ifdef UNIT_TESTING
-    (void) context;
-    assert(false);
-#else  // UNIT_TESTING not defined
     FATAL("ASSERT failed. Context = %s", (context ? LOGGABLE(context) : "[NULL]"));
     // leave some time to flush logs.
     usleep(100 * 1000);
     // Throwing an exception may not be enough in case the ASSERT was raised in a separate thread.
     // Calling exit will ensure the full process is stopped.
     std::exit(1);
-#endif
 }
+#endif
 
 /**************************************************************************/
 PLUGIN_INFORMATION* plugin_info(void) {
@@ -119,12 +116,14 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *configData) {
 void plugin_shutdown(PLUGIN_HANDLE handle) {
     WARNING("Quitting S2OPC server plugin (%p)...", (void*)handle);
     s2opc_north::OPCUA_Server* plugin(handleToPlugin(handle));
-    plugin->stop();
+    if (nullptr != handle) {
+        plugin->stop();
+    }
     delete plugin;  // //NOSONAR FLEDGE API
 }
 
 /**************************************************************************/
-uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings) {
+uint32_t plugin_send(PLUGIN_HANDLE handle, Readings& readings) {
     return handleToPlugin(handle)->send(readings);
 }
 

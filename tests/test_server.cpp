@@ -25,6 +25,8 @@ using namespace std;
 using namespace rapidjson;
 using namespace s2opc_north;
 
+#define NB_VAR_PER_READING 10
+
 extern "C" {
 static int north_operation_event_nbCall = 0;
 static int north_operation_event (
@@ -40,6 +42,24 @@ static int north_operation_event (
     return paramCount;
 }
 }
+
+#define CHECK_NO_ADD_SPC_UPDATE(readings) do {\
+        server.reset(); \
+        server.send(readings); \
+        this_thread::sleep_for(chrono::milliseconds(15)); \
+        ASSERT_EQ(server.nbResponses, 0); } while (0)
+#define CHECK_ADD_SPC_UPDATE_FAIL(readings) do {\
+        server.reset(); \
+        server.send(readings); \
+        this_thread::sleep_for(chrono::milliseconds(15)); \
+        ASSERT_GT(server.nbResponses, 0);  \
+        ASSERT_EQ(server.nbResponses, server.nbBadResponses); } while (0)
+#define CHECK_ADD_SPC_UPDATE_OK(readings) do {\
+        server.reset(); \
+        server.send(readings); \
+        this_thread::sleep_for(chrono::milliseconds(15)); \
+        ASSERT_GT(server.nbResponses, 0);  \
+        ASSERT_EQ(server.nbBadResponses, 0);} while (0)
 
 TEST(S2OPCUA, OPCUA_Server) {
     ERROR("*** TEST S2OPCUA OPCUA_Server");
@@ -70,63 +90,33 @@ TEST(S2OPCUA, OPCUA_Server) {
 
     Readings readings;
 
-    // Create valid Reading with 4 data
+    // Create valid Reading with 5 data
     // Create READING 1
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
-        dp_vect->push_back(createIntDatapointValue("do_value", 17));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading1", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_dps", "pivotDPS", 0x80000000);
+        elem.pushStrValue("on", &readings);
     }
 
     // Create READING 2
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_sps"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label2/addr2"));
-        dp_vect->push_back(createIntDatapointValue("do_value", 0));
-        dp_vect->push_back(createStringDatapointValue("do_quality", "0x1234"));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading2", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_sps", "pivotSPS", 0x1234);
+        elem.pushIntValue(0, &readings);
     }
     // Create READING 3 (MVA : INT32)
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_mva"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/labelMVA/mva"));
-        dp_vect->push_back(createIntDatapointValue("do_value", 560));
-        dp_vect->push_back(createStringDatapointValue("do_quality", "0"));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("mva", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_mvi", "pivotMVI");
+        elem.pushIntValue(560, &readings);
     }
     // Create READING 4 (MVA : FLOAT but encoded as int)
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_mvf"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/labelMVF/mvf"));
-        dp_vect->push_back(createIntDatapointValue("do_value", 44));
-        dp_vect->push_back(createStringDatapointValue("do_quality", "0"));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("mvf", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_mvf", "pivotMVF");
+        elem.pushIntValue(44, &readings);
     }
 
     // Create READING 5 (MVA : FLOAT)
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_mvf"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/labelMVF/mvf"));
-        dp_vect->push_back(createFloatDatapointValue("do_value", 56.14));
-        dp_vect->push_back(createStringDatapointValue("do_quality", "0"));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("mvf", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_mvf", "pivotMVF");
+        elem.pushFloatValue(56.14, &readings);
     }
 
     server.reset();
@@ -136,20 +126,20 @@ TEST(S2OPCUA, OPCUA_Server) {
 
     // Read back values from server
     ASSERT_EQ(server.nbBadResponses, 0);
-    ASSERT_EQ(server.nbResponses, 5);
+    ASSERT_EQ(server.nbResponses, readings.size() * NB_VAR_PER_READING);
 
     {
         SOPC_ReturnStatus status;
         OpcUa_ReadRequest* req(SOPC_ReadRequest_Create(4, OpcUa_TimestampsToReturn_Both));
         ASSERT_NE(nullptr, req);
 
-        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 0, "ns=1;s=/label2/addr2", SOPC_AttributeId_Value, NULL);
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 0, "ns=1;s=sps/Value", SOPC_AttributeId_Value, NULL);
         ASSERT_EQ(status, SOPC_STATUS_OK);
-        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 1, "ns=1;s=/label1/addr1", SOPC_AttributeId_Value, NULL);
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 1, "ns=1;s=dps/Value", SOPC_AttributeId_Value, NULL);
         ASSERT_EQ(status, SOPC_STATUS_OK);
-        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 2, "ns=1;s=/labelMVA/mva", SOPC_AttributeId_Value, NULL);
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 2, "ns=1;s=mvi/Value", SOPC_AttributeId_Value, NULL);
         ASSERT_EQ(status, SOPC_STATUS_OK);
-        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 3, "ns=1;s=/labelMVF/mvf", SOPC_AttributeId_Value, NULL);
+        status = SOPC_ReadRequest_SetReadValueFromStrings(req, 3, "ns=1;s=mvf/Value", SOPC_AttributeId_Value, NULL);
         ASSERT_EQ(status, SOPC_STATUS_OK);
 
         server.readResults.clear();
@@ -159,7 +149,7 @@ TEST(S2OPCUA, OPCUA_Server) {
         WAIT_UNTIL(server.readResults.size() >= 4, 1000);
         ASSERT_EQ(server.readResults.size(), 4);
         ASSERT_EQ(server.readResults[0], "Q=0x00001234,V=0");
-        ASSERT_EQ(server.readResults[1], "Q=0x80000000,V=17");
+        ASSERT_EQ(server.readResults[1], "Q=0x80000000,V=on");
         ASSERT_EQ(server.readResults[2], "Q=0x00000000,V=560");
         ASSERT_EQ(server.readResults[3], "Q=0x00000000,V=56.(...)");
     }
@@ -168,74 +158,36 @@ TEST(S2OPCUA, OPCUA_Server) {
     readings.clear();
     // Create READING 1
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
+        TestReading elem("opcua_dps", "dps", 0x80000000);
         // ** HERE ** INVALID "do_value"
         std::vector<double> doubleVect;
         DatapointValue dpv(doubleVect);
-        dp_vect->push_back(new Datapoint("do_value", dpv));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+        elem.mValue = new Datapoint("do_value", dpv);
+        elem.pushReading(&readings);
 
-        server.reset();
-        // Send READINGs
-        server.send(readings);
-        this_thread::sleep_for(chrono::milliseconds(10));
-
-        // Read back values from server
-        ASSERT_EQ(server.nbResponses, 1);
-        ASSERT_EQ(server.nbBadResponses, 0);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
     }
 
     // Invalid reading
     readings.clear();
     // Create READING 1
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        // ** HERE ** INVALID "do_value"
-        dp_vect->push_back(createStringDatapointValue("do_value", "NoValue"));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+        TestReading elem("opcua_dps", "pivotDPS", 0x80000000);
+        // ** HERE ** MISMATCHING "do_value" type
+        elem.pushIntValue(561, &readings);
 
-        server.reset();
-        // Send READINGs
-        server.send(readings);
-        this_thread::sleep_for(chrono::milliseconds(10));
-
-        // Read back values from server
-        ASSERT_EQ(server.nbResponses, 1);
-        ASSERT_EQ(server.nbBadResponses, 0);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
     }
 
     // Invalid reading
     readings.clear();
     // Create READING 1
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        dp_vect->push_back(createIntDatapointValue("do_value", 1));
-        // ** HERE ** INVALID "do_ts"
-        dp_vect->push_back(createStringDatapointValue("do_ts", "hello world!"));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+        // ** HERE ** INVALID "do_type"
+        TestReading elem("opcua_xxx", "pivotSPS", 0x1234);
+        elem.pushIntValue(0, &readings);
 
-        server.reset();
-        // Send READINGs
-        server.send(readings);
-        this_thread::sleep_for(chrono::milliseconds(10));
-
-        // Read back values from server
-        ASSERT_EQ(server.nbResponses, 1);
-        ASSERT_EQ(server.nbBadResponses, 0);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
     }
 
 
@@ -243,52 +195,11 @@ TEST(S2OPCUA, OPCUA_Server) {
     readings.clear();
     // Create READING 1
     {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        dp_vect->push_back(createIntDatapointValue("do_nodeid", 84));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        dp_vect->push_back(createIntDatapointValue("do_value", 1));
-        // ** HERE ** INVALID "do_ts"
-        std::vector<double> doubleVect;
-        DatapointValue dpv(doubleVect);
-        dp_vect->push_back(new Datapoint("do_ts", dpv));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
+        // ** HERE ** INVALID "do_id"
+        TestReading elem("opcua_mvi", "pivotMVI_unknown");
+        elem.pushIntValue(561, &readings);
 
-        server.reset();
-        // Send READINGs
-        server.send(readings);
-        this_thread::sleep_for(chrono::milliseconds(10));
-
-        // Read back values from server
-        ASSERT_EQ(server.nbResponses, 1);
-        ASSERT_EQ(server.nbBadResponses, 1);  // cannot update node "i=84"
-    }
-
-    // Invalid reading
-    readings.clear();
-    // Create READING 1
-    {
-        vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-        dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-        // ** HERE ** INVALID "do_nodeid"
-        std::vector<double> doubleVect;
-        DatapointValue dpv(doubleVect);
-        dp_vect->push_back(new Datapoint("do_nodeid", dpv));
-        dp_vect->push_back(createIntDatapointValue("do_quality", 0x80000000));
-        dp_vect->push_back(createIntDatapointValue("do_value", 1));
-        dp_vect->push_back(createIntDatapointValue("do_ts", 42));
-        DatapointValue do_1(dp_vect, true);
-        readings.push_back(new Reading("reading3", new Datapoint("data_object", do_1)));
-
-        server.reset();
-        // Send READINGs
-        server.send(readings);
-        this_thread::sleep_for(chrono::milliseconds(10));
-
-        // Read back values from server (No update done because NodeId is invalid)
-        ASSERT_EQ(server.nbResponses, 0);
-        ASSERT_EQ(server.nbBadResponses, 0);
+        CHECK_ADD_SPC_UPDATE_FAIL(readings);
     }
 
     // Cover LOG cases
@@ -303,127 +214,60 @@ TEST(S2OPCUA, OPCUA_Server) {
     server.setpointCallbacks(north_operation_event);
     ASSERT_EQ(north_operation_event_nbCall, 0);
 
+    OPCUA_ClientNone clientN("opc.tcp://localhost:55345");
+    OPCUA_ClientSecu clientS("opc.tcp://localhost:55345");
     ///////////////////////////////////////////
     // Use an external client to make requests
     {
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--encrypt",
-            "-n", "i=84",
-            "--username=user", "--password=password",
-            "--user_policy_id=username_Basic256Sha256",
-            "--client_cert=cert/client_public/client_2k_cert.der",
-            "--client_key=cert/client_private/client_2k_key.pem",
-            "--server_cert=cert/server_public/server_2k_cert.der",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-a", "3"});
-
-        string execLog(launch_and_check(read_cmd));
-
-        // cout << "EXECLOG=<" <<execLog << ">" << endl;
-        ASSERT_STR_CONTAINS(execLog, "QualifiedName = 0:Root");
-        ASSERT_STR_NOT_CONTAINS(execLog, "Failed session activation");
+        string readLog(clientS.readValue("i=84", 3));
+        ASSERT_STR_CONTAINS(readLog, "QualifiedName = 0:Root");
+        ASSERT_STR_NOT_CONTAINS(readLog, "Failed session activation");
     }
 
     // Invalid password
     {
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--encrypt",
-            "-n", "i=84",
-            "--username=user", "--password=password2",
-            "--user_policy_id=username_Basic256Sha256",
-            "--client_cert=cert/client_public/client_2k_cert.der",
-            "--client_key=cert/client_private/client_2k_key.pem",
-            "--server_cert=cert/server_public/server_2k_cert.der",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-a", "3"});
-
-        string execLog(launch_and_check(read_cmd));
-
-        // cout << "EXECLOG=<" <<execLog << ">" << endl;
-        ASSERT_STR_NOT_CONTAINS(execLog, "QualifiedName = 0:Root");
-        ASSERT_STR_CONTAINS(execLog, "Failed session activation");
+        OPCUA_ClientSecu client("opc.tcp://localhost:55345", "user", "password2");
+        string readLog(client.readValue("i=84", 3));
+        ASSERT_STR_NOT_CONTAINS(readLog, "QualifiedName = 0:Root");
+        ASSERT_STR_CONTAINS(readLog, "Failed session activation");
+    }
+    // Invalid password (length OK
+    {
+        OPCUA_ClientSecu client("opc.tcp://localhost:55345", "user", "passworD");
+        string readLog(client.readValue("i=84", 3));
+        ASSERT_STR_NOT_CONTAINS(readLog, "QualifiedName = 0:Root");
+        ASSERT_STR_CONTAINS(readLog, "Failed session activation");
     }
 
     // Invalid user
     {
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--encrypt",
-            "-n", "i=84",
-            "--username=User", "--password=password",
-            "--user_policy_id=username_Basic256Sha256",
-            "--client_cert=cert/client_public/client_2k_cert.der",
-            "--client_key=cert/client_private/client_2k_key.pem",
-            "--server_cert=cert/server_public/server_2k_cert.der",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-a", "3"});
-
-        string execLog(launch_and_check(read_cmd));
-
-        // cout << "EXECLOG=<" <<execLog << ">" << endl;
-        ASSERT_STR_NOT_CONTAINS(execLog, "QualifiedName = 0:Root");
-        ASSERT_STR_CONTAINS(execLog, "Failed session activation");
+        OPCUA_ClientSecu client("opc.tcp://localhost:55345", "User");
+        string readLog(client.readValue("i=84", 3));
+        ASSERT_STR_NOT_CONTAINS(readLog, "QualifiedName = 0:Root");
+        ASSERT_STR_CONTAINS(readLog, "Failed session activation");
     }
 
     // Write request to server
     // Check type SPC (BOOL)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelSPC/spc",
-            "-t", "1",
-            "1"});
-
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelSPC/spc\", attribute 13:"); // Result OK, no error
+        string writeLog(clientN.writeValue("ns=1;s=spc/Value", SOPC_Boolean_Id, "1"));
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=spc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
 
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelSPC/spc",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=spc/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
         ASSERT_EQ(server.lastWriterName, s2opc_north::unknownUserName);
     }
 
-
     // Write request to server
     // Check type DPC (Byte)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelDPC/dpc",
-            "-t", "3",
-            "17"});
+        string writeLog(clientN.writeValue("ns=1;s=dpc/Value", SOPC_Byte_Id, "17"));
 
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelDPC/dpc\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
 
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelDPC/dpc",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=dpc/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(readLog, "Value: 17"); // Written value
         ASSERT_EQ(server.lastWriterName, s2opc_north::unknownUserName);
@@ -432,35 +276,13 @@ TEST(S2OPCUA, OPCUA_Server) {
     // Write request to server
     // Check with non-anonymous login
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--encrypt",
-            "--username=user2", "--password=xGt4sdE3Z+",
-            "--user_policy_id=username_Basic256Sha256",
-            "--client_cert=cert/client_public/client_2k_cert.der",
-            "--client_key=cert/client_private/client_2k_key.pem",
-            "--server_cert=cert/server_public/server_2k_cert.der",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelDPC/dpc",
-            "-t", "3",
-            "18"});
-
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelDPC/dpc\", attribute 13:"); // Result OK, no error
+        OPCUA_ClientSecu clientS2("opc.tcp://localhost:55345", "user2", "xGt4sdE3Z+");
+        string writeLog(clientS2.writeValue("ns=1;s=dpc/Value", SOPC_Byte_Id, "18"));
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
         ASSERT_EQ(server.lastWriterName, "user2");
 
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelDPC/dpc",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=dpc/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(readLog, "Value: 18"); // Written value
     }
@@ -468,97 +290,244 @@ TEST(S2OPCUA, OPCUA_Server) {
     // Read request to server
     // Check type MVF (float / Read only)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelMVF/mvf",
-            "-t", "10",
-            "3.14"});
-
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelMVF/mvf\", attribute 13:"); // Result OK, no error
+        string writeLog(clientN.writeValue("ns=1;s=mvf/Value", SOPC_Float_Id, "3.14"));
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=mvf/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x803B0000"); // NOde not writeable
     }
 
     // Read request to server
     // Check type APC (float)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelAPC/apc",
-            "-t", "10",
-            "3.14"});
-
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelAPC/apc\", attribute 13:"); // Result OK, no error
+        string writeLog(clientN.writeValue("ns=1;s=apc/Value", SOPC_Float_Id, "31.4"));
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=apc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000");
 
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelAPC/apc",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=apc/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
-        ASSERT_STR_CONTAINS(readLog, "Value: 3.14"); // Written value
+        ASSERT_STR_CONTAINS(readLog, "Value: 31.4"); // Written value
     }
 
     // Read request to server
     // Check type INC (INT32)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelINC/inc",
-            "-t", "6",
-            "314"});
-
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
-
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelINC/inc\", attribute 13:"); // Result OK, no error
+        string writeLog(clientN.writeValue("ns=1;s=inc/Value", SOPC_Int32_Id, "314"));
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=inc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000");
 
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelINC/inc",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=inc/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(readLog, "Value: 314"); // Written value
     }
 
     // Check (uninitialized) Analog value
     {
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelMVA/mva",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
+        string readLog(clientN.readValue("ns=1;s=mvi/Value", 13));
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
         ASSERT_STR_CONTAINS(readLog, "Value: 560");
     }
+
+    ///////////////////////////////////////////////////
+    /////// ADDITIONAL COVERAGE ///////////////////////
+    // Check invalid do_id type
+    {
+        readings.clear();
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_id" reading with an int value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_id"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue((long)42);
+        elem.pushPrebuiltReading( &readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check invalid do_type type
+    {
+        readings.clear();
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_type" reading with an int value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_type"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue((long)42);
+        elem.pushPrebuiltReading( &readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check invalid do_cot type
+    {
+        readings.clear();
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_cot" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_cot"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(4.2);
+        elem.pushPrebuiltReading( &readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check invalid do_comingfrom type
+    {
+        readings.clear();
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_comingfrom" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_comingfrom"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(4.2);
+        elem.pushPrebuiltReading( &readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check valid type for "do_value_quality"
+    {
+        readings.clear();
+        TestReading elem("opcua_mvi", "pivotMVI", 0x40000000);
+        elem.pushIntValue(560, &readings);
+        CHECK_ADD_SPC_UPDATE_OK(readings);
+        // Check value for "do_value"
+        {
+            string readLog(clientN.readValue("ns=1;s=mvi/Value", 13));
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x40000000");
+            ASSERT_STR_CONTAINS(readLog, "Value: 560");
+        }
+    }
+    // Check invalid type for "do_value_quality"
+    {
+        readings.clear();
+        Logger::getLogger()->error(" --> do_value_quality");
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_value_quality" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_value_quality"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(5.32);
+        elem.pushPrebuiltReading(&readings);
+        CHECK_ADD_SPC_UPDATE_OK(readings);
+        // Check value for "do_value" (quality ignored)
+        {
+            string readLog(clientN.readValue("ns=1;s=mvi/Value", 13));
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+            ASSERT_STR_CONTAINS(readLog, "Value: 54");
+        }
+    }
+    // Check invalid type for "do_ts_org"
+    {
+        readings.clear();
+        Logger::getLogger()->error(" --> do_ts_org");
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_value_quality" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_ts_org"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(5.32);
+        elem.pushPrebuiltReading(&readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check invalid type for "do_ts_validity"
+    {
+        readings.clear();
+        Logger::getLogger()->error(" --> do_ts_validity");
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_value_quality" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_ts_validity"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(5.32);
+        elem.pushPrebuiltReading(&readings);
+        CHECK_NO_ADD_SPC_UPDATE(readings);
+    }
+    // Check invalid type for "do_source"
+    {
+        readings.clear();
+        Logger::getLogger()->error(" --> do_source");
+        TestReading elem("opcua_mvi", "pivotMVI");
+        // Prebuild and patch "do_source" reading with a float value
+        elem.mValue = createIntDatapointValue("do_value", 54L);
+        elem.prebuild();
+        DatapointValue* dv(elem.getElement("do_source"));
+        ASSERT_NE(nullptr, dv);
+        dv->setValue(5.32);
+        elem.pushPrebuiltReading(&readings);
+        CHECK_ADD_SPC_UPDATE_OK(readings);
+        // Check default value for "do_source" (="process")
+        {
+            string readLog(clientN.readValue("ns=1;s=mvi/Source", 13));
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+            ASSERT_STR_CONTAINS(readLog, QUOTE(Value: "process"));
+        }
+    }
+
+    ///////////////////////////////////////////////////
+    /////// CHECK TimeQuality /////////////////////////
+    // Check default value for TimeQuality = "do_ts_quality"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/TimeQuality", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x0000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 0");
+    }
+    readings.clear();
+    // Create READING (MVI : INT32)
+    {
+        TestReading elem("opcua_mvi", "pivotMVI");
+        elem.addProperty(createIntDatapointValue("do_ts_quality", 0x5));
+        elem.pushIntValue(580, &readings);
+    }
+    CHECK_ADD_SPC_UPDATE_OK(readings);
+
+    // Check value for "do_value"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/Value", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 580");
+    }
+    // Check value for "do_ts_quality"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/TimeQuality", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 5");
+    }
+
+    ///////////////////////////////////////////////////
+    /////// CHECK Confirmation ////////////////////////
+    // Check default value for "do_confirmation"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/Confirmation", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x0000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 0");
+    }
+
+    readings.clear();
+    // Create READING (MVI : INT32)
+    {
+        TestReading elem("opcua_mvi", "pivotMVI");
+        elem.addProperty(createIntDatapointValue("do_confirmation", 1));
+        elem.pushIntValue(570, &readings);
+    }
+    CHECK_ADD_SPC_UPDATE_OK(readings);
+
+    // Check value for "do_value"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/Value", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 570");
+    }
+    // Check value for "do_confirmation"
+    {
+        string readLog(clientN.readValue("ns=1;s=mvi/Confirmation", 13));
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000");
+        ASSERT_STR_CONTAINS(readLog, "Value: 1");
+    }
+
+
     server.stop();
 };
+
+#warning "TODO : check all sub (non-value) variables"
 
 TEST(S2OPCUA, OPCUA_Server_MissingFile) {
     ERROR("*** TEST S2OPCUA OPCUA_Server_MissingFile");
@@ -571,6 +540,24 @@ TEST(S2OPCUA, OPCUA_Server_MissingFile) {
             config_exData);
     testConf.addItem("protocol_stack", "protocol_stack", "JSON", protocolMissingFile,
             protocolMissingFile);
+
+    s2opc_north::OPCUA_Server::uninitialize(); // Ensure no previous server still exists
+    ASSERT_ANY_THROW(OPCUA_Server_Test server(testConf));
+
+    OPCUA_Server::uninitialize();
+}
+
+TEST(S2OPCUA, OPCUA_Server_MissingNamespaces) {
+    ERROR("*** TEST S2OPCUA OPCUA_Server_MissingNamespaces");
+    //ASSERT_C_RAISES_ASSERTION_START;
+    const string proto(replace_in_string(protocolJsonOK, QUOTE("urn:S2OPC:ns1"), ""));
+    ConfigCategory testConf;
+    testConf.addItem("logging", "Configure S2OPC logging level", "Info",
+            "Info", {"None", "Error", "Warning", "Info", "Debug"});
+    testConf.addItem("exchanged_data", "exchanged_data", "JSON", config_exData,
+            config_exData);
+    testConf.addItem("protocol_stack", "protocol_stack", "JSON", proto,
+            proto);
 
     s2opc_north::OPCUA_Server::uninitialize(); // Ensure no previous server still exists
     ASSERT_ANY_THROW(OPCUA_Server_Test server(testConf));

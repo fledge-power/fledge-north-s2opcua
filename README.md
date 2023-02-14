@@ -4,6 +4,7 @@ A simple OPC UA plugin that provides an OPC UA server based on S2OPC stack.
 This plugin supports several OPC UA Security Policies and Message Security Modes.
 It supports both anonymous access and authentication using username and password.
 
+This plugin requires FLEDGE V2.0.1 and S2OPC version `S2OPC_Toolkit_1.3.0`
 
 ## Configuration
 
@@ -36,7 +37,7 @@ As there are some hard dependencies between `fledge-north-s2opc` and other compo
 cd ${DEV_ROOT}
 git clone https://github.com/fledge-power/fledge-north-s2opcua.git
 wget https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz
-git clone --branch master --single-branch https://gitlab.com/systerel/S2OPC.git
+git clone --branch S2OPC_Toolkit_1.3.0 --single-branch https://gitlab.com/systerel/S2OPC.git
 ```
 
 - libmbedtls
@@ -67,7 +68,7 @@ rm -f CMakeCache.txt ; mkdir -p build ; cd build; cmake .. && make -j4 && sudo m
 
 ```sh
 cd ${DEV_ROOT}/S2OPC
-git checkout 073040628
+git checkout S2OPC_Toolkit_1.3.0
 git apply ${DEV_ROOT}/fledge-north-s2opcua/patches/S2OPC.patch
 
 WITH_USER_ASSERT=1 S2OPC_CLIENTSERVER_ONLY=1 WITH_NANO_EXTENDED=1 USE_STATIC_EXT_LIBS=1 BUILD_SHARED_LIBS=0 CMAKE_INSTALL_PREFIX=/usr/local ./build.sh; echo; echo "BUILD done, INSTALLING..."; echo; sudo make install -C build
@@ -86,6 +87,7 @@ Now all dependencies are installed, the plugin itself can be built.
 To build the OPC UA S2OPC South plugin run the commands:
 
 ```
+export S2OPC_ROOT=${DEV_ROOT}/S2OPC
 cd ${DEV_ROOT}/fledge-north-s2opcua
 make
 ```

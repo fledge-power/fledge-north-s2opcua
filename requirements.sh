@@ -20,7 +20,7 @@
 ## Author: Amandeep Singh Arora, Mark Riddoch, Jeremie Chabod
 ##
 
-export S2OPC_COMMIT=073040628
+export S2OPC_COMMIT=S2OPC_Toolkit_1.3.0
 export MBEDTLS_VERSION=2.28.1
 
 function fail() {
@@ -55,7 +55,7 @@ done
 cd ${DEV_ROOT}
 # git clone https://github.com/fledge-power/fledge-north-s2opcua.git || fail 6
 wget https://github.com/libcheck/check/releases/download/0.15.2/check-0.15.2.tar.gz || fail 6
-git clone --branch master --single-branch https://gitlab.com/systerel/S2OPC.git || fail 6
+git clone --branch $S2OPC_COMMIT --single-branch https://gitlab.com/systerel/S2OPC.git || fail 6
 
 
 if [[  $os_name == *"Red Hat"* || $os_name == *"CentOS"* ]]; then

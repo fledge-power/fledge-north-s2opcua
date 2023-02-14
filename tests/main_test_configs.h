@@ -17,7 +17,9 @@
 #include <sys/wait.h>
 #include <setjmp.h>
 #include <fstream>
+#include <exception>
 #include <string>
+#include <regex>
 
 // Fledge / tools  includes
 #include <plugin_api.h>
@@ -32,6 +34,8 @@ extern "C" {
 // Tested files
 #include "opcua_server.h"
 #include "opcua_server_tools.h"
+
+using SOPC_tools::StringVect_t;
 
 ///////////////////////////////
 // catch "C" asserts from S2OPC
@@ -82,6 +86,8 @@ public:
         nbBadResponses(0) {
         setShutdownDuration(500);
     }
+
+    virtual ~OPCUA_Server_Test(void) {WARNING("Test Server destroyed");}
 
     void reset(void) {
         nbResponses = 0;
@@ -149,6 +155,22 @@ public:
 
 //////////////////////////////////////
 // TEST HELPER FUNCTIONS
+#define replace_in_string(a,b,c) _replace_in_string(a,b,c,__FILE__, __LINE__)
+namespace {
+std::string _replace_in_string(
+        const std::string& ref, const std::string& old, const std::string& New,
+        const char* file, const int line) {
+    string result = std::regex_replace(ref, std::regex(old), New);
+    if(result == ref) {
+        printf("Test String unchanged by regex <%s> in %s:%d:\n", old.c_str(), file, line);
+        printf("\n=>[TXT]=<%s>\n", ref.c_str());
+        printf("\n=>[CHG]=<%s>\n", old.c_str());
+        throw std::exception();
+    }
+    // INFO("Test String changed by regex <%s> in %s:%d: <%s> ", old.c_str(), file, line, ref.c_str());
+    return result;
+}
+}
 
 static inline Datapoint* createStringDatapointValue(const std::string& name,
         const std::string& value) {
@@ -221,6 +243,7 @@ static std::string launch_and_check(SOPC_tools::CStringVect& command) {
     std::ifstream ifs(filename);
     std::string content( (std::istreambuf_iterator<char>(ifs) ),
                            (std::istreambuf_iterator<char>()    ) );
+    std::remove(filename);
 
     if (WIFEXITED(result) == 0 || WEXITSTATUS(result) != 0) {
         std::cerr << "While executing command:" << std::endl;
@@ -241,11 +264,19 @@ struct nodeVarFinder {
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
         SOPC_AddressSpace_Node* node = nodeInfo.first;
         return node != NULL &&
-                node->node_class == OpcUa_NodeClass_Variable &&
-                SOPC_tools::toString(node->data.variable.NodeId) == m_name;
+                ( (node->node_class == OpcUa_NodeClass_Variable &&
+                SOPC_tools::toString(node->data.variable.NodeId) == m_name) ||
+                (node->node_class == OpcUa_NodeClass_Object &&
+                SOPC_tools::toString(node->data.object.NodeId) == m_name));
     }
     const std::string m_name;
 };
+
+inline s2opc_north::NodeVect_t::const_iterator findNodeInASpc(
+        const s2opc_north::Server_AddrSpace& spc, const string& node) {
+    return std::find_if(spc.getNodes().begin(), spc.getNodes().end(),
+            nodeVarFinder(node));
+}
 
 struct nodeVarTypeFinder {
     nodeVarTypeFinder(const std::string& name):m_name(name){}
@@ -268,6 +299,176 @@ struct nodeObjFinder {
     }
     const std::string m_name;
 };
+
+class OPCUA_Client {
+public:
+protected:
+    OPCUA_Client(const string &addr) : mAddr(addr),
+    mOptions{"--ca=cert/trusted/cacert.der", "--crl=cert/revoked/cacrl.der"} {}
+public:
+    virtual ~OPCUA_Client() = default;
+
+    string writeValue(const string &nodeId, const SOPC_BuiltinId bType, const string& value,
+            bool debug=false) {
+        const string sType(std::to_string(bType));
+        StringVect_t v{"./s2opc_write",
+            "-e", mAddr.c_str(),
+            "-n", nodeId.c_str(),
+            "-t", sType.c_str()};
+        for (const string&s :mOptions) {v.push_back(s);}
+        v.push_back(value.c_str());
+
+        SOPC_tools::CStringVect write_cmd(v);
+        string writeLog(launch_and_check(write_cmd));
+        if (debug) {
+            cout << "WRITECMD=<" ;
+            for (const string& s : write_cmd.cppVect) {
+                cout << s  << " ";
+            }
+            cout << endl << "WRITELOG=<" <<writeLog << ">" << endl;
+        }
+        return writeLog;
+    }
+    string readValue(const string &nodeId, int attributeId = 13, bool debug=false) {
+        StringVect_t v{"./s2opc_read",
+            "-e", mAddr.c_str(),
+            "-a", std::to_string(attributeId).c_str(),
+            "-n", nodeId.c_str()};
+        for (const string&s :mOptions) {v.push_back(s);}
+
+        SOPC_tools::CStringVect read_cmd(v);
+        string log(launch_and_check(read_cmd));
+        if (debug) {
+            cout << "READCMD = " ;
+            for (const string& s : read_cmd.cppVect) {
+                cout << s  << " ";
+            }
+            cout << endl << "READLOG=" <<log << ">" << endl;
+        }
+        return log;
+    }
+
+    string browseNode(const string &nodeId) {
+        StringVect_t v{"./s2opc_browse",
+            "-e", mAddr.c_str(),
+            "-n", nodeId.c_str()};
+        for (const string&s :mOptions) {v.push_back(s);}
+        SOPC_tools::CStringVect write_cmd(v);
+        return launch_and_check(write_cmd);
+    }
+protected:
+    StringVect_t mOptions;
+private:
+    string mAddr;
+};
+
+class OPCUA_ClientNone : public OPCUA_Client {
+public:
+    OPCUA_ClientNone(const string &addr) :
+        OPCUA_Client(addr) {
+        mOptions.push_back("--none");
+    }
+    virtual ~OPCUA_ClientNone() = default;
+};
+
+class OPCUA_ClientSecu : public OPCUA_Client {
+public:
+    OPCUA_ClientSecu(const string &addr, const string& user = "user", const string& pwd = "password") :
+        OPCUA_Client(addr) {
+        static const string user_prefix("--username=");
+        static const string pwd_prefix("--password=");
+        StringVect_t v{"--encrypt",
+            user_prefix + user, pwd_prefix + pwd,
+            "--user_policy_id=username_Basic256Sha256",
+            "--client_cert=cert/client_public/client_2k_cert.der",
+            "--client_key=cert/client_private/client_2k_key.pem",
+            "--server_cert=cert/server_public/server_2k_cert.der"
+        };
+        for (const string&s :v) {mOptions.push_back(s);}
+    }
+    virtual ~OPCUA_ClientSecu() = default;
+};
+
+
+struct TestReading {
+    TestReading(const string& do_type, const string& do_id, uint32_t do_quality = 0):
+        m_id(do_id),
+        m_type(do_type),
+        m_quality(do_quality),
+        m_ts(0),
+        m_cot(1),
+        m_source("process"),
+        m_comingfrom("test_source"),
+        m_ts_org("genuine"),
+        m_ts_validity("good"),
+        m_qualityDetails(0),
+        mElem(new Datapoints),
+        mValue(nullptr),
+        mPushed(false) {}
+    void pushIntValue(const int64_t value, Readings* readings) {
+        GTEST_ASSERT_EQ(mValue, nullptr);
+        mValue = createIntDatapointValue("do_value", value);
+        pushReading(readings);
+    }
+    void pushFloatValue(const double value, Readings* readings) {
+        GTEST_ASSERT_EQ(mValue, nullptr);
+        mValue = createFloatDatapointValue("do_value", value);
+        pushReading(readings);
+    }
+    void pushStrValue(const string& value, Readings* readings) {
+        GTEST_ASSERT_EQ(mValue, nullptr);
+        mValue = createStringDatapointValue("do_value", value);
+        pushReading(readings);
+    }
+    void addProperty(Datapoint* dp) {
+        mElem->push_back(dp);
+    }
+    DatapointValue* getElement(const string& key) {
+        for (Datapoint* dp : *mElem) {
+            if (dp->getName() == key) {return &dp->getData();}
+        }
+        return nullptr;
+    }
+    void prebuild(void){
+        assert(!mPushed);
+        GTEST_ASSERT_NE(mValue, nullptr);
+        mElem->push_back(createStringDatapointValue("do_type", m_type));
+        mElem->push_back(createStringDatapointValue("do_id", m_id));
+        mElem->push_back(createIntDatapointValue("do_quality", m_qualityDetails));
+        mElem->push_back(createIntDatapointValue("do_ts", m_ts));
+        mElem->push_back(createIntDatapointValue("do_cot", m_cot));
+        mElem->push_back(createStringDatapointValue("do_source", m_source));
+        mElem->push_back(createStringDatapointValue("do_comingfrom", m_comingfrom));
+        mElem->push_back(createStringDatapointValue("do_ts_org", m_ts_org));
+        mElem->push_back(createStringDatapointValue("do_ts_validity", m_ts_validity));
+        mElem->push_back(createIntDatapointValue("do_value_quality", m_quality));
+        mElem->push_back(mValue);
+    }
+    void pushPrebuiltReading(Readings* readings){
+        DatapointValue dpv(mElem, true);
+        readings->push_back(new Reading(string("reading/") + m_id, new Datapoint("data_object", dpv)));
+        mPushed = true;
+    }
+    void pushReading(Readings* readings){
+        prebuild();
+        pushPrebuiltReading(readings);
+    }
+    string m_id;
+    string m_type;
+    uint32_t m_quality;
+    uint32_t m_ts;
+    uint32_t m_cot;
+    string m_source;
+    string m_comingfrom;
+    string m_ts_org;
+    string m_ts_validity;
+    uint32_t m_qualityDetails;
+    Datapoints* mElem;
+    Datapoint*  mValue;
+private:
+    bool mPushed;
+};
+
 //////////////////////////////////////
 // TEST CONFIGURATIONS
 static const std::string protocolJsonOK =
@@ -279,23 +480,23 @@ static const std::string protocolJsonOK =
             "productUri" : "urn:S2OPC:localhost", \
             "appDescription": "Application description", \
             "localeId" : "en-US", \
-            "namespaces" : [ "urn:S2OPC:localhost" ], \
+            "namespaces" : [ "urn:S2OPC:ns1" ], \
             "policies" : [ \
                            { "securityMode" : "None", "securityPolicy" : "None", "userPolicies" : [ "anonymous" ] },\
                            { "securityMode" : "Sign", "securityPolicy" : "Basic256", "userPolicies" : [ "anonymous", "username" ] }, \
                            { "securityMode" : "SignAndEncrypt", "securityPolicy" : "Basic256Sha256", "userPolicies" : \
                                [ "anonymous", "anonymous", "username_Basic256Sha256", "username_None" ] } ], \
-                               "users" : {"user" : "password", "user2" : "xGt4sdE3Z+" }, \
-                               "certificates" : { \
-                                   "serverCertPath" : "server_2k_cert.der", \
-                                   "serverKeyPath" : "server_2k_key.pem", \
-                                   "trusted_root" : [ "cacert.der" ],  \
-                                   "trusted_intermediate" : [ ], \
-                                   "revoked" : [ "cacrl.der" ], \
-                                   "untrusted_root" : [ ], \
-                                   "untrusted_intermediate" : [ ], \
-                                   "issued" : [  ] } \
-        } \
+             "users" : {"user" : "password", "user2" : "xGt4sdE3Z+" }, \
+             "certificates" : { \
+                 "serverCertPath" : "server_2k_cert.der", \
+                 "serverKeyPath" : "server_2k_key.pem", \
+                 "trusted_root" : [ "cacert.der" ],  \
+                 "trusted_intermediate" : [ ], \
+                 "revoked" : [ "cacrl.der" ], \
+                 "untrusted_root" : [ ], \
+                 "untrusted_intermediate" : [ ], \
+                 "issued" : [  ] } \
+          } \
         } });
 
 static const std::string aSpaceJsonOK = QUOTE( { "exchanged_data" : {\
@@ -347,9 +548,9 @@ static const std::string config_exData = QUOTE(
             "version" : "1.0",
             "datapoints" : [
             {\
-               "label" : "label1",
-               "pivot_id" : "pivot1",
-               "pivot_type": "type1",
+               "label" : "labelDPS",
+               "pivot_id" : "pivotDPS",
+               "pivot_type": "typeDPS",
                "protocols":[\
                   {\
                    "name":"iec104",\
@@ -358,7 +559,7 @@ static const std::string config_exData = QUOTE(
                   },\
                   {\
                     "name":"opcua",\
-                    "address":"addr1",\
+                    "address":"dps",\
                     "typeid":"opcua_dps"\
                    }\
                  ]\
@@ -376,25 +577,25 @@ static const std::string config_exData = QUOTE(
                     ]\
                 }, \
                 {\
-                   "label" : "labelMVA",
-                   "pivot_id" : "pivotMVA",
-                   "pivot_type": "typeMVA",
+                   "label" : "labelMVI",
+                   "pivot_id" : "pivotMVI",
+                   "pivot_type": "typeMVI",
                    "protocols":[\
                       {\
                         "name":"opcua",\
-                        "address":"mva",\
-                        "typeid":"opcua_mva"\
+                        "address":"mvi",\
+                        "typeid":"opcua_mvi"\
                        }\
                      ]\
                    },
                 {\
                  "label" : "label2",
-                 "pivot_id" : "pivot2",
+                 "pivot_id" : "pivotSPS",
                  "pivot_type": "type2",
                  "protocols":[\
                    {\
                      "name":"opcua",\
-                     "address":"addr2",\
+                     "address":"sps",\
                      "typeid":"opcua_sps"\
                     }\
                    ]\

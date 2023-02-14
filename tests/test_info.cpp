@@ -25,6 +25,11 @@ using namespace rapidjson;
 
 extern "C" {
 	PLUGIN_INFORMATION *plugin_info();
+
+	void plugin_Assert_UserCallback(const char* context) {
+	    printf("Failure context: %s\n", context ? context : nullptr);
+	    assert(false);
+	}
 };
 
 TEST(S2OPCUA, PluginInfo) {
@@ -171,7 +176,7 @@ TEST(S2OPCUA, CStringVect) {
 extern "C" {
 extern PLUGIN_HANDLE plugin_init(ConfigCategory *configData);
 extern void plugin_shutdown(PLUGIN_HANDLE handle);
-extern uint32_t plugin_send(PLUGIN_HANDLE handle, s2opc_north::Readings& readings);
+extern uint32_t plugin_send(PLUGIN_HANDLE handle, Readings& readings);
 extern void plugin_register(PLUGIN_HANDLE handle,
         s2opc_north::north_write_event_t write,
         s2opc_north::north_operation_event_t operation);
@@ -226,9 +231,10 @@ TEST(S2OPCUA, PluginInstance) {
     ERROR("*** TEST S2OPCUA PluginInstance");
     ASSERT_NO_C_ASSERTION;
 
+    OPCUA_ClientNone client("opc.tcp://localhost:55345");
     // note : plugin_info already tested
     PLUGIN_HANDLE handle = nullptr;
-    s2opc_north::Readings readings;
+    Readings readings;
     ConfigCategory config;
     config.addItem("logging", "Configure S2OPC logging level", "Info",
             "Info", {"None", "Error", "Warning", "Info", "Debug"});
@@ -260,21 +266,28 @@ TEST(S2OPCUA, PluginInstance) {
     // Write request to server
     // Check type DPC (Byte)
     {
-        SOPC_tools::CStringVect write_cmd({"./s2opc_write",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/labelDPC/dpc",
-            "-t", "3",
-            "17"});
+        string log;
+        log = client.browseNode("i=85");
+        ASSERT_STR_CONTAINS(log, QUOTE(i=85 -> ns=1;s=dps "dps"));
 
-        string writeLog(launch_and_check(write_cmd));
-        // cout << "WRITELOG=<" <<writeLog << ">" << endl;
+        log = client.browseNode("ns=1;s=dpc");
+        ASSERT_STR_CONTAINS(log, QUOTE(ns=1;s=dpc -> ns=1;s=dpc/Cause "Cause"));
 
-        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=/labelDPC/dpc\", attribute 13:"); // Result OK, no error
-        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
+        log = client.readValue("ns=1;s=dpc/Value");
+        ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 0");
+
+        log = client.writeValue("ns=1;s=dpc/Value", SOPC_Byte_Id, "1");
+        ASSERT_STR_CONTAINS(log, "Write node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+
+        log = client.readValue("ns=1;s=dpc/Value");
+        ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 1");
+
     }
-
 
     ASSERT_FALSE(gWriteEventCalled);
     ASSERT_GE(gOperEventNbCall, 1);
@@ -290,15 +303,27 @@ TEST(S2OPCUA, PluginInstance) {
 
     // Test "send" event
     {
-        s2opc_north::Readings readings;
+        Readings readings;
+        string log;
+
+        // Check initial value
+        log = client.readValue("ns=1;s=sps/Value");
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x80320000"); // OpcUa_BadWaitingForInitialData
+
         // Create READING 1
         {
             vector<Datapoint *>* dp_vect = new vector<Datapoint *>;
-            dp_vect->push_back(createStringDatapointValue("do_type", "opcua_dps"));
-            dp_vect->push_back(createStringDatapointValue("do_nodeid", "ns=1;s=/label1/addr1"));
-            dp_vect->push_back(createIntDatapointValue("do_value", 165));
-            dp_vect->push_back(createIntDatapointValue("do_quality", 0x00000000));
-            dp_vect->push_back(createIntDatapointValue("do_ts", 42));
+            dp_vect->push_back(createStringDatapointValue("do_type", "opcua_sps"));
+            dp_vect->push_back(createStringDatapointValue("do_id", "pivotSPS"));
+            dp_vect->push_back(createIntDatapointValue("do_cot", 3));
+            dp_vect->push_back(createStringDatapointValue("do_source", "substituted"));
+            dp_vect->push_back(createStringDatapointValue("do_comingfrom", "opcua"));
+            dp_vect->push_back(createStringDatapointValue("do_ts_org", "genuine"));
+            dp_vect->push_back(createStringDatapointValue("do_ts_validity", "good"));
+            dp_vect->push_back(createIntDatapointValue("do_quality", 0x00000008));
+            dp_vect->push_back(createIntDatapointValue("do_value", 1));
+            dp_vect->push_back(createIntDatapointValue("do_value_quality", 0x00000000));
+            dp_vect->push_back(createIntDatapointValue("do_ts", 1673363780));
             DatapointValue do_1(dp_vect, true);
             readings.push_back(new Reading("reading1", new Datapoint("data_object", do_1)));
         }
@@ -307,22 +332,25 @@ TEST(S2OPCUA, PluginInstance) {
         this_thread::sleep_for(chrono::milliseconds(10));
 
         // Read back values from server
-        SOPC_tools::CStringVect read_cmd({"./s2opc_read",
-            "-e", "opc.tcp://localhost:55345", "--none",
-            "--ca=cert/trusted/cacert.der",
-            "--crl=cert/revoked/cacrl.der",
-            "-n", "ns=1;s=/label1/addr1",
-            "-a", "13"});
-
-        string readLog(launch_and_check(read_cmd));
-        // cout << "READLOG=<" <<readLog << ">" << endl;
-        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
-        ASSERT_STR_CONTAINS(readLog, "Value: 165"); // Written value
+        log = client.readValue("ns=1;s=sps/Value");
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 1"); // Written value
+        // Read back values from server
+        log = client.readValue("ns=1;s=sps/SecondSinceEpoch");
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 1673363780"); // Written value
     }
+
+    // Check multiple instances are not supported
+    bool excpt(false);
+    try {handle = plugin_init(&config);}
+    catch (const std::exception&) {excpt = true;}
+    ASSERT_TRUE(excpt);
 
     // destroy server
     plugin_shutdown(handle);
     ASSERT_EQ(OPCUA_Server::instance(), nullptr);
+    plugin_shutdown(nullptr);
 }
 
 

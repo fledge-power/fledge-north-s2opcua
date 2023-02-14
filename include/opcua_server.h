@@ -23,6 +23,7 @@
 #include <thread>
 #include <map>
 #include <vector>
+#include <memory>
 
 // Fledge headers
 #include "config_category.h"
@@ -39,6 +40,9 @@ extern "C" {
 #include "sopc_user_app_itf.h"
 #include "sopc_toolkit_config.h"
 };
+
+using Readings = std::vector<Reading*>;
+using Datapoints = std::vector<Datapoint *>;
 
 namespace s2opc_north {
 
@@ -57,7 +61,6 @@ using north_operation_event_t =
         int (*)(char *operation, int paramCount,
                 char *names[], char *parameters[],  // //NOSONAR
                 ControlDestination destination, ...);
-using Readings = std::vector<Reading*>;
 
 static const char unknownUserName[] = "-UnknownUserName-";
 /**
@@ -130,11 +133,66 @@ class OPCUA_Server {
  private:
     void init_sopc_lib_and_logs(void);
 
+    class Object_Reader {
+     public:
+        explicit Object_Reader(Datapoints* dp, const std::string& objName);
+        virtual ~Object_Reader(void) = default;
+
+        inline bool isValid(void)const {return mInvalidityDetails == "";}
+        inline const string& pivotId(void)const {return mPivotId;}
+        inline SOPC_DataValue* cause(void)const {return mCause.get();}
+        inline SOPC_DataValue* source(void)const {return mSource.get();}
+        inline SOPC_DataValue* comingFrom(void)const {return mComingFrom.get();}
+        inline SOPC_DataValue* confirmation(void)const {return mConfirmation.get();}
+        inline SOPC_DataValue* tmOrg(void)const {return mTmOrg.get();}
+        inline SOPC_DataValue* tmValidity(void)const {return mTmValidity.get();}
+        inline SOPC_DataValue* quality(void)const {return mQuality.get();}
+        inline SOPC_DataValue* tsQuality(void)const {return mTsQuality.get();}
+        inline SOPC_DataValue* tsValue(void)const {return mTsValue.get();}
+        inline SOPC_DataValue* value(void)const {return mValue.get();}
+
+     private:
+        using FieldDecoder = void (*) (Object_Reader*, DatapointValue*);
+        using decoder_map_t = std::map<std::string, FieldDecoder>;
+        static void decodePivotId(Object_Reader* pivot, DatapointValue* data);
+        static void decodeType(Object_Reader* pivot, DatapointValue* data);
+        static void decodeCause(Object_Reader* pivot, DatapointValue* data);
+        static void decodeConfirmation(Object_Reader* pivot, DatapointValue* data);
+        static void decodeSource(Object_Reader* pivot, DatapointValue* data);
+        static void decodeComingFrom(Object_Reader* pivot, DatapointValue* data);
+        static void decodeTmOrg(Object_Reader* pivot, DatapointValue* data);
+        static void decodeTs(Object_Reader* pivot, DatapointValue* data);
+        static void decodeTmValidity(Object_Reader* pivot, DatapointValue* data);
+        static void decodeQuality(Object_Reader* pivot, DatapointValue* data);
+        static void decodeTsQuality(Object_Reader* pivot, DatapointValue* data);
+        static void decodeValue(Object_Reader* pivot, DatapointValue* data);
+        static void decodeValueQuality(Object_Reader* pivot, DatapointValue* data);
+
+        using Value_Ptr = std::unique_ptr<SOPC_DataValue>;
+        static void setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data);
+
+        static const decoder_map_t decoder_map;
+        string mPivotId;                  // do_id
+        SOPC_BuiltinId mTypeId;           // do_type
+        Value_Ptr mCause;                 // do_cot
+        Value_Ptr mConfirmation;          // do_confirmation
+        Value_Ptr mSource;                // do_source
+        Value_Ptr mComingFrom;            // do_comingfrom
+        Value_Ptr mTmOrg;                 // do_ts_org
+        Value_Ptr mTmValidity;            // do_ts_validity
+        Value_Ptr mQuality;               // do_quality
+        Value_Ptr mTsQuality;             // do_ts_quality
+        Value_Ptr mTsValue;               // do_ts
+        DatapointValue* mInputValue;      // do_value
+        Value_Ptr mValue;                 // do_value
+        uint32_t  mValueQuality;          // do_value_quality
+        string    mInvalidityDetails;
+    };  // Object_Reader
+
     /**
      * This function updates a node Id in the address space given a DatapointValue
      */
-    void updateAddressSpace(SOPC_NodeId* nodeId, const string& typeId,
-            const DatapointValue* dv, SOPC_StatusCode quality, SOPC_DateTime timestamp)const;
+    void updateAddressSpace(const Object_Reader& object)const;
 
     int m_nbMillisecondShutdown;
 

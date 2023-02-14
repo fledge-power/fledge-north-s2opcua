@@ -56,7 +56,7 @@ file(GLOB SOURCES src/*.cpp src/*.c)
 
 # Find Fledge includes and libs, by including FindFledge.cmake file
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
-find_package(Fledge)
+find_package(Fledge 2.0.1)
 # If errors: make clean and remove Makefile
 if (NOT FLEDGE_FOUND)
 	if (EXISTS "${CMAKE_BINARY_DIR}/Makefile")
@@ -73,7 +73,7 @@ include_directories(include)
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
 
-find_package(S2OPC 1.2.0)
+find_package(S2OPC 1.3.0)
 
 # Add Fledge lib path
 link_directories(${FLEDGE_LIB_DIRS})

@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <memory>
 #include <utility>
 
 // Fledge headers
@@ -49,23 +50,25 @@ using NodeInfo_t = std::pair<SOPC_AddressSpace_Node*, std::string>;
 using NodeVect_t = std::vector<NodeInfo_t>;
 /** NodeInfo_t = <NodeId, NodeInfo_t> */
 using NodeMap_t = std::unordered_map<string, NodeInfo_t>;
+/** NodeIdMap_t = {PivotId : Pivot address} */
+using NodeIdMap_t = std::unordered_map<string, string>;
 
 /**************************************************************************/
 struct CVarInfo {
-    CVarInfo(const string& nodeId,
+    CVarInfo(const string& address,
             const string& browseName,
             const string& displayName,
             const string& description,
             const SOPC_NodeId& parentNodeId,
-            const bool readOnly):
-                mNodeId(nodeId),
+            const bool readOnly = true):
+                mAddress(address),
                 mBrowseName(browseName),
                 mDisplayName(displayName),
                 mDescription(description),
                 mParentNodeId(parentNodeId),
                 mReadOnly(readOnly) {
     }
-    const string mNodeId;
+    const string mAddress;
     const string mBrowseName;
     const string mDisplayName;
     const string mDescription;
@@ -80,18 +83,29 @@ struct CVarInfo {
 class CNode {
  public:
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
+    inline const SOPC_NodeId& nodeId(void)const {return *mNodeId.get();}
     void insertAndCompleteReferences(NodeVect_t* nodes,
-            NodeMap_t* nodeMap, const std::string& typeId);
+            NodeMap_t* nodeMap = nullptr, const std::string& typeId = "");
 
  protected:
-    explicit CNode(SOPC_StatusCode defaultStatusCode = GoodStatus);
+    explicit CNode(const string& nodeName, OpcUa_NodeClass nodeClass, SOPC_StatusCode defaultStatusCode = GoodStatus);
+    virtual ~CNode(void);
 
  private:
-    void createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref,
-            const SOPC_NodeId& nodeId)const;
+    void createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref)const;
 
     SOPC_AddressSpace_Node mNode;
+    std::unique_ptr<SOPC_NodeId> mNodeId;
 };  // class CNode
+
+/**
+ * \brief Contains code for Folder nodes
+ */
+class CFolderNode : public CNode {
+ public:
+    explicit CFolderNode(const string& nodeName, const SOPC_NodeId& parent);
+    virtual ~CFolderNode(void) = default;
+};
 
 /**
  * \brief Contains common code to all Variable nodes
@@ -99,6 +113,7 @@ class CNode {
 class CCommonVarNode : public CNode {
  public:
     explicit CCommonVarNode(const CVarInfo& varInfo);
+    virtual ~CCommonVarNode(void) = default;
 };
 
 /**
@@ -107,6 +122,7 @@ class CCommonVarNode : public CNode {
 class CVarNode : public CCommonVarNode {
  public:
     explicit CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId);
+    virtual ~CVarNode(void) = default;
 
  private:
     void initializeCommonFields(const CVarInfo& varInfo);
@@ -141,19 +157,39 @@ class Server_AddrSpace{
     virtual ~Server_AddrSpace(void) = default;
 
     const NodeInfo_t* getByNodeId(const string& nodeId)const;
+    string getByPivotId(const string& pivotId)const;
 
  public:
-    inline const NodeVect_t& getNodes(void)const {return nodes;}
-    inline NodeVect_t& getNodes(void) {return nodes;}
+    inline const NodeVect_t& getNodes(void)const {return mNodes;}
+    inline NodeVect_t& getNodes(void) {return mNodes;}
 
  private:
     /**
+     * Create folder node object. Create the references (in new node and parent)
+     * @param nodeId The expected nodeId
+     * @param parent The parent nodeId
+     * @return The CNode of the created object
+     */
+    CNode* createFolderNode(const string& nodeId, const SOPC_NodeId& parent);
+    void createPivotNodes(const string& label, const string& pivotId,
+            const string& address, const string& pivotType);
+    void insertUnrefVarNode(const string& address, const std::string &name,
+            const std::string &descr, SOPC_BuiltinId type,
+            const SOPC_NodeId& parent);
+    /**
      * The content of the address space.
      */
-    NodeVect_t nodes;
+    NodeVect_t mNodes;
     // Note: nodes are freed automatically (See call to ::SOPC_AddressSpace_Create)
 
+    /**
+     * Map containing functional nodes which can be written by clients
+     */
     NodeMap_t mByNodeId;
+    /**
+     * Map containing addresses, sorted by PivotId
+     */
+    NodeIdMap_t mByPivotId;
 };  // Server_AddrSpace
 
 }   // namespace s2opc_north

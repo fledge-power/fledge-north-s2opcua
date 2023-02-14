@@ -3,6 +3,7 @@ Q=@
 PLUGIN_TASK_CONF='{"name": "s2opcua_server","plugin": "s2opcua","type": "north","schedule_type": 3,"schedule_day": 0,"schedule_time": 0,"schedule_repeat": 10,"schedule_enabled": true}'
 PLUGIN_SERV_CONF='{"config":{}, "enabled" :"true", "name":"s2opcua_service", "plugin":"s2opcua", "type":"north"}'
 CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11,-whitespace/comments'
+export S2OPC_ROOT=$(FLEDGE_SRC)/../S2OPC
 
 all: build install_plugin # insert_task
 build:
