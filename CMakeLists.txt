@@ -73,6 +73,15 @@ include_directories(include)
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
 
+# Add other include paths this plugin needs
+if (FLEDGE_SRC)
+    message(STATUS "Using third-party includes " ${FLEDGE_SRC}/C/thirdparty/rapidjson)
+    include_directories(${FLEDGE_SRC}/C/thirdparty/rapidjson/include)
+    
+else()
+    include_directories(${FLEDGE_INCLUDE_DIRS}/Simple-Web-Server)
+endif()
+
 find_package(S2OPC 1.3.0)
 
 # Add Fledge lib path
