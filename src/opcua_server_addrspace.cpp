@@ -384,11 +384,12 @@ createFolderNode(const string& nodeId, const SOPC_NodeId& parent) {
 void
 Server_AddrSpace::
 insertUnrefVarNode(const string& address, const std::string &name, const std::string &descr, SOPC_BuiltinId type,
-        const SOPC_NodeId& parent) {
-    CVarInfo cVarInfo(address + "/" + name, name, name, descr, parent);
+        const SOPC_NodeId& parent, bool isReadOnly, NodeMap_t* nodeMap, const string& pivotType) {
+    CVarInfo cVarInfo(address + "/" + name, name, name, descr, parent, isReadOnly);
     CVarNode* pNode(new CVarNode(cVarInfo, type));   // //NOSONAR (deletion managed by S2OPC)
-    DEBUG("Adding node data '%s' of type '%d' (RO)", SOPC_tools::toString(pNode->nodeId()).c_str(), type);
-    pNode->insertAndCompleteReferences(&mNodes);
+    DEBUG("Adding node data '%s' of type '%d' (%s)", SOPC_tools::toString(pNode->nodeId()).c_str(), type,
+    		(isReadOnly ? "RO" : "RW"));
+    pNode->insertAndCompleteReferences(&mNodes, nodeMap, pivotType);
 }
 
 /**************************************************************************/
@@ -403,30 +404,35 @@ createPivotNodes(const string& label, const string& pivotId,
     parentNode = createFolderNode(address, NodeId_Root_Objects);
     const SOPC_NodeId& parent(parentNode->nodeId());
 
-    insertUnrefVarNode(address, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
-    insertUnrefVarNode(address, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
-    insertUnrefVarNode(address, "Source", "Source", SOPC_String_Id, parent);
-    insertUnrefVarNode(address, "ComingFrom", "Origin protocol", SOPC_String_Id, parent);
-    insertUnrefVarNode(address, "TmOrg", "Origin Timestamp", SOPC_String_Id, parent);
-    insertUnrefVarNode(address, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
-    insertUnrefVarNode(address, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
-    insertUnrefVarNode(address, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
-    insertUnrefVarNode(address, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
-
     // Create <..>/Value, (dynamic type, based on 'pivotType')
     const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivotType));
-    const char* readOnlyStr(readOnly ? "RO" : "RW");
     const string nodeIdName(address + "/Value");
-    DEBUG("Adding node data '%s' of type '%s-%d' (%s)",
-            nodeIdName.c_str(), pivotType.c_str(), sopcTypeId, readOnlyStr);
-    CVarInfo cVarInfo(nodeIdName, "Value", "Value", string("Value of type ") + pivotType, parent, readOnly);
-    CVarNode* pNode(new CVarNode(cVarInfo, sopcTypeId));   // //NOSONAR (deletion managed by S2OPC)
-    pNode->insertAndCompleteReferences(&mNodes, &mByNodeId, pivotType);
-    mByPivotId.emplace(pivotId, address);
-    // For writeable nodes, adding a "Reply" node
-    if (readOnly == false) {
-        insertUnrefVarNode(address, "Reply", "Reply", SOPC_String_Id, parent);
+
+    if (readOnly)
+    {
+    	/* This is a monitoring variable that can be read by an OPC Client. */
+        insertUnrefVarNode(address, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
+        insertUnrefVarNode(address, "Source", "Source", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, "ComingFrom", "Origin protocol", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, "TmOrg", "Origin Timestamp", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
     }
+    else
+    {
+    	/* This is a control variable that can be written by an OPC Client.
+    	  It only contains Value(RW), Reply and Trigger(RW)
+    	  */
+        insertUnrefVarNode(address, "Reply", "Control reply", sopcTypeId, parent);
+        insertUnrefVarNode(address, "Trigger", "Control trigger", SOPC_Byte_Id, parent, false);
+    }
+
+    insertUnrefVarNode(address, "Value", string("Value of type ") + pivotType, sopcTypeId, parent, readOnly, &mByNodeId, pivotType);
+
+    mByPivotId.emplace(pivotId, address);
 }
 
 /**************************************************************************/

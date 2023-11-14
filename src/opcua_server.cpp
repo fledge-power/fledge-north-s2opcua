@@ -773,7 +773,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
                 operName,
                 names.vect[0], cParams.vect[0],
                 names.vect[5], cParams.vect[5]);
-        m_oper(operName, names.size, names.vect, cParams.vect, DestinationBroadcast);
+        m_oper(operName, names.size, names.vect, cParams.vect, DestinationBroadcast, nullptr);
 
         delete operName;
     } else {

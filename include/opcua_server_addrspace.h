@@ -175,7 +175,10 @@ class Server_AddrSpace{
             const string& address, const string& pivotType);
     void insertUnrefVarNode(const string& address, const std::string &name,
             const std::string &descr, SOPC_BuiltinId type,
-            const SOPC_NodeId& parent);
+            const SOPC_NodeId& parent,
+			bool isReadOnly = true,
+			NodeMap_t* nodeMap = nullptr,
+			const string& pivotType = "");
     /**
      * The content of the address space.
      */
