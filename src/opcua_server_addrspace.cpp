@@ -30,6 +30,7 @@ extern "C" {
 // Fledge headers
 #include "config_category.h"
 #include "logger.h"
+#include "plugin_api.h"
 
 /// Project includes
 #include "opcua_server_config.h"
@@ -61,7 +62,7 @@ s2opc_north::NodeVect_t getNS0(void) {
 #warning "TODO: a copy should be made, otherwise the inverse reference added will be" \
     "maintained if several calls are made"
         SOPC_AddressSpace_Node* node(nodes + i);
-        s2opc_north::NodeInfo_t info = {node, string("")};
+        s2opc_north::NodeInfo_t info(node);
         result.push_back(info);
     }
 
@@ -131,7 +132,6 @@ GarbageCollectorC<T>::
 namespace {
 static const string ns1("ns=1;s=");    // NOLINT Explicitely want to avoid construction on each use
 }    // namespace
-inline string getNodeIdName(const string &address) {return ::ns1 + address;}
 
 /**************************************************************************/
 inline const SOPC_NodeId* getNodeIdFromAddrSpace(const SOPC_AddressSpace_Node &node) {
@@ -178,11 +178,12 @@ const SOPC_NodeId NodeId_Root_Objects = {
 }       // namespace
 
 namespace s2opc_north {
+string getNodeIdName(const string &address) {return ::ns1 + address;}
 
 /**************************************************************************/
 CNode::
 CNode(const string& nodeName, OpcUa_NodeClass nodeClass, SOPC_StatusCode defaultStatusCode) {
-    const string nodeId(::getNodeIdName(nodeName));
+    const string nodeId(getNodeIdName(nodeName));
     mNodeId.reset(SOPC_NodeId_FromCString(nodeId.c_str(), nodeId.length()));
     memset(get(), 0, sizeof(SOPC_AddressSpace_Node));
     get()->node_class = nodeClass;     // Filled by child classes
@@ -203,12 +204,12 @@ CNode::
 createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref)const {
     // create a reverse reference
     const SOPC_NodeId& refTargetId(ref.TargetId.NodeId);
-    DEBUG("Create reverse reference from '%s' to '%s'",
-            toString(*mNodeId.get()).c_str(), toString(refTargetId).c_str());
+//    DEBUG("Create reverse reference from '%s' to '%s'",
+//            toString(*mNodeId.get()).c_str(), toString(refTargetId).c_str());
     // Find matching node in 'nodes'
     bool found(false);
     for (const NodeInfo_t& loopInfo : *nodes) {
-        SOPC_AddressSpace_Node* pNode(loopInfo.first);
+        SOPC_AddressSpace_Node* pNode(loopInfo.mNode);
         const SOPC_NodeId* nodeId = ::getNodeIdFromAddrSpace(*pNode);
         if (nodeId != nullptr && !found && SOPC_NodeId_Equal(nodeId, &refTargetId)) {
             // Insert space in target references
@@ -224,9 +225,9 @@ createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref)const {
             OpcUa_ReferenceNode& reverse(pNode->data.variable.References[oldSize]);
             reverse.IsInverse = !ref.IsInverse;
             reverse.ReferenceTypeId = ref.ReferenceTypeId;
-            DEBUG("Create rev ref from '%s' to '%s'",
-                   SOPC_tools::toString(*mNodeId.get()).c_str(),
-                   SOPC_tools::toString(*nodeId).c_str());
+//            DEBUG("Create rev ref from '%s' to '%s'",
+//                   SOPC_tools::toString(*mNodeId.get()).c_str(),
+//                   SOPC_tools::toString(*nodeId).c_str());
             SOPC_NodeId_Copy(&reverse.TargetId.NodeId, mNodeId.get());
             reverse.TargetId.ServerIndex = serverIndex;
             reverse.TargetId.NamespaceUri = String_NULL;
@@ -240,10 +241,12 @@ createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref)const {
 void
 CNode::
 insertAndCompleteReferences(NodeVect_t* nodes,
-        NodeMap_t* nodeMap, const std::string& typeId) {
-    NodeInfo_t refInfo(&mNode, typeId);
+        NodeMap_t* nodeMap , const NodeInfoCtx_t& context) {
+    NodeInfo_t refInfo(&mNode, context);
     nodes->push_back(refInfo);
     if (nodeMap != nullptr) {
+    	const string name(toString(*mNodeId.get()));
+    	DEBUG("Create Node '%s' to '%s'", LOGGABLE(name), LOGGABLE(refInfo.mContext.mPivotId));
         nodeMap->emplace(toString(*mNodeId.get()), refInfo);
     }
 
@@ -383,13 +386,15 @@ createFolderNode(const string& nodeId, const SOPC_NodeId& parent) {
 /**************************************************************************/
 void
 Server_AddrSpace::
-insertUnrefVarNode(const string& address, const std::string &name, const std::string &descr, SOPC_BuiltinId type,
-        const SOPC_NodeId& parent, bool isReadOnly, NodeMap_t* nodeMap, const string& pivotType) {
-    CVarInfo cVarInfo(address + "/" + name, name, name, descr, parent, isReadOnly);
+insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name, const std::string &descr, SOPC_BuiltinId type,
+        const SOPC_NodeId& parent, bool isReadOnly, const SOPC_AddressSpace_WriteEvent& event, const string& pivotType) {
+	const string opcAddr(address + "/" + name);
+	const NodeInfoCtx_t context(event, opcAddr, pivotId, pivotType);
+    CVarInfo cVarInfo(opcAddr, name, name, descr, parent, isReadOnly);
     CVarNode* pNode(new CVarNode(cVarInfo, type));   // //NOSONAR (deletion managed by S2OPC)
     DEBUG("Adding node data '%s' of type '%d' (%s)", SOPC_tools::toString(pNode->nodeId()).c_str(), type,
     		(isReadOnly ? "RO" : "RW"));
-    pNode->insertAndCompleteReferences(&mNodes, nodeMap, pivotType);
+    pNode->insertAndCompleteReferences(&mNodes, & mByNodeId, context);
 }
 
 /**************************************************************************/
@@ -411,26 +416,31 @@ createPivotNodes(const string& label, const string& pivotId,
     if (readOnly)
     {
     	/* This is a monitoring variable that can be read by an OPC Client. */
-        insertUnrefVarNode(address, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
-        insertUnrefVarNode(address, "Source", "Source", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, "ComingFrom", "Origin protocol", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, "TmOrg", "Origin Timestamp", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
+        insertUnrefVarNode(address, pivotId, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, pivotId, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
+        insertUnrefVarNode(address, pivotId, "Source", "Source", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, pivotId, "ComingFrom", "Origin protocol", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, pivotId, "TmOrg", "Origin Timestamp", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, pivotId, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
+        insertUnrefVarNode(address, pivotId, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, pivotId, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
+        insertUnrefVarNode(address, pivotId, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
+        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent);
     }
     else
     {
     	/* This is a control variable that can be written by an OPC Client.
-    	  It only contains Value(RW), Reply and Trigger(RW)
+    	  It only contains Value(RW), Reply(RO) and Trigger(RW)
     	  */
-        insertUnrefVarNode(address, "Reply", "Control reply", sopcTypeId, parent);
-        insertUnrefVarNode(address, "Trigger", "Control trigger", SOPC_Byte_Id, parent, false);
+        insertUnrefVarNode(address, pivotId, "Reply", "Control reply", sopcTypeId, parent);
+        insertUnrefVarNode(address, pivotId, "Trigger", "Control trigger", SOPC_Byte_Id, parent, false, we_Trigger, pivotType);
+        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent, false, we_Value, pivotType);
+        mControls.emplace(pivotId, ControlInfo{getNodeInfo(address, "Trigger"),
+            	getNodeInfo(address, "Value"),
+    			getNodeInfo(address, "Reply")});
+        WARNING("ADDING CONTROL %s", LOGGABLE(pivotId));
     }
 
-    insertUnrefVarNode(address, "Value", string("Value of type ") + pivotType, sopcTypeId, parent, readOnly, &mByNodeId, pivotType);
 
     mByPivotId.emplace(pivotId, address);
 }
@@ -493,6 +503,17 @@ getByPivotId(const string& pivotId)const {
         return it->second;
     }
     return "";
+}
+
+/**************************************************************************/
+const ControlInfo*
+Server_AddrSpace::
+getControlByPivotId(const string& pivotId)const {
+	ControlMap_t::const_iterator it = mControls.find(pivotId);
+    if (it != mControls.end()) {
+        return &(it->second);
+    }
+    return nullptr;
 }
 }   // namespace s2opc_north
 

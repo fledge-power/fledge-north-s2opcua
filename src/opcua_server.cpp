@@ -201,6 +201,16 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 namespace {
 
+static const uint8_t TRIGGER_MASK_TEST     (1u << 0);
+static const uint8_t TRIGGER_MASK_NEGATIVE (1u << 1);
+static const uint8_t TRIGGER_MASK_PULSE    (1u << 2);
+static const uint8_t TRIGGER_MASK_SELECT   (1u << 3);
+
+static inline string boolToString(const bool b)
+{
+	return (b ? "1" : "0");
+}
+
 /**
  * Allocates and return a char* representing the value of a variant.
  */
@@ -638,7 +648,7 @@ OPCUA_Server(const ConfigCategory& configData):
     const NodeVect_t& nodes(mConfig.addrSpace.getNodes());
     INFO("Loading AddressSpace (%u nodes)...", nodes.size());
     for (const NodeInfo_t& nodeInfo : nodes) {
-        status = SOPC_AddressSpace_Append(addSpace, nodeInfo.first);
+        status = SOPC_AddressSpace_Append(addSpace, nodeInfo.mNode);
         ASSERT(status == SOPC_STATUS_OK);  // //LCOV_EXCL_LINE
     }
 
@@ -743,39 +753,71 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     }
 
     if (m_oper != nullptr) {
+    	const Server_AddrSpace& as(mConfig.addrSpace);
         // Find the nodeId
-        const NodeInfo_t* nodeInfo = mConfig.addrSpace.getByNodeId(nodeName);
+        const NodeInfo_t* nodeInfo = as.getByNodeId(nodeName);
 
         // Ignore write events that are unrelated to functional config.
-        if (nodeInfo == nullptr) return;
-        const string typeName(nodeInfo->second);
-        /*
-         * params contains:
-         * - OPCUA TypeId
-         * - NodeId
-         * - Quality
-         * - AttributeId
-         * - Timestamp
-         * - Value
-         */
-        SOPC_tools::CStringVect names({"typeid", "nodeid", "quality", "attribute", "timestamp", "value"});
-        vector<string> params;
-        params.push_back(typeName);
-        params.push_back(nodeName);
-        params.push_back(std::to_string(writeValue->Value.Status));
-        params.push_back(std::to_string(writeValue->AttributeId));
-        params.push_back(std::to_string(writeValue->Value.SourceTimestamp));
-        params.push_back(::variantToString(writeValue->Value.Value));
+        if (nodeInfo == nullptr)
+        {
+            WARNING("NodeId [%s] is not supposed to be written (no related event)", LOGGABLE(nodeName));     // //LCOV_EXCL_LINE
+        	return;
+        }
 
-        SOPC_tools::CStringVect cParams(params);
-        char* operName(strdup("opcua_operation"));
-        DEBUG("Sending OPERATION(\"%s\", {\"%s\": \"%s\", \"%s\": \"%s\", ...}",
-                operName,
-                names.vect[0], cParams.vect[0],
-                names.vect[5], cParams.vect[5]);
-        m_oper(operName, names.size, names.vect, cParams.vect, DestinationBroadcast, nullptr);
+        const NodeInfoCtx_t& context(nodeInfo->mContext);
+        const ControlInfo* ctrlInfo(as.getControlByPivotId(context.mPivotId));
+        DEBUG("Found ControlInfo with PivotId='%s', OpcAddress='%s', PivotType='%s', event_type=%d",
+        		LOGGABLE(context.mPivotId),
+        		LOGGABLE(context.mOpcAddress),
+        		LOGGABLE(context.mPivotType),
+				context.mEvent);
+        if (nullptr == ctrlInfo) {
+            WARNING("Missing ControlInfo for PIVOT ID[%s] ", LOGGABLE(context.mPivotId));     // //LCOV_EXCL_LINE
+        	return;
+        }
 
-        delete operName;
+        if (context.mEvent == we_Value) {
+        	ctrlInfo->mStrValue = ::variantToString(writeValue->Value.Value);
+            INFO("Updated co_value for CONTROL PIVOT ID[%s] to '%s' ",
+            		LOGGABLE(context.mPivotId), LOGGABLE(ctrlInfo->mStrValue));     // //LCOV_EXCL_LINE
+        } else if (context.mEvent == we_Trigger) {
+        	// First extract value to resolve trigger mask. Value is expected to be a "Byte"
+        	if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id) &&
+        			writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue)
+        	{
+                WARNING("TRIGGER for PIVOT ID[%s] does not have the expected OPC type (found type %d)",
+                		LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);     // //LCOV_EXCL_LINE
+            	return;
+        	}
+        	const uint8_t mask(writeValue->Value.Value.Value.Byte);
+
+            static const SOPC_tools::CStringVect names({"co_id", "co_type", "co_value", "co_test", "co_negative", "co_qu", "co_se", "co_ts"});
+            vector<string> params;
+
+            // co_id (string) The Pivot Id
+            params.push_back(context.mPivotId);
+            // co_type (string)
+            params.push_back(context.mPivotType);
+            // co_value (dynamic type)
+            params.push_back(ctrlInfo->mStrValue);
+            // co_test (bool)
+            params.push_back(boolToString(mask & TRIGGER_MASK_TEST));
+            // co_negative (bool)
+            params.push_back(boolToString(mask & TRIGGER_MASK_NEGATIVE));
+            // co_qu (bool)
+            params.push_back(boolToString(mask & TRIGGER_MASK_PULSE));
+            // co_se (bool)
+            params.push_back(boolToString(mask & TRIGGER_MASK_SELECT));
+            // co_ts (int)
+            const time_t seconds = time(NULL);
+            params.push_back(to_string(seconds));
+
+            SOPC_tools::CStringVect cParams(params);
+            char* operName(strdup("opcua_operation"));
+            m_oper(operName, names.size, names.vect, cParams.vect, DestinationBroadcast, nullptr);
+
+            delete operName;
+        }
     } else {
         WARNING("Cannot send operation because oper callback was not set");     // //LCOV_EXCL_LINE
     }

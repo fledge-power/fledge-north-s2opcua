@@ -10,6 +10,9 @@
 #ifndef INCLUDE_OPCUA_SERVER_ADDRSPACE_H_
 #define INCLUDE_OPCUA_SERVER_ADDRSPACE_H_
 
+// Plugin headers
+#include "opcua_server_tools.h"
+
 // System headers
 #include <stdint.h>
 #include <stdlib.h>
@@ -21,6 +24,7 @@
 
 // Fledge headers
 #include "logger.h"
+#include "plugin_api.h"
 #include "rapidjson/document.h"
 
 extern "C" {
@@ -44,14 +48,51 @@ static const SOPC_StatusCode GoodStatus = 0x00000000;
 static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
-/** NodeInfo_t = <@spceNode, typeid> */
-using NodeInfo_t = std::pair<SOPC_AddressSpace_Node*, std::string>;
+typedef enum {
+	we_Read_Only,
+	we_Trigger,
+	we_Value
+} SOPC_AddressSpace_WriteEvent;
+
+string getNodeIdName(const string &address);
+
+struct NodeInfoCtx_t{
+	SOPC_AddressSpace_WriteEvent mEvent;
+	string mOpcAddress;
+	string mPivotId;
+	string mPivotType;
+	explicit NodeInfoCtx_t(SOPC_AddressSpace_WriteEvent event = we_Read_Only,
+			const string& opcAddr = "", const string& pivotId = "", const string& pivotType = ""):
+		mEvent(event),
+		mOpcAddress(opcAddr),
+		mPivotId(pivotId),
+		mPivotType(pivotType){}
+};
+static const NodeInfoCtx_t NodeInfoCtx_empty;
+
+struct NodeInfo_t {
+	SOPC_AddressSpace_Node* mNode;
+	const NodeInfoCtx_t mContext;
+	explicit NodeInfo_t(SOPC_AddressSpace_Node* node, const NodeInfoCtx_t& context = NodeInfoCtx_empty):
+		mNode(node),
+		mContext(context){}
+};
 /** vector of \a NodeInfo_t */
 using NodeVect_t = std::vector<NodeInfo_t>;
 /** NodeInfo_t = <NodeId, NodeInfo_t> */
 using NodeMap_t = std::unordered_map<string, NodeInfo_t>;
 /** NodeIdMap_t = {PivotId : Pivot address} */
 using NodeIdMap_t = std::unordered_map<string, string>;
+
+struct ControlInfo {
+	const NodeInfo_t* mTrigger;
+	const NodeInfo_t* mValue;
+	const NodeInfo_t* mReply;
+	mutable string mStrValue;
+};
+
+/** ControlMap_t = {PivotId : contorl info}*/
+using ControlMap_t = std::unordered_map<string, ControlInfo>;
 
 /**************************************************************************/
 struct CVarInfo {
@@ -85,7 +126,7 @@ class CNode {
     inline SOPC_AddressSpace_Node* get(void) {return &mNode;}
     inline const SOPC_NodeId& nodeId(void)const {return *mNodeId.get();}
     void insertAndCompleteReferences(NodeVect_t* nodes,
-            NodeMap_t* nodeMap = nullptr, const std::string& typeId = "");
+            NodeMap_t* nodeMap = nullptr, const NodeInfoCtx_t& context = NodeInfoCtx_empty);
 
  protected:
     explicit CNode(const string& nodeName, OpcUa_NodeClass nodeClass, SOPC_StatusCode defaultStatusCode = GoodStatus);
@@ -158,6 +199,7 @@ class Server_AddrSpace{
 
     const NodeInfo_t* getByNodeId(const string& nodeId)const;
     string getByPivotId(const string& pivotId)const;
+    const ControlInfo* getControlByPivotId(const string& pivotId)const;
 
  public:
     inline const NodeVect_t& getNodes(void)const {return mNodes;}
@@ -173,12 +215,18 @@ class Server_AddrSpace{
     CNode* createFolderNode(const string& nodeId, const SOPC_NodeId& parent);
     void createPivotNodes(const string& label, const string& pivotId,
             const string& address, const string& pivotType);
-    void insertUnrefVarNode(const string& address, const std::string &name,
+    void insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name,
             const std::string &descr, SOPC_BuiltinId type,
             const SOPC_NodeId& parent,
 			bool isReadOnly = true,
-			NodeMap_t* nodeMap = nullptr,
+			const SOPC_AddressSpace_WriteEvent& event = we_Read_Only,
 			const string& pivotType = "");
+
+    inline const NodeInfo_t* getNodeInfo(const string& addr, const string& subNode)const
+    {
+    	return getByNodeId(getNodeIdName(addr + "/" + subNode));
+    }
+
     /**
      * The content of the address space.
      */
@@ -193,6 +241,10 @@ class Server_AddrSpace{
      * Map containing addresses, sorted by PivotId
      */
     NodeIdMap_t mByPivotId;
+    /**
+     * Map of all controls, indexed by PivotId
+     */
+    ControlMap_t mControls;
 };  // Server_AddrSpace
 
 }   // namespace s2opc_north
