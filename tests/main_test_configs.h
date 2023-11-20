@@ -262,7 +262,7 @@ static std::string launch_and_check(SOPC_tools::CStringVect& command) {
 struct nodeVarFinder {
     nodeVarFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 ( (node->node_class == OpcUa_NodeClass_Variable &&
                 SOPC_tools::toString(node->data.variable.NodeId) == m_name) ||
@@ -281,7 +281,7 @@ inline s2opc_north::NodeVect_t::const_iterator findNodeInASpc(
 struct nodeVarTypeFinder {
     nodeVarTypeFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 node->node_class == OpcUa_NodeClass_VariableType &&
                 SOPC_tools::toString(node->data.variable_type.NodeId) == m_name;
@@ -292,7 +292,7 @@ struct nodeVarTypeFinder {
 struct nodeObjFinder {
     nodeObjFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 node->node_class == OpcUa_NodeClass_Object &&
                 SOPC_tools::toString(node->data.object.NodeId) == m_name;

@@ -83,24 +83,24 @@ TEST(S2OPCUA, Server_AddrSpace) {
 
     it = findNodeInASpc(aSpace, "ns=1;s=S_1145_6_21_28");
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
     GTEST_ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Object);
 
     it = findNodeInASpc(aSpace, "ns=1;s=S_1145_6_21_28/Value");
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
     GTEST_ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
     GTEST_ASSERT_EQ(pNode->data.variable.Value.BuiltInTypeId, SOPC_Boolean_Id);
 
     it = findNodeInASpc(aSpace, "ns=1;s=C_1145_6_18_1");
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
     GTEST_ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Object);
     string parentNodeId = SOPC_tools::toString(pNode->data.object.NodeId);   // Store parent nodeId
 
     it = findNodeInASpc(aSpace, "ns=1;s=C_1145_6_18_1/Value");
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
 
     // Check references (Root.Object + HasTypeDefinition)
     GTEST_ASSERT_EQ(pNode->data.variable.Value.BuiltInTypeId, SOPC_Byte_Id);
@@ -128,7 +128,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
     it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(), nodeObjFinder("i=85"));
 
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
         const std::string iName(SOPC_tools::toString(ref.TargetId.NodeId));
@@ -139,7 +139,7 @@ TEST(S2OPCUA, Server_AddrSpace) {
     // Find HasReference
     it = std::find_if(aSpace.getNodes().begin(), aSpace.getNodes().end(), nodeVarTypeFinder("i=63"));
     GTEST_ASSERT_NE(it, aSpace.getNodes().end());
-    pNode = ((const NodeInfo_t&)(*it)).first;
+    pNode = ((const NodeInfo_t&)(*it)).mNode;
     for (size_t i = 0; i < pNode->data.variable.NoOfReferences ; i++) {
         const OpcUa_ReferenceNode& ref(pNode->data.variable.References[i]);
         const std::string iName(SOPC_tools::toString(ref.TargetId.NodeId));

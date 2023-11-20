@@ -352,11 +352,14 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
 
     {
         const NodeInfo_t& nodeInfo(*it);
-        pNode = nodeInfo.first;
-        GTEST_ASSERT_NE(nodeInfo.first, nullptr);
+        pNode = nodeInfo.mNode;
+        GTEST_ASSERT_NE(nodeInfo.mNode, nullptr);
 
         ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
-        ASSERT_EQ(nodeInfo.second, "opcua_dps");
+        ASSERT_EQ(nodeInfo.mContext.mPivotType, ""); // Only TC are filled up
+        ASSERT_EQ(nodeInfo.mContext.mOpcAddress, "dps/Value");
+        ASSERT_EQ(nodeInfo.mContext.mPivotId, "pivotDPS");
+        ASSERT_EQ(nodeInfo.mContext.mEvent, we_Read_Only);
         ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=dps/Value");
     }
 
@@ -364,11 +367,11 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
     GTEST_ASSERT_NE(it, config.addrSpace.getNodes().end());
     {
         const NodeInfo_t& nodeInfo(*it);
-        pNode = nodeInfo.first;
-        GTEST_ASSERT_NE(nodeInfo.first, nullptr);
+        pNode = nodeInfo.mNode;
+        GTEST_ASSERT_NE(nodeInfo.mNode, nullptr);
 
         ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Object);
-        ASSERT_EQ(nodeInfo.second, "");  // Folder objects are unnamed
+        ASSERT_EQ(nodeInfo.mContext.mPivotType, "");  // Folder objects are unnamed
         ASSERT_EQ(SOPC_tools::toString(pNode->data.object.NodeId), "ns=1;s=dps");
     }
 
