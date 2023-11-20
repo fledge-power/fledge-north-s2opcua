@@ -201,12 +201,11 @@ static void sopcDoLog(const char* category, const char* const line) {
 
 namespace {
 
-static const uint8_t TRIGGER_MASK_TEST     (1u << 0);
-static const uint8_t TRIGGER_MASK_SELECT   (1u << 1);
+static const uint8_t TRIGGER_MASK_TEST(1u << 0);
+static const uint8_t TRIGGER_MASK_SELECT(1u << 1);
 
-static inline string boolToString(const bool b)
-{
-	return (b ? "1" : "0");
+static inline string boolToString(const bool b) {
+    return (b ? "1" : "0");
 }
 
 /**
@@ -751,43 +750,42 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
     }
 
     if (m_oper != nullptr) {
-    	const Server_AddrSpace& as(mConfig.addrSpace);
+        const Server_AddrSpace& as(mConfig.addrSpace);
         // Find the nodeId
         const NodeInfo_t* nodeInfo = as.getByNodeId(nodeName);
 
         // Ignore write events that are unrelated to functional config.
-        if (nodeInfo == nullptr)
-        {
-            WARNING("NodeId [%s] is not supposed to be written (no related event)", LOGGABLE(nodeName));     // //LCOV_EXCL_LINE
-        	return;
+        if (nodeInfo == nullptr) {
+            WARNING("NodeId [%s] is not supposed to be written (no related event)",
+                    LOGGABLE(nodeName));     // //LCOV_EXCL_LINE
+            return;
         }
 
         const NodeInfoCtx_t& context(nodeInfo->mContext);
         const ControlInfo* ctrlInfo(as.getControlByPivotId(context.mPivotId));
         DEBUG("Found ControlInfo with PivotId='%s', OpcAddress='%s', PivotType='%s', event_type=%d",
-        		LOGGABLE(context.mPivotId),
-        		LOGGABLE(context.mOpcAddress),
-        		LOGGABLE(context.mPivotType),
-				context.mEvent);
+                LOGGABLE(context.mPivotId),
+                LOGGABLE(context.mOpcAddress),
+                LOGGABLE(context.mPivotType),
+                context.mEvent);
         if (nullptr == ctrlInfo) {
             WARNING("Missing ControlInfo for PIVOT ID[%s] ", LOGGABLE(context.mPivotId));     // //LCOV_EXCL_LINE
-        	return;
+            return;
         }
 
         if (context.mEvent == we_Value) {
-        	ctrlInfo->mStrValue = ::variantToString(writeValue->Value.Value);
+            ctrlInfo->mStrValue = ::variantToString(writeValue->Value.Value);
             INFO("Updated co_value for CONTROL PIVOT ID[%s] to '%s' ",
-            		LOGGABLE(context.mPivotId), LOGGABLE(ctrlInfo->mStrValue));     // //LCOV_EXCL_LINE
+                    LOGGABLE(context.mPivotId), LOGGABLE(ctrlInfo->mStrValue));     // //LCOV_EXCL_LINE
         } else if (context.mEvent == we_Trigger) {
-        	// First extract value to resolve trigger mask. Value is expected to be a "Byte"
-        	if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id) &&
-        			writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue)
-        	{
+            // First extract value to resolve trigger mask. Value is expected to be a "Byte"
+            if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id)
+                    && writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue) {
                 WARNING("TRIGGER for PIVOT ID[%s] does not have the expected OPC type (found type %d)",
-                		LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);     // //LCOV_EXCL_LINE
-            	return;
-        	}
-        	const uint8_t mask(writeValue->Value.Value.Value.Byte);
+                        LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);     // //LCOV_EXCL_LINE
+                return;
+            }
+            const uint8_t mask(writeValue->Value.Value.Value.Byte);
 
             static const SOPC_tools::CStringVect names({"co_id", "co_type", "co_value", "co_test", "co_se", "co_ts"});
             vector<string> params;

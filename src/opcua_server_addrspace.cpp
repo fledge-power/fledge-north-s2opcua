@@ -245,8 +245,8 @@ insertAndCompleteReferences(NodeVect_t* nodes,
     NodeInfo_t refInfo(&mNode, context);
     nodes->push_back(refInfo);
     if (nodeMap != nullptr) {
-    	const string name(toString(*mNodeId.get()));
-    	DEBUG("Create Node '%s' to '%s'", LOGGABLE(name), LOGGABLE(refInfo.mContext.mPivotId));
+        const string name(toString(*mNodeId.get()));
+        DEBUG("Create Node '%s' to '%s'", LOGGABLE(name), LOGGABLE(refInfo.mContext.mPivotId));
         nodeMap->emplace(toString(*mNodeId.get()), refInfo);
     }
 
@@ -386,14 +386,15 @@ createFolderNode(const string& nodeId, const SOPC_NodeId& parent) {
 /**************************************************************************/
 void
 Server_AddrSpace::
-insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name, const std::string &descr, SOPC_BuiltinId type,
-        const SOPC_NodeId& parent, bool isReadOnly, const SOPC_AddressSpace_WriteEvent& event, const string& pivotType) {
-	const string opcAddr(address + "/" + name);
-	const NodeInfoCtx_t context(event, opcAddr, pivotId, pivotType);
+insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name,
+        const std::string &descr, SOPC_BuiltinId type, const SOPC_NodeId& parent,
+        bool isReadOnly, const SOPC_AddressSpace_WriteEvent& event, const string& pivotType) {
+    const string opcAddr(address + "/" + name);
+    const NodeInfoCtx_t context(event, opcAddr, pivotId, pivotType);
     CVarInfo cVarInfo(opcAddr, name, name, descr, parent, isReadOnly);
     CVarNode* pNode(new CVarNode(cVarInfo, type));   // //NOSONAR (deletion managed by S2OPC)
     DEBUG("Adding node data '%s' of type '%d' (%s)", SOPC_tools::toString(pNode->nodeId()).c_str(), type,
-    		(isReadOnly ? "RO" : "RW"));
+            (isReadOnly ? "RO" : "RW"));
     pNode->insertAndCompleteReferences(&mNodes, & mByNodeId, context);
 }
 
@@ -413,9 +414,8 @@ createPivotNodes(const string& label, const string& pivotId,
     const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivotType));
     const string nodeIdName(address + "/Value");
 
-    if (readOnly)
-    {
-    	/* This is a monitoring variable that can be read by an OPC Client. */
+    if (readOnly) {
+        /* This is a monitoring variable that can be read by an OPC Client. */
         insertUnrefVarNode(address, pivotId, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
         insertUnrefVarNode(address, pivotId, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
         insertUnrefVarNode(address, pivotId, "Source", "Source", SOPC_String_Id, parent);
@@ -426,18 +426,18 @@ createPivotNodes(const string& label, const string& pivotId,
         insertUnrefVarNode(address, pivotId, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
         insertUnrefVarNode(address, pivotId, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
         insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent);
-    }
-    else
-    {
-    	/* This is a control variable that can be written by an OPC Client.
-    	  It only contains Value(RW), Reply(RO) and Trigger(RW)
-    	  */
+    } else {
+        /* This is a control variable that can be written by an OPC Client.
+          It only contains Value(RW), Reply(RO) and Trigger(RW)
+          */
         insertUnrefVarNode(address, pivotId, "Reply", "Control reply", sopcTypeId, parent);
-        insertUnrefVarNode(address, pivotId, "Trigger", "Control trigger", SOPC_Byte_Id, parent, false, we_Trigger, pivotType);
-        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent, false, we_Value, pivotType);
+        insertUnrefVarNode(address, pivotId, "Trigger", "Control trigger", SOPC_Byte_Id, parent,
+                false, we_Trigger, pivotType);
+        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent,
+                false, we_Value, pivotType);
         mControls.emplace(pivotId, ControlInfo{getNodeInfo(address, "Trigger"),
-            	getNodeInfo(address, "Value"),
-    			getNodeInfo(address, "Reply")});
+                getNodeInfo(address, "Value"),
+                getNodeInfo(address, "Reply")});
         WARNING("ADDING CONTROL %s", LOGGABLE(pivotId));
     }
 
@@ -509,7 +509,7 @@ getByPivotId(const string& pivotId)const {
 const ControlInfo*
 Server_AddrSpace::
 getControlByPivotId(const string& pivotId)const {
-	ControlMap_t::const_iterator it = mControls.find(pivotId);
+    ControlMap_t::const_iterator it = mControls.find(pivotId);
     if (it != mControls.end()) {
         return &(it->second);
     }

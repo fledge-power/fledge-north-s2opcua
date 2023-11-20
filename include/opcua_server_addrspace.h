@@ -49,33 +49,33 @@ static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
 typedef enum {
-	we_Read_Only,
-	we_Trigger,
-	we_Value
+    we_Read_Only,
+    we_Trigger,
+    we_Value
 } SOPC_AddressSpace_WriteEvent;
 
 string getNodeIdName(const string &address);
 
 struct NodeInfoCtx_t{
-	SOPC_AddressSpace_WriteEvent mEvent;
-	string mOpcAddress;
-	string mPivotId;
-	string mPivotType;
-	explicit NodeInfoCtx_t(SOPC_AddressSpace_WriteEvent event = we_Read_Only,
-			const string& opcAddr = "", const string& pivotId = "", const string& pivotType = ""):
-		mEvent(event),
-		mOpcAddress(opcAddr),
-		mPivotId(pivotId),
-		mPivotType(pivotType){}
+    SOPC_AddressSpace_WriteEvent mEvent;
+    string mOpcAddress;
+    string mPivotId;
+    string mPivotType;
+    explicit NodeInfoCtx_t(SOPC_AddressSpace_WriteEvent event = we_Read_Only,
+            const string& opcAddr = "", const string& pivotId = "", const string& pivotType = ""):
+        mEvent(event),
+        mOpcAddress(opcAddr),
+        mPivotId(pivotId),
+        mPivotType(pivotType){}
 };
 static const NodeInfoCtx_t NodeInfoCtx_empty;
 
 struct NodeInfo_t {
-	SOPC_AddressSpace_Node* mNode;
-	const NodeInfoCtx_t mContext;
-	explicit NodeInfo_t(SOPC_AddressSpace_Node* node, const NodeInfoCtx_t& context = NodeInfoCtx_empty):
-		mNode(node),
-		mContext(context){}
+    SOPC_AddressSpace_Node* mNode;
+    const NodeInfoCtx_t mContext;
+    explicit NodeInfo_t(SOPC_AddressSpace_Node* node, const NodeInfoCtx_t& context = NodeInfoCtx_empty):
+        mNode(node),
+        mContext(context){}
 };
 /** vector of \a NodeInfo_t */
 using NodeVect_t = std::vector<NodeInfo_t>;
@@ -85,10 +85,10 @@ using NodeMap_t = std::unordered_map<string, NodeInfo_t>;
 using NodeIdMap_t = std::unordered_map<string, string>;
 
 struct ControlInfo {
-	const NodeInfo_t* mTrigger;
-	const NodeInfo_t* mValue;
-	const NodeInfo_t* mReply;
-	mutable string mStrValue;
+    const NodeInfo_t* mTrigger;
+    const NodeInfo_t* mValue;
+    const NodeInfo_t* mReply;
+    mutable string mStrValue;
 };
 
 /** ControlMap_t = {PivotId : contorl info}*/
@@ -218,13 +218,12 @@ class Server_AddrSpace{
     void insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name,
             const std::string &descr, SOPC_BuiltinId type,
             const SOPC_NodeId& parent,
-			bool isReadOnly = true,
-			const SOPC_AddressSpace_WriteEvent& event = we_Read_Only,
-			const string& pivotType = "");
+            bool isReadOnly = true,
+            const SOPC_AddressSpace_WriteEvent& event = we_Read_Only,
+            const string& pivotType = "");
 
-    inline const NodeInfo_t* getNodeInfo(const string& addr, const string& subNode)const
-    {
-    	return getByNodeId(getNodeIdName(addr + "/" + subNode));
+    inline const NodeInfo_t* getNodeInfo(const string& addr, const string& subNode)const {
+        return getByNodeId(getNodeIdName(addr + "/" + subNode));
     }
 
     /**
