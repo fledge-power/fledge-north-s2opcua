@@ -202,9 +202,7 @@ static void sopcDoLog(const char* category, const char* const line) {
 namespace {
 
 static const uint8_t TRIGGER_MASK_TEST     (1u << 0);
-static const uint8_t TRIGGER_MASK_NEGATIVE (1u << 1);
-static const uint8_t TRIGGER_MASK_PULSE    (1u << 2);
-static const uint8_t TRIGGER_MASK_SELECT   (1u << 3);
+static const uint8_t TRIGGER_MASK_SELECT   (1u << 1);
 
 static inline string boolToString(const bool b)
 {
@@ -791,7 +789,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         	}
         	const uint8_t mask(writeValue->Value.Value.Value.Byte);
 
-            static const SOPC_tools::CStringVect names({"co_id", "co_type", "co_value", "co_test", "co_negative", "co_qu", "co_se", "co_ts"});
+            static const SOPC_tools::CStringVect names({"co_id", "co_type", "co_value", "co_test", "co_se", "co_ts"});
             vector<string> params;
 
             // co_id (string) The Pivot Id
@@ -802,10 +800,6 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
             params.push_back(ctrlInfo->mStrValue);
             // co_test (bool)
             params.push_back(boolToString(mask & TRIGGER_MASK_TEST));
-            // co_negative (bool)
-            params.push_back(boolToString(mask & TRIGGER_MASK_NEGATIVE));
-            // co_qu (bool)
-            params.push_back(boolToString(mask & TRIGGER_MASK_PULSE));
             // co_se (bool)
             params.push_back(boolToString(mask & TRIGGER_MASK_SELECT));
             // co_ts (int)
