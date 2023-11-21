@@ -879,28 +879,6 @@ init_sopc_lib_and_logs(void) {
 }
 
 /**************************************************************************/
-class AddressSpace_Item {
- public:
-    AddressSpace_Item(const string& nodeId, SOPC_DataValue* dv):
-        mNodeId(SOPC_tools::createNodeId(nodeId)),
-        mDataValue(dv) {}
-
-    AddressSpace_Item(const AddressSpace_Item&) = delete;
-    AddressSpace_Item(const AddressSpace_Item&&) = delete;
-    AddressSpace_Item(AddressSpace_Item&&) = delete;
-    virtual ~AddressSpace_Item(void) {
-        SOPC_NodeId_Clear(mNodeId.get());
-    }
-
-    inline SOPC_NodeId* nodeId(void)const {return mNodeId.get();}
-    inline SOPC_DataValue* dataValue(void) {return mDataValue;}
-
- private:
-    std::unique_ptr<SOPC_NodeId> mNodeId;
-    SOPC_DataValue* mDataValue;
-};
-
-/**************************************************************************/
 void
 OPCUA_Server::
 updateAddressSpace(const Object_Reader& object)const {

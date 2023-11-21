@@ -54,8 +54,31 @@ extern const char* const plugin_default_config;
 /*****************************************************
  *  TYPES DEFINITIONS
  *****************************************************/
-
 static const char unknownUserName[] = "-UnknownUserName-";
+
+/**************************************************************************/
+class AddressSpace_Item {
+ public:
+    AddressSpace_Item(const string& nodeId, SOPC_DataValue* dv):
+        mNodeId(SOPC_tools::createNodeId(nodeId)),
+        mDataValue(dv) {}
+
+    AddressSpace_Item(const AddressSpace_Item&) = delete;
+    AddressSpace_Item(const AddressSpace_Item&&) = delete;
+    AddressSpace_Item(AddressSpace_Item&&) = delete;
+    virtual ~AddressSpace_Item(void) {
+        SOPC_NodeId_Clear(mNodeId.get());
+    }
+
+    inline SOPC_NodeId* nodeId(void)const {return mNodeId.get();}
+    inline SOPC_DataValue* dataValue(void) {return mDataValue;}
+
+ private:
+    std::unique_ptr<SOPC_NodeId> mNodeId;
+    SOPC_DataValue* mDataValue;
+};
+using Item_Vector = vector<AddressSpace_Item*>;
+
 /**
  * Interface to the S2 OPCUA library for a S2OPC server
  */
@@ -194,7 +217,13 @@ class OPCUA_Server {
     const OpcUa_Server_Config mConfig;
     const SOPC_Toolkit_Build_Info mBuildInfo;
     static OPCUA_Server* instance(void) {return mInstance;}
-
+    /**
+     * Send a write request to the server.
+     * @param items A vector of allocated ::AddressSpace_Item.
+     * In all cases, the elements in items are freed when the function returns and shall not be reused.
+     * @post After write is terminated (success or not), the ::asynchWriteResponse callback is called by the stack.
+     */
+    void sendWriteRequest(const Item_Vector& items)const;
  private:
     static OPCUA_Server* mInstance;
     std::atomic<bool> mStopped;
