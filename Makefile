@@ -41,11 +41,15 @@ insert_task: del_plugin
 	|  sed 's/^\(4.*\)/INSTALLATION FAILED : \1/; t; q 128 '
 	@echo
 	
+set_service_debug_level:
+	@echo "\nSet log level" 
+	$(Q) curl -sX PUT http://localhost:8081/fledge/category/s2opcua_serviceAdvanced -d '{"logLevel":"debug"}'
 insert_service: #del_plugin
 	@echo "Insert plugin service in Fledge as service..."
 	$(Q)! curl -sX POST http://localhost:8081/fledge/service -d $(PLUGIN_SERV_CONF) \
 	|  sed 's/^\(4.*\)/INSTALLATION FAILED : \1/; t; q 128 '
-	@echo
+	@echo ; sleep 3
+	@make set_service_debug_level Q=$(Q)
 
 del_plugin:
 	@echo "Delete plugin if already installed in FLEDGE..."

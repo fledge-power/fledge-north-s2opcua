@@ -390,7 +390,7 @@ insertUnrefVarNode(const string& address, const string& pivotId, const std::stri
         const std::string &descr, SOPC_BuiltinId type, const SOPC_NodeId& parent,
         bool isReadOnly, const SOPC_AddressSpace_WriteEvent& event, const string& pivotType) {
     const string opcAddr(address + "/" + name);
-    const NodeInfoCtx_t context(event, opcAddr, pivotId, pivotType);
+    const NodeInfoCtx_t context(event, getNodeIdName(address), pivotId, pivotType);
     CVarInfo cVarInfo(opcAddr, name, name, descr, parent, isReadOnly);
     CVarNode* pNode(new CVarNode(cVarInfo, type));   // //NOSONAR (deletion managed by S2OPC)
     DEBUG("Adding node data '%s' of type '%d' (%s)", SOPC_tools::toString(pNode->nodeId()).c_str(), type,

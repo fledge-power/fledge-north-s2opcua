@@ -790,9 +790,15 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
             Item_Vector items;
 
             SOPC_DataValue dv = getBadRefreshValue(OpcUa_BadRefreshInProgress);
-            items.emplace_back(new AddressSpace_Item(context.mOpcParentAddress + "/Value", &dv));
+            const string replyAddr(context.mOpcParentAddress + "/Reply");
+            try {
+                items.emplace_back(new AddressSpace_Item(replyAddr, &dv));
+                sendWriteRequest(items);
+            }
+            catch (...) {
+                WARNING("Failed to create write request for node '%s'", LOGGABLE(replyAddr));
+            }
 
-            sendWriteRequest(items);
 
             // Then extract value to resolve trigger mask. Value is expected to be a "Byte"
             if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id)
@@ -905,10 +911,15 @@ sendWriteRequest(const Item_Vector& items)const {
 
     size_t idx(0);
     for (AddressSpace_Item* item : items) {
-        SOPC_ReturnStatus status;
-        DEBUG("WriteRequest[%d] = %s", idx, SOPC_tools::toString(*item->nodeId()).c_str());
-        status = SOPC_WriteRequest_SetWriteValue(request, idx, item->nodeId(), SOPC_AttributeId_Value,
-                    nullptr, item->dataValue());
+        SOPC_ReturnStatus status(SOPC_STATUS_NOK);
+        try {
+            DEBUG("WriteRequest[%d] = %s", idx, SOPC_tools::toString(*item->nodeId()).c_str());
+            status = SOPC_WriteRequest_SetWriteValue(request, idx, item->nodeId(), SOPC_AttributeId_Value,
+                        nullptr, item->dataValue());
+        }
+        catch (...) {
+            failed = true;
+        }
         // //LCOV_EXCL_START
         if (status != SOPC_STATUS_OK) {
             WARNING("SetWriteValue failed for %s with code  %s(%d)",
@@ -916,6 +927,7 @@ sendWriteRequest(const Item_Vector& items)const {
                     statusCodeToCString(status), status);
             failed = true;
         }
+        if (failed) break;
         // //LCOV_EXCL_STOP
         idx++;
     }
