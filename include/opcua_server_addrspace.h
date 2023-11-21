@@ -58,13 +58,13 @@ string getNodeIdName(const string &address);
 
 struct NodeInfoCtx_t{
     SOPC_AddressSpace_WriteEvent mEvent;
-    string mOpcAddress;
+    string mOpcParentAddress;
     string mPivotId;
     string mPivotType;
     explicit NodeInfoCtx_t(SOPC_AddressSpace_WriteEvent event = we_Read_Only,
-            const string& opcAddr = "", const string& pivotId = "", const string& pivotType = ""):
+            const string& opcParentAddr = "", const string& pivotId = "", const string& pivotType = ""):
         mEvent(event),
-        mOpcAddress(opcAddr),
+        mOpcParentAddress(opcParentAddr),
         mPivotId(pivotId),
         mPivotType(pivotType){}
 };

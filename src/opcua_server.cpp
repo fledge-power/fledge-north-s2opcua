@@ -763,9 +763,9 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
 
         const NodeInfoCtx_t& context(nodeInfo->mContext);
         const ControlInfo* ctrlInfo(as.getControlByPivotId(context.mPivotId));
-        DEBUG("Found ControlInfo with PivotId='%s', OpcAddress='%s', PivotType='%s', event_type=%d",
+        DEBUG("Found ControlInfo with PivotId='%s', mOpcParentAddress='%s', PivotType='%s', event_type=%d",
                 LOGGABLE(context.mPivotId),
-                LOGGABLE(context.mOpcAddress),
+                LOGGABLE(context.mOpcParentAddress),
                 LOGGABLE(context.mPivotType),
                 context.mEvent);
         if (nullptr == ctrlInfo) {
