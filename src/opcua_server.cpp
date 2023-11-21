@@ -208,6 +208,13 @@ static inline string boolToString(const bool b) {
     return (b ? "1" : "0");
 }
 
+static const SOPC_DataValue getBadRefreshValue(SOPC_StatusCode code) {
+    SOPC_DataValue result;
+    SOPC_DataValue_Initialize(&result);
+    result.Status = code;
+    return result;
+};
+
 /**
  * Allocates and return a char* representing the value of a variant.
  */
@@ -778,7 +785,16 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
             INFO("Updated co_value for CONTROL PIVOT ID[%s] to '%s' ",
                     LOGGABLE(context.mPivotId), LOGGABLE(ctrlInfo->mStrValue));     // //LCOV_EXCL_LINE
         } else if (context.mEvent == we_Trigger) {
-            // First extract value to resolve trigger mask. Value is expected to be a "Byte"
+            // First thing to do is set the "Reply" variable to OpcUa_BadRefreshInProgress
+
+            Item_Vector items;
+
+            SOPC_DataValue dv = getBadRefreshValue(OpcUa_BadRefreshInProgress);
+            items.emplace_back(new AddressSpace_Item(context.mOpcParentAddress + "/Value", &dv));
+
+            sendWriteRequest(items);
+
+            // Then extract value to resolve trigger mask. Value is expected to be a "Byte"
             if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id)
                     && writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue) {
                 WARNING("TRIGGER for PIVOT ID[%s] does not have the expected OPC type (found type %d)",
@@ -881,35 +897,15 @@ init_sopc_lib_and_logs(void) {
 /**************************************************************************/
 void
 OPCUA_Server::
-updateAddressSpace(const Object_Reader& object)const {
-    using Item_Vector = vector<AddressSpace_Item*>;
-    SOPC_ReturnStatus status;
-
-    INFO("updateAddressSpace for PIVOT(%s)", object.pivotId().c_str());
-
-    static const string nodePrefix("ns=1;s=");   // //LCOV_EXCL_LINE
-    const string nodePath(nodePrefix + mConfig.addrSpace.getByPivotId(object.pivotId()));
-    INFO("updateAddressSpace: address = %s", nodePath.c_str());
+sendWriteRequest(const Item_Vector& items)const {
     bool failed(false);
 
-    Item_Vector vector;
-
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/Cause", object.cause()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/Source", object.source()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/Confirmation", object.confirmation()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/ComingFrom", object.comingFrom()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmOrg", object.tmOrg()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmValidity", object.tmValidity()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/DetailQuality", object.quality()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/TimeQuality", object.tsQuality()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/SecondSinceEpoch", object.tsValue()));
-    vector.emplace_back(new AddressSpace_Item(nodePath + "/Value", object.value()));
-
-    OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(vector.size()));
+    OpcUa_WriteRequest* request(SOPC_WriteRequest_Create(items.size()));
     ASSERT_NOT_NULL(request);  // //LCOV_EXCL_LINE
 
     size_t idx(0);
-    for (AddressSpace_Item* item : vector) {
+    for (AddressSpace_Item* item : items) {
+        SOPC_ReturnStatus status;
         DEBUG("WriteRequest[%d] = %s", idx, SOPC_tools::toString(*item->nodeId()).c_str());
         status = SOPC_WriteRequest_SetWriteValue(request, idx, item->nodeId(), SOPC_AttributeId_Value,
                     nullptr, item->dataValue());
@@ -927,13 +923,40 @@ updateAddressSpace(const Object_Reader& object)const {
     if (failed) {
         delete request;  // //LCOV_EXCL_LINE
     } else {
-        DEBUG("sendAsynchRequest (%d updates)", vector.size());
+        DEBUG("sendAsynchRequest (%d updates)", items.size());
         sendAsynchRequest(request);
     }
 
-    for (AddressSpace_Item* item : vector) {
+    for (AddressSpace_Item* item : items) {
         delete item;  // //LCOV_EXCL_LINE
     }
+}
+
+/**************************************************************************/
+void
+OPCUA_Server::
+updateAddressSpace(const Object_Reader& object)const {
+
+    INFO("updateAddressSpace for PIVOT(%s)", object.pivotId().c_str());
+
+    static const string nodePrefix("ns=1;s=");   // //LCOV_EXCL_LINE
+    const string nodePath(nodePrefix + mConfig.addrSpace.getByPivotId(object.pivotId()));
+    INFO("updateAddressSpace: address = %s", nodePath.c_str());
+
+    Item_Vector vector;
+
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Cause", object.cause()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Source", object.source()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Confirmation", object.confirmation()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/ComingFrom", object.comingFrom()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmOrg", object.tmOrg()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TmValidity", object.tmValidity()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/DetailQuality", object.quality()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/TimeQuality", object.tsQuality()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/SecondSinceEpoch", object.tsValue()));
+    vector.emplace_back(new AddressSpace_Item(nodePath + "/Value", object.value()));
+
+    sendWriteRequest(vector);
 }
 
 /**************************************************************************/
