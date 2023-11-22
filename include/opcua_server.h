@@ -230,6 +230,7 @@ class OPCUA_Server {
      * @post After write is terminated (success or not), the ::asynchWriteResponse callback is called by the stack.
      */
     void sendWriteRequest(const Item_Vector& items)const;
+
  private:
     static OPCUA_Server* mInstance;
     std::atomic<bool> mStopped;

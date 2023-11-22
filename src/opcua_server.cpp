@@ -213,7 +213,7 @@ static const SOPC_DataValue getBadRefreshValue(SOPC_StatusCode code) {
     SOPC_DataValue_Initialize(&result);
     result.Status = code;
     return result;
-};
+}
 
 static const SOPC_DataValue getBoolDataValue(bool iVal) {
     SOPC_DataValue result;
@@ -221,7 +221,7 @@ static const SOPC_DataValue getBoolDataValue(bool iVal) {
     result.Value.BuiltInTypeId = SOPC_Boolean_Id;
     result.Value.Value.Boolean = iVal;
     return result;
-};
+}
 
 /**
  * Allocates and return a char* representing the value of a variant.
@@ -497,12 +497,14 @@ setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data
             variant.Value.Boolean = static_cast<bool>(data->toInt());
         }
         break;
+        // //LCOV_EXCL_START Currently not used by any type of information...
     case SOPC_Byte_Id:
         if (dvType == DatapointValue::T_INTEGER) {
             isValid = true;
             variant.Value.Byte = static_cast<uint8_t>(data->toInt());
         }
         break;
+        // //LCOV_EXCL_STOP
     case SOPC_Int32_Id:
         if (dvType == DatapointValue::T_INTEGER) {
             isValid = true;
@@ -738,7 +740,7 @@ stop(void) {
     SOPC_ServerHelper_StopServer();
     int maxWaitMs(m_nbMillisecondShutdown * 2);
     const int loopMs(10);
-    do {
+    do {    // //LCOV_EXCL_LINE
         this_thread::sleep_for(chrono::milliseconds(loopMs));
         maxWaitMs -= loopMs;
     } while (!mStopped && maxWaitMs > 0);
@@ -770,11 +772,13 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
         const NodeInfo_t* nodeInfo = as.getByNodeId(nodeName);
 
         // Ignore write events that are unrelated to functional config.
+        // //LCOV_EXCL_START  => Robustness (Not reacheable)
         if (nodeInfo == nullptr) {
             WARNING("NodeId [%s] is not supposed to be written (no related event)",
-                    LOGGABLE(nodeName));     // //LCOV_EXCL_LINE
+                    LOGGABLE(nodeName));
             return;
         }
+        // //LCOV_EXCL_STOP
 
         const NodeInfoCtx_t& context(nodeInfo->mContext);
         const ControlInfo* ctrlInfo(as.getControlByPivotId(context.mPivotId));
@@ -784,8 +788,10 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
                 LOGGABLE(context.mPivotType),
                 context.mEvent);
         if (nullptr == ctrlInfo) {
+            // //LCOV_EXCL_START  => Robustness (Not reacheable)
             WARNING("Missing ControlInfo for PIVOT ID[%s] ", LOGGABLE(context.mPivotId));     // //LCOV_EXCL_LINE
             return;
+            // //LCOV_EXCL_STOP
         }
 
         if (context.mEvent == we_Value) {
@@ -803,18 +809,22 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
                 items.emplace_back(new AddressSpace_Item(replyAddr, &dv));
                 sendWriteRequest(items);
             }
+            // //LCOV_EXCL_START  => Robustness (Not reacheable)
             catch (...) {
                 WARNING("Failed to create write request for node '%s'", LOGGABLE(replyAddr));
             }
+            // //LCOV_EXCL_STOP
 
 
             // Then extract value to resolve trigger mask. Value is expected to be a "Byte"
+            // //LCOV_EXCL_START  => Robustness (Not reacheable)
             if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id)
                     && writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue) {
                 WARNING("TRIGGER for PIVOT ID[%s] does not have the expected OPC type (found type %d)",
                         LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);     // //LCOV_EXCL_LINE
                 return;
             }
+            // //LCOV_EXCL_STOP
             const uint8_t mask(writeValue->Value.Value.Value.Byte);
 
             static const SOPC_tools::CStringVect names({"co_id", "co_type", "co_value", "co_test", "co_se", "co_ts"});
@@ -897,9 +907,12 @@ init_sopc_lib_and_logs(void) {
         logConfig.logSystem = SOPC_LOG_SYSTEM_USER;
         logConfig.logSysConfig.userSystemLogConfig.doLog = &sopcDoLog;
     } else {
+        // //LCOV_EXCL_START
         INFO("S2OPC logger not configured.");
         logConfig.logLevel = SOPC_LOG_LEVEL_ERROR;
-        logConfig.logSystem = SOPC_LOG_SYSTEM_NO_LOG;
+        logConfig.logSystem
+        = SOPC_LOG_SYSTEM_NO_LOG;
+        // //LCOV_EXCL_STOP
     }
     SOPC_ReturnStatus status = SOPC_CommonHelper_Initialize(&logConfig);
     ASSERT(status == SOPC_STATUS_OK && "SOPC_CommonHelper_Initialize failed");  // //LCOV_EXCL_LINE
@@ -925,10 +938,10 @@ sendWriteRequest(const Item_Vector& items)const {
             status = SOPC_WriteRequest_SetWriteValue(request, idx, item->nodeId(), SOPC_AttributeId_Value,
                         nullptr, item->dataValue());
         }
+        // //LCOV_EXCL_START
         catch (...) {
             failed = true;
         }
-        // //LCOV_EXCL_START
         if (status != SOPC_STATUS_OK) {
             WARNING("SetWriteValue failed for %s with code  %s(%d)",
                     SOPC_tools::toString(*item->nodeId()).c_str(),
@@ -956,7 +969,6 @@ sendWriteRequest(const Item_Vector& items)const {
 void
 OPCUA_Server::
 updateAddressSpace(const Object_Reader& object)const {
-
     INFO("updateAddressSpace for PIVOT(%s)", object.pivotId().c_str());
 
     static const string nodePrefix("ns=1;s=");   // //LCOV_EXCL_LINE
@@ -1072,7 +1084,6 @@ send(const Readings& readings) {
             }
             DEBUG("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
                     assetName.c_str(),  assetName.length(), dp->getName().c_str());
-
         }
     }
     return readings.size();

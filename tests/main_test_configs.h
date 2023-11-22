@@ -469,6 +469,27 @@ private:
     bool mPushed;
 };
 
+struct Reply_Object {
+    Reply_Object(const string& pivotId, bool reply, const std::string& readingName ="opcua_reply"):
+        m_id(pivotId),
+        m_reply(reply),
+        m_readingName(readingName),
+        mElem(new Datapoints) {}
+    void buildReading(Readings* readings) {
+        mElem->push_back(createStringDatapointValue("ro_id", m_id));
+        mElem->push_back(createIntDatapointValue("ro_reply", m_reply));
+        send(readings);
+    }
+    void send(Readings* readings) {
+        DatapointValue dpv(mElem, true);
+        readings->push_back(new Reading(string("reading/") + m_id, new Datapoint(m_readingName, dpv)));
+    }
+    string m_id;
+    bool m_reply;
+    const string m_readingName;
+    Datapoints* mElem;
+};
+
 //////////////////////////////////////
 // TEST CONFIGURATIONS
 static const std::string protocolJsonOK =

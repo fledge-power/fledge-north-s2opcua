@@ -271,6 +271,80 @@ TEST(S2OPCUA, OPCUA_Server) {
         ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(readLog, "Value: 17"); // Written value
         ASSERT_EQ(server.lastWriterName, s2opc_north::unknownUserName);
+
+        writeLog = clientN.writeValue("ns=1;s=dpc/Trigger", SOPC_Byte_Id, "0");
+        ASSERT_STR_CONTAINS(writeLog, "Write node \"ns=1;s=dpc/Trigger\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(writeLog, "StatusCode: 0x00000000"); // OK
+
+        // Check that reply is now "BAD"
+        readLog = clientN.readValue("ns=1;s=dpc/Reply", 13);
+        ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x80970000"); // OpcUa_BadRefreshInProgress
+
+        // Send answer (invalid reading)
+        {
+            readings.clear();
+            DatapointValue dpv("22");
+            Reading* reading(new Reading(string("reading"), new Datapoint("opcua_reply", dpv)));
+            readings.push_back(reading);
+            CHECK_NO_ADD_SPC_UPDATE(readings);
+        }
+        // Send answer (unknown reading)
+        {
+            readings.clear();
+            Reply_Object reply("pivotDPC", 1, "bad_object_name");
+            reply.buildReading(&readings);
+            CHECK_NO_ADD_SPC_UPDATE(readings);
+        }
+
+        // Send answer (invalid name)
+        {
+            readings.clear();
+            Reply_Object reply("", 1);
+            reply.buildReading(&readings);
+            CHECK_NO_ADD_SPC_UPDATE(readings);
+        }
+
+        // Send answer (invalid type for reply)
+        {
+            readings.clear();
+            Reply_Object reply("pivotDPC", 1);
+            reply.mElem->push_back(createIntDatapointValue("ro_id", reply.m_reply));
+            reply.mElem->push_back(createStringDatapointValue("ro_reply", reply.m_id));
+            reply.mElem->push_back(createStringDatapointValue("ro_unused", reply.m_id));
+            reply.send(&readings);
+            CHECK_NO_ADD_SPC_UPDATE(readings);
+
+            // Check that reply is now "BAD"
+            readLog = clientN.readValue("ns=1;s=dpc/Reply", 13);
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x80970000"); // OpcUa_BadRefreshInProgress
+        }
+
+        // Send Correct answer with reply=1
+        {
+            readings.clear();
+            Reply_Object reply("pivotDPC", 1);
+            reply.buildReading(&readings);
+            CHECK_ADD_SPC_UPDATE_OK(readings);
+
+            // Check that reply is now "GOOD"
+            readLog = clientN.readValue("ns=1;s=dpc/Reply", 13);
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
+            ASSERT_STR_CONTAINS(readLog, "Value: 1"); // Written value
+        }
+
+        // Send Correct answer with reply=0
+        {
+            readings.clear();
+            Reply_Object reply("pivotDPC", 0);
+            reply.buildReading(&readings);
+            CHECK_ADD_SPC_UPDATE_OK(readings);
+
+            // Check that reply is now "GOOD"
+            readLog = clientN.readValue("ns=1;s=dpc/Reply", 13);
+            ASSERT_STR_CONTAINS(readLog, "StatusCode: 0x00000000"); // OK
+            ASSERT_STR_CONTAINS(readLog, "Value: 0"); // Written value
+        }
+
     }
 
     // Write request to server
@@ -335,6 +409,7 @@ TEST(S2OPCUA, OPCUA_Server) {
         // Prebuild and patch "do_id" reading with an int value
         elem.mValue = createIntDatapointValue("do_value", 54L);
         elem.prebuild();
+        elem.mElem->push_back(createIntDatapointValue("unknown_field", 33));
         DatapointValue* dv(elem.getElement("do_id"));
         ASSERT_NE(nullptr, dv);
         dv->setValue((long)42);
@@ -523,6 +598,8 @@ TEST(S2OPCUA, OPCUA_Server) {
         ASSERT_STR_CONTAINS(readLog, "Value: 1");
     }
 
+    // Additionnal minor coverage
+    ASSERT_EQ(nullptr, SOPC_tools::createNodeId("this is not a valid nodeId"));
 
     server.stop();
 };
