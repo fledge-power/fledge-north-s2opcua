@@ -430,7 +430,7 @@ createPivotNodes(const string& label, const string& pivotId,
         /* This is a control variable that can be written by an OPC Client.
           It only contains Value(RW), Reply(RO) and Trigger(RW)
           */
-        insertUnrefVarNode(address, pivotId, "Reply", "Control reply", sopcTypeId, parent);
+        insertUnrefVarNode(address, pivotId, "Reply", "Control reply", SOPC_Boolean_Id, parent);
         insertUnrefVarNode(address, pivotId, "Trigger", "Control trigger", SOPC_Byte_Id, parent,
                 false, we_Trigger, pivotType);
         insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent,

@@ -357,7 +357,7 @@ TEST(S2OPCUA, OpcUa_Server_Config) {
 
         ASSERT_EQ(pNode->node_class, OpcUa_NodeClass_Variable);
         ASSERT_EQ(nodeInfo.mContext.mPivotType, ""); // Only TC are filled up
-        ASSERT_EQ(nodeInfo.mContext.mOpcParentAddress, "dps");
+        ASSERT_EQ(nodeInfo.mContext.mOpcParentAddress, "ns=1;s=dps");
         ASSERT_EQ(nodeInfo.mContext.mPivotId, "pivotDPS");
         ASSERT_EQ(nodeInfo.mContext.mEvent, we_Read_Only);
         ASSERT_EQ(SOPC_tools::toString(pNode->data.variable.NodeId), "ns=1;s=dps/Value");

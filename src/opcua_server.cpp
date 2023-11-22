@@ -215,6 +215,14 @@ static const SOPC_DataValue getBadRefreshValue(SOPC_StatusCode code) {
     return result;
 };
 
+static const SOPC_DataValue getBoolDataValue(bool iVal) {
+    SOPC_DataValue result;
+    SOPC_DataValue_Initialize(&result);
+    result.Value.BuiltInTypeId = SOPC_Boolean_Id;
+    result.Value.Value.Boolean = iVal;
+    return result;
+};
+
 /**
  * Allocates and return a char* representing the value of a variant.
  */
@@ -466,7 +474,7 @@ decodeValueQuality(Object_Reader* pivot, DatapointValue* data) {
 
 /**************************************************************************/
 void
-OPCUA_Server::Object_Reader::
+OPCUA_Server::
 setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data) {
     // Conversion from DatapointValue to SOPC_DataValue
     SOPC_DataValue* newValue(new SOPC_DataValue);
@@ -972,6 +980,56 @@ updateAddressSpace(const Object_Reader& object)const {
 }
 
 /**************************************************************************/
+void
+OPCUA_Server::
+receiveReplyObject(Datapoints* dp, const std::string& objName)const {
+    DEBUG("OPCUA_Server::receiveReplyObject(%s)", objName.c_str());
+    SOPC_DataValue dvId;
+    SOPC_DataValue dvReply;
+    string id("");
+    int reply(-1);
+
+    for (Datapoint* objDp : *dp) {
+        const string dpName(objDp->getName());
+        DatapointValue& dpv = objDp->getData();
+        DEBUG("OPCUA_Server::receiveReplyObject :'%s' : %s", dpName.c_str(), dpv.getTypeStr().c_str());
+        if (dpName == "ro_id") {
+            if (dpv.getType() == DatapointValue::T_STRING) {
+                id = dpv.toStringValue();
+                DEBUG("OPCUA_Server::receiveReplyObject : id ='%s'", id.c_str());
+            } else {
+                WARNING("Ignoring unknown field 'ro_id' (bad type)");
+            }
+
+        } else if (dpName == "ro_reply") {
+            if (dpv.getType() == DatapointValue::T_INTEGER) {
+                reply = dpv.toInt();
+                DEBUG("OPCUA_Server::receiveReplyObject : reply =%d", reply);
+            } else {
+                WARNING("Ignoring unknown field 'ro_reply' (bad type)");
+            }
+        } else {
+            WARNING("Ignoring unknown field '%s' in reply_object", dpName.c_str());
+        }
+    }
+    if (!id.empty() && reply >= 0) {
+        static const string nodePrefix("ns=1;s=");   // //LCOV_EXCL_LINE
+        const string nodePath(nodePrefix + mConfig.addrSpace.getByPivotId(id));
+        INFO("OPCUA_Server::receiveReplyObject(%s, %d) ; Opc Address = %s",
+                id.c_str(), reply, nodePath.c_str());
+
+        SOPC_DataValue dv = getBoolDataValue(reply);
+
+        Item_Vector vector;
+        vector.emplace_back(new AddressSpace_Item(nodePath + "/Reply", &dv));
+        sendWriteRequest(vector);
+    } else {
+        WARNING("OPCUA_Server::receiveReplyObject() : skipped object '%s' (invalid/incomplete)",
+                objName.c_str());
+    }
+}
+
+/**************************************************************************/
 uint32_t
 OPCUA_Server::
 send(const Readings& readings) {
@@ -991,20 +1049,30 @@ send(const Readings& readings) {
         const string assetName = reading->getAssetName();
 
         for (Datapoint* dp : dataPoints) {
-            // Only process dataPoints which name match "data_object"
-            if (dp->getName() != "data_object") {continue;}
-            DEBUG("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
-                    assetName.c_str(),  assetName.length(), dp->getName().c_str());
-
             DatapointValue& dpv = dp->getData();
-            if (dpv.getType() == DatapointValue::T_DP_DICT) {
+            if (dpv.getType() != DatapointValue::T_DP_DICT) {
+                WARNING("Ignoring '%s' element (expecting 'T_DP_DICT')", LOGGABLE(dp->getName()));
+                continue;
+            }
+            // Only process dataPoints which name match "data_object" or "opcua_reply"
+            if (dp->getName() == "opcua_reply") {
+                receiveReplyObject(dpv.getDpVec(), assetName);
+                continue;
+            } else if (dp->getName() == "data_object") {
                 Object_Reader object(dpv.getDpVec(), assetName);
                 if (object.isValid()) {
                     updateAddressSpace(object);
                 } else {
                     WARNING("Invalid/Incomplete 'data_object' asset name= '%s'", assetName.c_str());
                 }
+            } else {
+                WARNING("Ignoring '%s' element (expecting 'data_object' or 'opcua_reply')",
+                        LOGGABLE(dp->getName()));
+                continue;
             }
+            DEBUG("OPCUA_Server::send(assetName=%s(%u), dpName=%s)",
+                    assetName.c_str(),  assetName.length(), dp->getName().c_str());
+
         }
     }
     return readings.size();

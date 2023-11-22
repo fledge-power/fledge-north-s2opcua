@@ -149,6 +149,10 @@ class OPCUA_Server {
  private:
     void init_sopc_lib_and_logs(void);
 
+    using Value_Ptr = std::unique_ptr<SOPC_DataValue>;
+
+    static void setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data);
+
     class Object_Reader {
      public:
         explicit Object_Reader(Datapoints* dp, const std::string& objName);
@@ -184,9 +188,6 @@ class OPCUA_Server {
         static void decodeValue(Object_Reader* pivot, DatapointValue* data);
         static void decodeValueQuality(Object_Reader* pivot, DatapointValue* data);
 
-        using Value_Ptr = std::unique_ptr<SOPC_DataValue>;
-        static void setDataValue(Value_Ptr* value, const SOPC_BuiltinId typeId, DatapointValue* data);
-
         static const decoder_map_t decoder_map;
         string mPivotId;                  // do_id
         SOPC_BuiltinId mTypeId;           // do_type
@@ -209,6 +210,11 @@ class OPCUA_Server {
      * This function updates a node Id in the address space given a DatapointValue
      */
     void updateAddressSpace(const Object_Reader& object)const;
+
+    /**
+     * Update the addressSpace according to a Reply_object received
+     */
+    void receiveReplyObject(Datapoints* dp, const std::string& objName)const;
 
     int m_nbMillisecondShutdown;
 
