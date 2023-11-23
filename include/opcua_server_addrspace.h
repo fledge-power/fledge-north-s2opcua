@@ -48,15 +48,16 @@ static const SOPC_StatusCode GoodStatus = 0x00000000;
 static const SOPC_Byte ReadOnlyAccess = 0x01;
 static const SOPC_Byte ReadWriteAccess = 0x03;
 
-typedef enum {
+enum SOPC_AddressSpace_WriteEvent {
     we_Read_Only,
     we_Trigger,
     we_Value
-} SOPC_AddressSpace_WriteEvent;
+};
+using SOPC_AddressSpace_WriteEvent = enum SOPC_AddressSpace_WriteEvent;
 
 string getNodeIdName(const string &address);
 
-struct NodeInfoCtx_t{
+struct NodeInfoCtx_t {
     SOPC_AddressSpace_WriteEvent mEvent;
     string mOpcParentAddress;
     string mPivotId;
@@ -130,7 +131,7 @@ class CNode {
 
  protected:
     explicit CNode(const string& nodeName, OpcUa_NodeClass nodeClass, SOPC_StatusCode defaultStatusCode = GoodStatus);
-    virtual ~CNode(void);
+    virtual ~CNode(void);  // //NOSONAR S2OPC API.
 
  private:
     void createReverseRef(NodeVect_t* nodes, const OpcUa_ReferenceNode& ref)const;
@@ -145,7 +146,7 @@ class CNode {
 class CFolderNode : public CNode {
  public:
     explicit CFolderNode(const string& nodeName, const SOPC_NodeId& parent);
-    virtual ~CFolderNode(void) = default;
+    ~CFolderNode(void) override = default;
 };
 
 /**
@@ -154,7 +155,7 @@ class CFolderNode : public CNode {
 class CCommonVarNode : public CNode {
  public:
     explicit CCommonVarNode(const CVarInfo& varInfo);
-    virtual ~CCommonVarNode(void) = default;
+    ~CCommonVarNode(void) override = default;
 };
 
 /**
@@ -163,7 +164,7 @@ class CCommonVarNode : public CNode {
 class CVarNode : public CCommonVarNode {
  public:
     explicit CVarNode(const CVarInfo& varInfo, SOPC_BuiltinId sopcTypeId);
-    virtual ~CVarNode(void) = default;
+    ~CVarNode(void) override = default;
 
  private:
     void initializeCommonFields(const CVarInfo& varInfo);
@@ -213,11 +214,16 @@ class Server_AddrSpace{
      * @return The CNode of the created object
      */
     CNode* createFolderNode(const string& nodeId, const SOPC_NodeId& parent);
-    void createPivotNodes(const string& label, const string& pivotId,
+    void createPivotNodes(const string& pivotId,
             const string& address, const string& pivotType);
-    void insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name,
+    struct NodeInsertRef {
+        const string address;
+        const string pivotId;
+        const SOPC_NodeId parent;
+    };
+    void insertUnrefVarNode(const NodeInsertRef& ref,
+            const std::string &name,
             const std::string &descr, SOPC_BuiltinId type,
-            const SOPC_NodeId& parent,
             bool isReadOnly = true,
             const SOPC_AddressSpace_WriteEvent& event = we_Read_Only,
             const string& pivotType = "");

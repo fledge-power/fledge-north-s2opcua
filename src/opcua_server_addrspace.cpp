@@ -105,7 +105,7 @@ template<typename T>
 void
 GarbageCollectorC<T>::
 reallocate(pointer* ptr, size_t oldSize, size_t newSize) {
-    // ASSERT(nullptr != ptr);  // useless: only static calls using addresses
+    // Note : ptr is always not-NULL: only static calls using addresses
     const pointer oldPtr(*ptr);
     auto it = mAllocated.find(oldPtr);
 
@@ -184,7 +184,7 @@ string getNodeIdName(const string &address) {return ::ns1 + address;}
 CNode::
 CNode(const string& nodeName, OpcUa_NodeClass nodeClass, SOPC_StatusCode defaultStatusCode) {
     const string nodeId(getNodeIdName(nodeName));
-    mNodeId.reset(SOPC_NodeId_FromCString(nodeId.c_str(), nodeId.length()));
+    mNodeId.reset(SOPC_NodeId_FromCString(nodeId.c_str(), static_cast<int32_t>(nodeId.length())));
     memset(get(), 0, sizeof(SOPC_AddressSpace_Node));
     get()->node_class = nodeClass;     // Filled by child classes
     get()->value_status = defaultStatusCode;
@@ -341,7 +341,7 @@ CNode(varInfo.mAddress, OpcUa_NodeClass_Variable) {
     variableNode.Value.ArrayType = SOPC_VariantArrayType_SingleValue;
 
     // Node Id
-    status = SOPC_NodeId_Copy(&variableNode.NodeId, &nodeId());
+    SOPC_NodeId_Copy(&variableNode.NodeId, &nodeId());
 
     // Browse name
     variableNode.BrowseName.NamespaceIndex = variableNode.NodeId.Namespace;
@@ -386,12 +386,12 @@ createFolderNode(const string& nodeId, const SOPC_NodeId& parent) {
 /**************************************************************************/
 void
 Server_AddrSpace::
-insertUnrefVarNode(const string& address, const string& pivotId, const std::string &name,
-        const std::string &descr, SOPC_BuiltinId type, const SOPC_NodeId& parent,
+insertUnrefVarNode(const NodeInsertRef& ref,
+        const std::string &name, const std::string &descr, SOPC_BuiltinId type,
         bool isReadOnly, const SOPC_AddressSpace_WriteEvent& event, const string& pivotType) {
-    const string opcAddr(address + "/" + name);
-    const NodeInfoCtx_t context(event, getNodeIdName(address), pivotId, pivotType);
-    CVarInfo cVarInfo(opcAddr, name, name, descr, parent, isReadOnly);
+    const string opcAddr(ref.address + "/" + name);
+    const NodeInfoCtx_t context(event, getNodeIdName(ref.address), ref.pivotId, pivotType);
+    CVarInfo cVarInfo(opcAddr, name, name, descr, ref.parent, isReadOnly);
     CVarNode* pNode(new CVarNode(cVarInfo, type));   // //NOSONAR (deletion managed by S2OPC)
     DEBUG("Adding node data '%s' of type '%d' (%s)", SOPC_tools::toString(pNode->nodeId()).c_str(), type,
             (isReadOnly ? "RO" : "RW"));
@@ -401,8 +401,7 @@ insertUnrefVarNode(const string& address, const string& pivotId, const std::stri
 /**************************************************************************/
 void
 Server_AddrSpace::
-createPivotNodes(const string& label, const string& pivotId,
-        const string& address, const string& pivotType) {
+createPivotNodes(const string& pivotId, const string& address, const string& pivotType) {
     const SOPC_BuiltinId sopcTypeId(SOPC_tools::toBuiltinId(pivotType));
 
     // Parent object folder node
@@ -413,27 +412,28 @@ createPivotNodes(const string& label, const string& pivotId,
     // Create <..>/Value, (dynamic type, based on 'pivotType')
     const bool readOnly(SOPC_tools::pivotTypeToReadOnly(pivotType));
     const string nodeIdName(address + "/Value");
+    const NodeInsertRef nodeRef{address, pivotId, parent};
 
     if (readOnly) {
         /* This is a monitoring variable that can be read by an OPC Client. */
-        insertUnrefVarNode(address, pivotId, "Cause", "Cause of transmission", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, pivotId, "Confirmation", "Confirmation", SOPC_Boolean_Id, parent);
-        insertUnrefVarNode(address, pivotId, "Source", "Source", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, pivotId, "ComingFrom", "Origin protocol", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, pivotId, "TmOrg", "Origin Timestamp", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, pivotId, "TmValidity", "Timestamp validity", SOPC_String_Id, parent);
-        insertUnrefVarNode(address, pivotId, "DetailQuality", "Quality default details", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, pivotId, "TimeQuality", "Time default details", SOPC_UInt32_Id, parent);
-        insertUnrefVarNode(address, pivotId, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id, parent);
-        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent);
+        insertUnrefVarNode(nodeRef, "Cause", "Cause of transmission", SOPC_UInt32_Id);
+        insertUnrefVarNode(nodeRef, "Confirmation", "Confirmation", SOPC_Boolean_Id);
+        insertUnrefVarNode(nodeRef, "Source", "Source", SOPC_String_Id);
+        insertUnrefVarNode(nodeRef, "ComingFrom", "Origin protocol", SOPC_String_Id);
+        insertUnrefVarNode(nodeRef, "TmOrg", "Origin Timestamp", SOPC_String_Id);
+        insertUnrefVarNode(nodeRef, "TmValidity", "Timestamp validity", SOPC_String_Id);
+        insertUnrefVarNode(nodeRef, "DetailQuality", "Quality default details", SOPC_UInt32_Id);
+        insertUnrefVarNode(nodeRef, "TimeQuality", "Time default details", SOPC_UInt32_Id);
+        insertUnrefVarNode(nodeRef, "SecondSinceEpoch", "Timestamp", SOPC_UInt64_Id);
+        insertUnrefVarNode(nodeRef, "Value", string("Value of type ") + pivotType, sopcTypeId);
     } else {
         /* This is a control variable that can be written by an OPC Client.
           It only contains Value(RW), Reply(RO) and Trigger(RW)
           */
-        insertUnrefVarNode(address, pivotId, "Reply", "Control reply", SOPC_Boolean_Id, parent);
-        insertUnrefVarNode(address, pivotId, "Trigger", "Control trigger", SOPC_Byte_Id, parent,
+        insertUnrefVarNode(nodeRef, "Reply", "Control reply", SOPC_Boolean_Id);
+        insertUnrefVarNode(nodeRef, "Trigger", "Control trigger", SOPC_Byte_Id,
                 false, we_Trigger, pivotType);
-        insertUnrefVarNode(address, pivotId, "Value", string("Value of type ") + pivotType, sopcTypeId, parent,
+        insertUnrefVarNode(nodeRef, "Value", string("Value of type ") + pivotType, sopcTypeId,
                 false, we_Value, pivotType);
         mControls.emplace(pivotId, ControlInfo{getNodeInfo(address, "Trigger"),
                 getNodeInfo(address, "Value"),
@@ -466,7 +466,6 @@ Server_AddrSpace(const std::string& json) {
         const string label(::getString(datapoint, JSON_LABEL, JSON_DATAPOINTS));
         const string pivot_id(::getString(datapoint, JSON_PIVOT_ID, JSON_DATAPOINTS));
         DEBUG("Parsing DATAPOINT(%s/%s)", label.c_str(), pivot_id.c_str());
-        // const string pivot_type(::getString(datapoint, JSON_PIVOT_TYPE, JSON_DATAPOINTS));
         const Value::ConstArray& protocols(getArray(datapoint, JSON_PROTOCOLS, JSON_DATAPOINTS));
 
         for (const Value& protocol : protocols) {
@@ -474,7 +473,7 @@ Server_AddrSpace(const std::string& json) {
                 const ExchangedDataC data(protocol); // throws NotAnS2opcInstance if not OPCUA protocol
 
                 // Create a parent node of type Folder
-                createPivotNodes(label, pivot_id, data.address, data.typeId);
+                createPivotNodes(pivot_id, data.address, data.typeId);
             }
             catch (const ExchangedDataC::NotAnS2opcInstance&) {
                 // Just ignore other protocols

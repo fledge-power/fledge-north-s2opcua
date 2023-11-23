@@ -789,7 +789,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
                 context.mEvent);
         if (nullptr == ctrlInfo) {
             // //LCOV_EXCL_START  => Robustness (Not reacheable)
-            WARNING("Missing ControlInfo for PIVOT ID[%s] ", LOGGABLE(context.mPivotId));     // //LCOV_EXCL_LINE
+            WARNING("Missing ControlInfo for PIVOT ID[%s] ", LOGGABLE(context.mPivotId));
             return;
             // //LCOV_EXCL_STOP
         }
@@ -821,7 +821,7 @@ writeNotificationCallback(const SOPC_CallContext* callContextPtr,
             if (!(writeValue->Value.Value.BuiltInTypeId == SOPC_Byte_Id)
                     && writeValue->Value.Value.ArrayType == SOPC_VariantArrayType_SingleValue) {
                 WARNING("TRIGGER for PIVOT ID[%s] does not have the expected OPC type (found type %d)",
-                        LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);     // //LCOV_EXCL_LINE
+                        LOGGABLE(context.mPivotId), writeValue->Value.Value.BuiltInTypeId);
                 return;
             }
             // //LCOV_EXCL_STOP
