@@ -129,8 +129,8 @@ uint32_t plugin_send(PLUGIN_HANDLE handle, Readings& readings) {
 
 /**************************************************************************/
 void plugin_register(PLUGIN_HANDLE handle,
-        s2opc_north::north_write_event_t write,  // //NOSONAR FLEDGE API
-        s2opc_north::north_operation_event_t operation) {  // //NOSONAR FLEDGE API
+        north_write_event_t write,  // //NOSONAR FLEDGE API
+        north_operation_event_t operation) {  // //NOSONAR FLEDGE API
     INFO("plugin_register...");
     handleToPlugin(handle)->setpointCallbacks(operation);
 }

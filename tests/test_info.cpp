@@ -178,8 +178,8 @@ extern PLUGIN_HANDLE plugin_init(ConfigCategory *configData);
 extern void plugin_shutdown(PLUGIN_HANDLE handle);
 extern uint32_t plugin_send(PLUGIN_HANDLE handle, Readings& readings);
 extern void plugin_register(PLUGIN_HANDLE handle,
-        s2opc_north::north_write_event_t write,
-        s2opc_north::north_operation_event_t operation);
+        north_write_event_t write,
+        north_operation_event_t operation);
 
 ////////////////
 // event stubs
@@ -215,13 +215,14 @@ int test_north_operation_event
     return paramCount;
 }
 
-size_t findNameInOperEvent(const std::string& name) {
+int findNameInOperEvent(const std::string& name) {
     for (size_t i(0); i < gOperEventLastNames.size(); i++) {
         // std::cout<<"Name="<< gOperEventLastNames[i] << endl;
         if (name == gOperEventLastNames[i]) return i;
     }
     return -1;
 }
+
 }
 
 TEST(S2OPCUA, PluginInstance) {
@@ -230,6 +231,7 @@ TEST(S2OPCUA, PluginInstance) {
 
     ERROR("*** TEST S2OPCUA PluginInstance");
     ASSERT_NO_C_ASSERTION;
+    size_t idx;
 
     OPCUA_ClientNone client("opc.tcp://localhost:55345");
     // note : plugin_info already tested
@@ -268,38 +270,116 @@ TEST(S2OPCUA, PluginInstance) {
     {
         string log;
         log = client.browseNode("i=85");
-        ASSERT_STR_CONTAINS(log, QUOTE(i=85 -> ns=1;s=dps "dps"));
+        ASSERT_STR_CONTAINS(log, QUOTE(i=85 -> ns=1;s=dpc "dpc"));
 
         log = client.browseNode("ns=1;s=dpc");
-        ASSERT_STR_CONTAINS(log, QUOTE(ns=1;s=dpc -> ns=1;s=dpc/Cause "Cause"));
+        ASSERT_STR_CONTAINS(log, QUOTE(ns=1;s=dpc -> ns=1;s=dpc/Trigger "Trigger"));
 
         log = client.readValue("ns=1;s=dpc/Value");
         ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
         ASSERT_STR_CONTAINS(log, "Value: 0");
 
-        log = client.writeValue("ns=1;s=dpc/Value", SOPC_Byte_Id, "1");
+        log = client.writeValue("ns=1;s=dpc/Value", SOPC_Byte_Id, "33");
         ASSERT_STR_CONTAINS(log, "Write node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
 
         log = client.readValue("ns=1;s=dpc/Value");
         ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Value\", attribute 13:"); // Result OK, no error
         ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
-        ASSERT_STR_CONTAINS(log, "Value: 1");
-
+        ASSERT_STR_CONTAINS(log, "Value: 33");
     }
 
+    // Writing into Value does not trig any event
     ASSERT_FALSE(gWriteEventCalled);
-    ASSERT_GE(gOperEventNbCall, 1);
-    ASSERT_EQ(gOperEventLastOperName, "opcua_operation");
-    ASSERT_EQ(gOperEventLastDestination, DestinationBroadcast);
+    ASSERT_GE(gOperEventNbCall, 0);
 
-    StringVect_t::const_iterator it;
+    // Now trig the event
+    {
+        string log;
+        log = client.writeValue("ns=1;s=dpc/Trigger", SOPC_Byte_Id, "1");
+        ASSERT_STR_CONTAINS(log, "Write node \"ns=1;s=dpc/Trigger\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
 
-    ASSERT_EQ(gOperEventLastNames.size(), gOperEventLastParams.size());
-    size_t idx(findNameInOperEvent("typeid"));
-    ASSERT_NE(idx, -1);
-    ASSERT_EQ(gOperEventLastParams[idx], "opcua_dpc");
+        log = client.readValue("ns=1;s=dpc/Trigger");
+        ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Trigger\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 1");
+        ASSERT_FALSE(gWriteEventCalled);
+        ASSERT_GE(gOperEventNbCall, 1);
+        ASSERT_EQ(gOperEventLastOperName, "opcua_operation");
+        ASSERT_EQ(gOperEventLastDestination, DestinationBroadcast);
+
+        StringVect_t::const_iterator it;
+
+        ASSERT_EQ(gOperEventLastNames.size(), 6);
+        ASSERT_EQ(gOperEventLastParams.size(), 6);
+
+        idx = findNameInOperEvent("co_id");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "pivotDPC");
+        idx = findNameInOperEvent("co_type");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "opcua_dpc");
+        idx = findNameInOperEvent("co_value");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "33");
+        idx = findNameInOperEvent("co_test");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "1");
+        idx = findNameInOperEvent("co_se");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "0");
+        idx = findNameInOperEvent("co_ts");
+        ASSERT_NE(idx, -1);
+    	const int64_t now = static_cast<int64_t>(time(NULL));
+    	const int64_t rcv(std::atoi(gOperEventLastParams[idx].c_str()));
+        ASSERT_TRUE(abs(now - rcv) <= 3);
+    }
+
+    gOperEventNbCall = 0;
+    gOperEventNbCall = 0;
+    {
+        string log;
+        log = client.writeValue("ns=1;s=dpc/Trigger", SOPC_Byte_Id, "2");
+        ASSERT_STR_CONTAINS(log, "Write node \"ns=1;s=dpc/Trigger\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+
+        log = client.readValue("ns=1;s=dpc/Trigger");
+        ASSERT_STR_CONTAINS(log, "Read node \"ns=1;s=dpc/Trigger\", attribute 13:"); // Result OK, no error
+        ASSERT_STR_CONTAINS(log, "StatusCode: 0x00000000"); // OK
+        ASSERT_STR_CONTAINS(log, "Value: 2");
+        ASSERT_FALSE(gWriteEventCalled);
+        ASSERT_GE(gOperEventNbCall, 1);
+        ASSERT_EQ(gOperEventLastOperName, "opcua_operation");
+        ASSERT_EQ(gOperEventLastDestination, DestinationBroadcast);
+
+        StringVect_t::const_iterator it;
+
+        ASSERT_EQ(gOperEventLastNames.size(), 6);
+        ASSERT_EQ(gOperEventLastParams.size(), 6);
+
+        idx = findNameInOperEvent("co_id");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "pivotDPC");
+        idx = findNameInOperEvent("co_type");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "opcua_dpc");
+        idx = findNameInOperEvent("co_value");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "33");
+        idx = findNameInOperEvent("co_test");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "0");
+        idx = findNameInOperEvent("co_se");
+        ASSERT_NE(idx, -1);
+        ASSERT_EQ(gOperEventLastParams[idx], "1");
+        idx = findNameInOperEvent("co_ts");
+        ASSERT_NE(idx, -1);
+    	const int64_t now = static_cast<int64_t>(time(NULL));
+    	const int64_t rcv(std::atoi(gOperEventLastParams[idx].c_str()));
+        ASSERT_TRUE(abs(now - rcv) <= 3);
+    }
 
     // Test "send" event
     {

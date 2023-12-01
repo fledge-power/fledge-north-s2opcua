@@ -20,6 +20,7 @@
 
 // Fledge includes
 #include "logger.h"
+#include "plugin_api.h"
 #include "rapidjson/document.h"
 
 extern "C" {
@@ -46,6 +47,15 @@ static constexpr const char*const PROTOCOL_S2OPC = "opcua";
 static constexpr const char*const JSON_PROT_NAME = "name";
 static constexpr const char*const JSON_PROT_ADDR = "address";
 static constexpr const char*const JSON_PROT_TYPEID = "typeid";
+
+// Redefinition of plugin callbacks types to ease readability
+using north_write_event_t = bool (*)
+        (char *name, char *value, ControlDestination destination, ...);  // //NOSONAR
+
+using north_operation_event_t =
+        int (*)(char *operation, int paramCount,
+                char *names[], char *parameters[],  // //NOSONAR
+                ControlDestination destination, ...);
 
 /**************************************************************************/
 /*                HELPER MACROS                                           */

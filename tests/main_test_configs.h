@@ -262,7 +262,7 @@ static std::string launch_and_check(SOPC_tools::CStringVect& command) {
 struct nodeVarFinder {
     nodeVarFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 ( (node->node_class == OpcUa_NodeClass_Variable &&
                 SOPC_tools::toString(node->data.variable.NodeId) == m_name) ||
@@ -281,7 +281,7 @@ inline s2opc_north::NodeVect_t::const_iterator findNodeInASpc(
 struct nodeVarTypeFinder {
     nodeVarTypeFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 node->node_class == OpcUa_NodeClass_VariableType &&
                 SOPC_tools::toString(node->data.variable_type.NodeId) == m_name;
@@ -292,7 +292,7 @@ struct nodeVarTypeFinder {
 struct nodeObjFinder {
     nodeObjFinder(const std::string& name):m_name(name){}
     bool operator()(const s2opc_north::NodeInfo_t& nodeInfo){
-        SOPC_AddressSpace_Node* node = nodeInfo.first;
+        SOPC_AddressSpace_Node* node = nodeInfo.mNode;
         return node != NULL &&
                 node->node_class == OpcUa_NodeClass_Object &&
                 SOPC_tools::toString(node->data.object.NodeId) == m_name;
@@ -467,6 +467,27 @@ struct TestReading {
     Datapoint*  mValue;
 private:
     bool mPushed;
+};
+
+struct Reply_Object {
+    Reply_Object(const string& pivotId, bool reply, const std::string& readingName ="opcua_reply"):
+        m_id(pivotId),
+        m_reply(reply),
+        m_readingName(readingName),
+        mElem(new Datapoints) {}
+    void buildReading(Readings* readings) {
+        mElem->push_back(createStringDatapointValue("ro_id", m_id));
+        mElem->push_back(createIntDatapointValue("ro_reply", m_reply));
+        send(readings);
+    }
+    void send(Readings* readings) {
+        DatapointValue dpv(mElem, true);
+        readings->push_back(new Reading(string("reading/") + m_id, new Datapoint(m_readingName, dpv)));
+    }
+    string m_id;
+    bool m_reply;
+    const string m_readingName;
+    Datapoints* mElem;
 };
 
 //////////////////////////////////////

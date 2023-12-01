@@ -5,7 +5,7 @@ PLUGIN_SERV_CONF='{"config":{}, "enabled" :"true", "name":"s2opcua_service", "pl
 CPPLINT_EXCLUDE='-build/include_subdir,-build/c++11,-whitespace/comments'
 export S2OPC_ROOT=$(FLEDGE_SRC)/../S2OPC
 
-all: build install_plugin # insert_task
+all: build # insert_task
 build:
 	$(Q)mkdir -p build
 	$(Q)cd build && cmake -DCMAKE_BUILD_TYPE=Release -DFLEDGE_INSTALL=$(FLEDGE_INSTALL) ..
@@ -35,21 +35,21 @@ install_certs:
 	$(Q)mkdir -p $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/ > /dev/null
 	$(Q)cp -arf ./samples/cert/* $(FLEDGE_ROOT)/data/etc/certs/s2opc_srv/
 
-install_plugin: check install_certs
-	@echo "Install plugin..."
-	$(Q)sudo make -C build install
-	
 insert_task: del_plugin
 	@echo "Insert plugin service in Fledge as task..."
 	$(Q)! curl -sX POST http://localhost:8081/fledge/scheduled/task -d $(PLUGIN_TASK_CONF) \
 	|  sed 's/^\(4.*\)/INSTALLATION FAILED : \1/; t; q 128 '
 	@echo
 	
+set_service_debug_level:
+	@echo "\nSet log level" 
+	$(Q) curl -sX PUT http://localhost:8081/fledge/category/s2opcua_serviceAdvanced -d '{"logLevel":"debug"}'
 insert_service: #del_plugin
 	@echo "Insert plugin service in Fledge as service..."
 	$(Q)! curl -sX POST http://localhost:8081/fledge/service -d $(PLUGIN_SERV_CONF) \
 	|  sed 's/^\(4.*\)/INSTALLATION FAILED : \1/; t; q 128 '
-	@echo
+	@echo ; sleep 3
+	@make set_service_debug_level Q=$(Q)
 
 del_plugin:
 	@echo "Delete plugin if already installed in FLEDGE..."
@@ -68,4 +68,4 @@ test_sonar:
           --define sonar.inclusions="**/src/plugin.cpp,**/src/opcua_server_*.cpp,**/include/opcua_server*.h"\
           --define sonar.coverageReportPaths="build/tests/RunTests_coverage_sonar-sonarqube.xml"
 	
-.PHONY: all clean build check del_plugin install_certs install_plugin insert_service insert_task cpplint unit_tests
+.PHONY: all clean build check del_plugin install_certs insert_service insert_task cpplint unit_tests
